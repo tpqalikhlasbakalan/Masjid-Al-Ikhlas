@@ -118,7 +118,7 @@ export default function App() {
   // =========================================================
   
   // --- STATE IDENTITAS MASJID CUSTOM ---
-  const [masjidName, setMasjidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Abadi"));
+  const [masjidName, setMasjidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Ikhlas"));
   const [masjidLogoUrl, setMasjidLogoUrl] = useState(() => getLocalStorageData("masjidLogoUrl", ""));
 
   // State Sementara untuk Form Identitas Masjid agar tidak langsung tersimpan saat diketik
@@ -159,7 +159,7 @@ export default function App() {
   const [tempLokasi, setTempLokasi] = useState(() => getLocalStorageData("lokasi", INITIAL_LOKASI));
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // --- STATE PETUGAS SHOLAT JUMAT ABADI ---
+  // --- STATE PETUGAS SHOLAT JUMAT ---
   const [petugasAbadi, setPetugasAbadi] = useState(() => getLocalStorageData("petugasAbadi", INITIAL_PETUGAS_ABADI));
   const [editingPasaran, setEditingPasaran] = useState(null);
   const [pasaranForm, setPasaranForm] = useState({
@@ -640,7 +640,7 @@ export default function App() {
     if (type === "WA") {
       msg = `Assalamualaikum Wr. Wb. Yth. *${fridayData.petugas.khatib}*, menginfokan bahwa besok (hari Jumat ${fridayData.pasaran}, tanggal ${fridayData.formattedDate.replace(/^Jumat, /, "")}) adalah jadwal bapak bertugas sebagai *Khatib Sholat Jumat*. Mohon hadir 15 menit sebelum adzan berkumandang. Terima kasih. Wassalamualaikum Wr. Wb.`;
     } else {
-      msg = `[MASJID AL-ABADI] Yth ${fridayData.petugas.khatib}, mengingatkan kembali besok Jumat ${fridayData.pasaran} jadwal bapak bertugas Khatib & Imam di masjid. Harap hadir 15 menit sebelum adzan. Terima kasih.`;
+      msg = `[MASJID AL-IKHLAS] Yth ${fridayData.petugas.khatib}, mengingatkan kembali besok Jumat ${fridayData.pasaran} jadwal bapak bertugas Khatib & Imam di masjid. Harap hadir 15 menit sebelum adzan. Terima kasih.`;
     }
     setSimulatedMessageText(msg);
     setActiveNotificationSim(fridayData);
