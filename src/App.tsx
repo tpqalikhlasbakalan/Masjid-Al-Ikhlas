@@ -1060,7 +1060,7 @@ export default function App() {
   }, []);
 
   // =========================================================
-  // 5. RENDER SEBELUM LOGIN (HALAMAN LOGIN BERSIH - FORM AMAN)
+  // 5. RENDER SEBELUM LOGIN (HALAMAN LOGIN BERSIH - TANPA DEMO ACCOUNTS)
   // =========================================================
   if (!isLoggedIn) {
     return (
@@ -1091,7 +1091,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">{masjidName}</h1>
-              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Gerbang Pengelolaan Masjid & Zakat</p>
+              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Bakalanpule - Tikung - Lamongan</p>
             </div>
           </div>
 
@@ -1209,7 +1209,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* === DRAWER MENU NAVIGASI (SLIDE-OUT SISI KIRI) === */}
+      {/* === DRAWER MENU NAVIGASI === */}
       {isMenuOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex animate-fadeIn">
           <div className="bg-white w-72 h-full shadow-2xl flex flex-col justify-between p-5 border-r border-slate-200 animate-slideRight">
@@ -1279,7 +1279,7 @@ export default function App() {
       <div className="flex-1 flex flex-col md:flex-row">
         <main className="flex-1 p-6 overflow-y-auto max-w-7xl mx-auto w-full">
           
-          {/* TAB 1: DASHBOARD UTAMA (STATISTIK TELAH DIHAPUS SEPENUHNYA) */}
+          {/* TAB 1: DASHBOARD UTAMA */}
           {activeTab === "dashboard" && (
             <div className="space-y-6">
               <div className="bg-emerald-700 text-white rounded-2xl p-6 shadow-md shadow-emerald-700/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -1394,7 +1394,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 2: PETUGAS SHOLAT JUMAT (EDIT PETUGAS BERHASIL AKTIF) */}
+          {/* TAB 2: PETUGAS SHOLAT JUMAT */}
           {activeTab === "petugas" && (
             <div className="space-y-6 animate-fadeIn">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -1408,10 +1408,11 @@ export default function App() {
                   <BellRing className="text-amber-600 shrink-0 w-5 h-5 mt-0.5" />
                   <div className="text-xs text-amber-800">
                     <p className="font-bold">Sistem Notifikasi Pengingat Otomatis H-1 (Hari Kamis)</p>
-                    <p className="text-amber-700">Simulasikan pengiriman pesan pengingat WhatsApp atau SMS Gateway Android ke ponsel petugas dengan menekan tombol kirim di bawah.</p>
+                    <p className="text-amber-700">Simulasikan pengiriman pesan pengingat WhatsApp atau SMS Gateway Android ke ponsel petugas langsung dari tombol simulasi di bawah template kartu petugas.</p>
                   </div>
                 </div>
               </div>
+              
               <div className="space-y-3">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Template Petugas Jumat Abadi (5 Pasaran)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -1422,7 +1423,7 @@ export default function App() {
                         <div>
                           <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-2">
                             <span className="text-xs font-black text-emerald-700 uppercase">JUMAT {pasaran}</span>
-                            {/* PENGAKTIFAN FITUR EDIT SECARA GRANULAR BAGI ADMIN & PETUGAS */}
+                            {/* PENGEDITAN PETUGAS DAPAT BERFUNGSI SEMPURNA BAGI ADMIN & TAKMIR */}
                             {canEditPetugas && (
                               <button onClick={() => handleEditPasaran(pasaran)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 transition-all border border-transparent hover:border-slate-200 shadow-2xs" title="Ubah Template Petugas"><Edit2 size={13} /></button>
                             )}
@@ -1434,43 +1435,37 @@ export default function App() {
                             <div><span className="text-[10px] text-slate-400 block">BILAL</span><span className="text-slate-700 font-medium">{data.bilal || "-"}</span></div>
                           </div>
                         </div>
-                        {data.telp && ( <div className="pt-2 border-t border-slate-100 flex items-center gap-1 text-[10px] text-slate-400 font-semibold"><Phone size={10} /><span>{data.telp}</span></div> )}
+                        {data.telp && ( 
+                          <div className="pt-2 border-t border-slate-100 flex flex-col gap-1">
+                            <div className="flex items-center gap-1 text-[10px] text-slate-400 font-semibold">
+                              <Phone size={10} />
+                              <span>{data.telp}</span>
+                            </div>
+                            
+                            {/* INTEGRASI SIMULASI NOTIFIKASI LANGSUNG PADA KARTU TEMPLATE */}
+                            {data.khatib && (
+                              <div className="flex items-center gap-1.5 mt-1 pt-1.5 border-t border-slate-100/50">
+                                <button
+                                  onClick={() => handlePrepareNotification({ petugas: data, pasaran, formattedDate: "Jumat, 22 Mei 2026" }, "WA")}
+                                  className="flex-1 bg-[#128c7e] hover:bg-[#075e54] text-white font-bold py-1 rounded text-[9px] transition-all text-center"
+                                  title="Simulasi WA"
+                                >
+                                  Kirim WA
+                                </button>
+                                <button
+                                  onClick={() => handlePrepareNotification({ petugas: data, pasaran, formattedDate: "Jumat, 22 Mei 2026" }, "SMS")}
+                                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 rounded text-[9px] transition-all text-center"
+                                  title="Simulasi SMS"
+                                >
+                                  Kirim SMS
+                                </button>
+                              </div>
+                            )}
+                          </div> 
+                        )}
                       </div>
                     );
                   })}
-                </div>
-              </div>
-
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-                <h3 className="font-extrabold text-slate-900 text-sm border-b border-slate-100 pb-2">Daftar Riil Sholat Jumat Mendatang & Kirim Notifikasi H-1 (LIHAT SEMUA PETUGAS)</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                        <th className="pb-3">Tanggal Sholat</th>
-                        <th className="pb-3">Kombinasi Pasaran Jawa</th>
-                        <th className="pb-3">Khatib & Imam Cadangan</th>
-                        <th className="pb-3">Muadzin & Bilal</th>
-                        <th className="pb-3 text-center">Pemicu Notifikasi H-1 (Hari Kamis)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                      {upcomingFridays.map((friday, index) => (
-                        <tr key={index} className="hover:bg-slate-50/50 transition-all">
-                          <td className="py-3 text-slate-900 font-bold">{friday.formattedDate}</td>
-                          <td className="py-3"><span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">Jumat {friday.pasaran}</span></td>
-                          <td className="py-3"><p className="font-bold text-slate-950">Khatib: {friday.petugas.khatib}</p><p className="text-slate-500 font-medium text-[11px]">Imam Cad: {friday.petugas.imam}</p></td>
-                          <td className="py-3"><p className="text-slate-800">Muadzin: <strong>{friday.petugas.muadzin}</strong></p><p className="text-slate-500">Bilal: {friday.petugas.bilal}</p></td>
-                          <td className="py-3 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <button onClick={() => handlePrepareNotification(friday, "WA")} className="bg-[#128c7e] hover:bg-[#075e54] text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px] inline-flex items-center gap-1 transition-all shadow-sm" title="Simulasi WhatsApp"><MessageSquare size={11} />Kirim WA</button>
-                              <button onClick={() => handlePrepareNotification(friday, "SMS")} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1.5 rounded-xl text-[10px] inline-flex items-center gap-1 transition-all shadow-sm" title="Simulasi SMS Gateway"><Smartphone size={11} />Kirim SMS</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
               </div>
 
@@ -1516,7 +1511,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 3: DATA JAMAAH (EDIT WARGA BERHASIL AKTIF) */}
+          {/* TAB 3: DATA JAMAAH */}
           {activeTab === "jamaah" && (
             <div className="space-y-6 animate-fadeIn">
               
@@ -1552,7 +1547,7 @@ export default function App() {
                   <h2 className="text-xl font-bold text-slate-950">Database Jemaah Berbasis RT/RW</h2>
                   <p className="text-xs text-slate-500">Sistem database jemaah kustom yang dibatasi pada **3 RT** (RT 01, 02, 03) dan **2 RW** (RW 01, 02).</p>
                 </div>
-                {/* DIPERBAIKI: HAK AKSES DISINKRONKAN AGAR ADMIN BISA MENAMBAH DENGAN LANCAR */}
+                {/* DIPERBAIKI: HAK AKSES JAMAAH DIAKTIFKAN KEMBALI */}
                 {canEditJamaah && (
                   <button onClick={() => { setEditingJamaah(null); setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik" }); setShowJamaahModal(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow shadow-emerald-600/10 hover:scale-102">
                     <Plus size={16} /> Tambah Warga Baru
@@ -1589,7 +1584,6 @@ export default function App() {
                           </td>
                           <td className="p-4"><span className={`text-xs ${item.fitrah === 'Muzakki' ? 'text-slate-400 font-normal' : 'text-emerald-700 font-bold'}`}>{item.fitrah}</span></td>
                           <td className="p-4"><span className={`text-xs ${item.zuru === 'Bukan Mustahik' ? 'text-slate-400 font-normal' : 'text-teal-700 font-bold'}`}>{item.zuru}</span></td>
-                          {/* DIPERBAIKI: HAK AKSES PENGEDITAN JAMAAH VALID */}
                           {canEditJamaah && (
                             <td className="p-4 text-right">
                               <div className="flex justify-end gap-1.5">
@@ -1708,7 +1702,7 @@ export default function App() {
                   {canEditFitrah ? (
                     <div className="flex gap-2">
                       <input type="number" step="0.1" placeholder="Berat (kg)" value={tempBeratFitrah} onChange={(e) => setTempBeratFitrah(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTimbangan('fitrah')} className="flex-1 text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-1 focus:ring-emerald-500" />
-                      <button onClick={() => addTimbangan('fitrah')} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 rounded-xl font-bold text-xs transition-all">Tambah</button>
+                      <button onClick={() => addTimbangan('fitrah')} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 rounded-xl font-bold text-xs transition-all animate-none">Tambah</button>
                     </div>
                   ) : <p className="text-[11px] text-rose-500 bg-rose-50 border border-rose-100 p-2 rounded-lg font-bold">Hanya Amil Zakat yang memiliki hak menambahkan data.</p>}
 
@@ -2038,7 +2032,7 @@ export default function App() {
           {activeTab === "rbac" && (
             <div className="space-y-6 animate-fadeIn">
               {currentRole === "Admin" && (
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+                <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-4">
                   <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
                     <Settings className="text-emerald-600 w-5 h-5 animate-spin-slow" />
                     <h3 className="font-extrabold text-slate-900 text-sm">Pengaturan Identitas & Logo Masjid</h3>
@@ -2058,7 +2052,7 @@ export default function App() {
                             <Upload size={14} className="text-emerald-600" /> Pilih Berkas Gambar PNG
                             <input type="file" accept="image/png" onChange={handleLogoUpload} className="hidden" />
                           </label>
-                          {tempMasjidLogoUrl && <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">Gambar Siap Disimpan</span>}
+                          {tempMasjidLogoUrl && <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">Gambar Siap Simpan</span>}
                         </div>
                         <div className="flex gap-2">
                           <input type="text" value={tempMasjidLogoUrl} onChange={(e) => setTempMasjidLogoUrl(e.target.value)} placeholder="Atau tempel tautan gambar disini (https://...)" className="flex-1 text-xs border border-slate-200 bg-white p-2.5 rounded-xl outline-none font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
@@ -2072,7 +2066,7 @@ export default function App() {
 
                   <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
                     <button type="button" onClick={() => { setTempMasjidName(masjidName); setTempMasjidLogoUrl(masjidLogoUrl); addNotification("Perubahan identitas dibatalkan.", "warning"); }} className="px-4 py-2 border border-slate-200 text-slate-500 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
-                    <button type="button" onClick={() => { if (!tempMasjidName.trim()) { addNotification("Nama Masjid tidak boleh kosong!", "error"); return; } setMasjidName(tempMasjidName); setMasjidLogoUrl(tempMasjidLogoUrl); addNotification("Identitas dan Logo Masjid berhasil diperbarui!", "success"); }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow shadow-emerald-600/10">Simpan Perubahan</button>
+                    <button type="button" onClick={() => { if (!tempMasjidName.trim()) { addNotification("Nama Masjid tidak boleh kosong!", "error"); return; } setMasjidName(tempMasjidName); setTempMasjidLogoUrl(tempMasjidLogoUrl); addNotification("Identitas dan Logo Masjid berhasil diperbarui!", "success"); }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow shadow-emerald-600/10">Simpan Perubahan</button>
                   </div>
 
                   <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-center gap-3">
@@ -2088,7 +2082,7 @@ export default function App() {
               )}
 
               {currentRole === "Admin" && (
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+                <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-4">
                   <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
                     <UserPlus className="text-emerald-600 w-5 h-5" />
                     <nav className="font-extrabold text-slate-900 text-sm">Pendaftaran Akun Pengurus Custom</nav>
