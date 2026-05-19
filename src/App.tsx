@@ -11,7 +11,7 @@ import {
 // CONFIG CONFIGURATION GOOGLE SHEETS API (GRATIS)
 // ====================================================================
 // URL default (Opsional). Anda sekarang BISA langsung memasukkannya melalui antarmuka aplikasi di tab RBAC!
-const GOOGLE_SHEETS_SCRIPT_URL = ""; 
+const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlT-MtuAXW_wl-KnFnqUkhX4fPf6YIyXNMPTE4Syi66_uDhxGiKVVK9_imo25DpRCm/exec"; 
 
 // === SEED DATA LOKASI AWAL (DITAMBAH DESA AGAR LEBIH SPESIFIK) ===
 const INITIAL_LOKASI = {
