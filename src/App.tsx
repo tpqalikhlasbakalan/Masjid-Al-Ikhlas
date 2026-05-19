@@ -4,7 +4,7 @@ import {
   Settings, Trash2, Plus, Edit2, Check, X, AlertTriangle, 
   Clock, MapPin, Printer, UsersRound, Calendar, Coins,
   LogOut, Lock, KeyRound, User, Eye, EyeOff, UserPlus, Image, FileText,
-  Phone, Send, MessageSquare, BellRing, Upload, Download, Smartphone, Menu
+  Phone, Send, MessageSquare, BellRing, Upload, Download, Smartphone, Menu, RefreshCw
 } from 'lucide-react';
 
 // ====================================================================
@@ -159,12 +159,8 @@ export default function App() {
   // =========================================================
   // 1. STATE MANAGEMENT DENGAN STRATEGI PENYIMPANAN DOUBLE-BACKUP
   // =========================================================
-  const [masjidName, setMasjidName] = useState(() => {
-    return localStorage.getItem("masjidName") ? JSON.parse(localStorage.getItem("masjidName")) : "Masjid Al-Ikhlas Bakalan";
-  });
-  const [masjidLogoUrl, setMasjidLogoUrl] = useState(() => {
-    return localStorage.getItem("masjidLogoUrl") ? JSON.parse(localStorage.getItem("masjidLogoUrl")) : "";
-  });
+  const [masjidName, setMasjidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Ikhlas Bakalan"));
+  const [masjidLogoUrl, setMasjidLogoUrl] = useState(() => getLocalStorageData("masjidLogoUrl", ""));
 
   const [tempMasjidName, setTempMasjidName] = useState(masjidName);
   const [tempMasjidLogoUrl, setTempMasjidLogoUrl] = useState(masjidLogoUrl);
@@ -174,15 +170,8 @@ export default function App() {
   const [currentUserLabel, setCurrentUserLabel] = useState("");
   const [currentUserUsername, setCurrentUserUsername] = useState("");
   
-  const [rolesConfig, setRolesConfig] = useState(() => {
-    const saved = localStorage.getItem("rolesConfig");
-    return saved ? JSON.parse(saved) : INITIAL_ROLES;
-  });
-  
-  const [userDatabase, setUserDatabase] = useState(() => {
-    const saved = localStorage.getItem("userDatabase");
-    return saved ? JSON.parse(saved) : INITIAL_USER_DATABASE;
-  });
+  const [rolesConfig, setRolesConfig] = useState(() => getLocalStorageData("rolesConfig", INITIAL_ROLES));
+  const [userDatabase, setUserDatabase] = useState(() => getLocalStorageData("userDatabase", INITIAL_USER_DATABASE));
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [notifications, setNotifications] = useState([]);
@@ -200,18 +189,12 @@ export default function App() {
   const [editingAccountPassword, setEditingAccountPassword] = useState(null); 
   const [newPasswordValue, setNewPasswordValue] = useState("");
 
-  const [lokasi, setLokasi] = useState(() => {
-    const saved = localStorage.getItem("lokasi");
-    return saved ? JSON.parse(saved) : INITIAL_LOKASI;
-  });
+  const [lokasi, setLokasi] = useState(() => getLocalStorageData("lokasi", INITIAL_LOKASI));
   const [isSettingLokasi, setIsSettingLokasi] = useState(false);
   const [tempLokasi, setTempLokasi] = useState(lokasi);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const [petugasAbadi, setPetugasAbadi] = useState(() => {
-    const saved = localStorage.getItem("petugasAbadi");
-    return saved ? JSON.parse(saved) : INITIAL_PETUGAS_ABADI;
-  });
+  const [petugasAbadi, setPetugasAbadi] = useState(() => getLocalStorageData("petugasAbadi", INITIAL_PETUGAS_ABADI));
   const [editingPasaran, setEditingPasaran] = useState(null);
   const [pasaranForm, setPasaranForm] = useState({ khatib: "", imam: "", muadzin: "", bilal: "", telp: "" });
 
@@ -221,44 +204,27 @@ export default function App() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showAndroidCode, setShowAndroidCode] = useState(false);
 
-  const [jamaahList, setJamaahList] = useState(() => {
-    const saved = localStorage.getItem("jamaahList");
-    return saved ? JSON.parse(saved) : INITIAL_JAMAAH;
-  });
+  const [jamaahList, setJamaahList] = useState(() => getLocalStorageData("jamaahList", INITIAL_JAMAAH));
   const [filterWilayahJamaah, setFilterWilayahJamaah] = useState("Semua");
 
-  const [timbanganFitrah, setTimbanganFitrah] = useState(() => {
-    const saved = localStorage.getItem("timbanganFitrah");
-    return saved ? JSON.parse(saved) : [25, 50, 15, 30];
-  });
+  const [timbanganFitrah, setTimbanganFitrah] = useState(() => getLocalStorageData("timbanganFitrah", [25, 50, 15, 30]));
   const [tempBeratFitrah, setTempBeratFitrah] = useState("");
   
-  const [alokasiFitrah, setAlokasiFitrah] = useState(() => {
-    const saved = localStorage.getItem("alokasiFitrah");
-    return saved ? JSON.parse(saved) : { "Berat": 5.0, "Sedang": 3.0, "Ringan": 1.5, "Muzakki": 0.0 };
-  });
+  const [alokasiFitrah, setAlokasiFitrah] = useState(() => getLocalStorageData("alokasiFitrah", {
+    "Berat": 5.0, "Sedang": 3.0, "Ringan": 1.5, "Muzakki": 0.0
+  }));
   const [tempAlokasiFitrah, setTempAlokasiFitrah] = useState(alokasiFitrah);
 
-  const [timbanganZuru, setTimbanganZuru] = useState(() => {
-    const saved = localStorage.getItem("timbanganZuru");
-    return saved ? JSON.parse(saved) : [120, 250, 80];
-  });
+  const [timbanganZuru, setTimbanganZuru] = useState(() => getLocalStorageData("timbanganZuru", [120, 250, 80]));
   const [tempBeratZuru, setTempBeratZuru] = useState("");
   
-  const [alokasiZuru, setAlokasiZuru] = useState(() => {
-    const saved = localStorage.getItem("alokasiZuru");
-    return saved ? JSON.parse(saved) : { "Berat": 15.0, "Sedang": 10.0, "Ringan": 5.0, "Bukan Mustahik": 0.0 };
-  });
+  const [alokasiZuru, setAlokasiZuru] = useState(() => getLocalStorageData("alokasiZuru", {
+    "Berat": 15.0, "Sedang": 10.0, "Ringan": 5.0, "Bukan Mustahik": 0.0
+  }));
   const [tempAlokasiZuru, setTempAlokasiZuru] = useState(alokasiZuru);
 
-  const [timbanganQurbanSapi, setTimbanganQurbanSapi] = useState(() => {
-    const saved = localStorage.getItem("timbanganQurbanSapi");
-    return saved ? JSON.parse(saved) : [85.5, 120.0, 95.0, 65.5];
-  });
-  const [timbanganQurbanKambing, setTimbanganQurbanKambing] = useState(() => {
-    const saved = localStorage.getItem("timbanganQurbanKambing");
-    return saved ? JSON.parse(saved) : [22.0, 18.5, 25.0];
-  });
+  const [timbanganQurbanSapi, setTimbanganQurbanSapi] = useState(() => getLocalStorageData("timbanganQurbanSapi", [85.5, 120.0, 95.0, 65.5]));
+  const [timbanganQurbanKambing, setTimbanganQurbanKambing] = useState(() => getLocalStorageData("timbanganQurbanKambing", [22.0, 18.5, 25.0]));
   const [tempBeratQurbanSapi, setTempBeratQurbanSapi] = useState("");
   const [tempBeratQurbanKambing, setTempBeratQurbanKambing] = useState("");
   const [filterWilayahQurban, setFilterWilayahQurban] = useState("Semua");
@@ -310,12 +276,14 @@ export default function App() {
   // GOOGLE SHEETS AUTO-SYNC CONTROLLER (BACKGROUND SYNC)
   // ====================================================================
   
-  // Fungsi penarik data penuh dari Google Sheets saat aplikasi dibuka
+  // Fungsi penarik data penuh dari Google Sheets (Dapat dipanggil via tombol Refresh di Dashboard)
   const handleFetchFromGoogleSheets = async () => {
-    if (!googleSheetsUrl) return;
-    
+    if (!googleSheetsUrl) {
+      addNotification("Gagal: URL Google Sheets belum dikonfigurasi di dalam menu Pengaturan!", "error");
+      return;
+    }
     setIsSyncing(true);
-    setSyncStatus("Mengunduh Data...");
+    setSyncStatus("Mengunduh Cloud...");
     try {
       const response = await fetch(`${googleSheetsUrl}?action=getData`);
       const resData = await response.json();
@@ -335,10 +303,14 @@ export default function App() {
         if (payload.userDatabase) setUserDatabase(payload.userDatabase);
         
         setSyncStatus("Tersinkronisasi");
+        addNotification("Data berhasil ditarik & diperbarui dari Google Sheets!", "success");
+      } else {
+        setSyncStatus("Tersinkronisasi Lokal");
       }
     } catch (err) {
       console.error(err);
       setSyncStatus("Gagal Sinkron");
+      addNotification("Gagal menarik data dari Google Sheets. Periksa jaringan Anda.", "error");
     } finally {
       setIsSyncing(false);
     }
@@ -386,7 +358,7 @@ export default function App() {
     masjidName, masjidLogoUrl, lokasi, petugasAbadi, jamaahList, 
     timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, 
     timbanganQurbanSapi, timbanganQurbanKambing, userDatabase, 
-    googleSheetsUrl, isLoggedIn
+    isLoggedIn, googleSheetsUrl
   ]);
 
   // =========================================================
@@ -451,30 +423,30 @@ export default function App() {
   };
 
   const nextSholat = getNextSholat();
-  const upcomingFridays = getUpcomingFridays(currentTime, petugasAbadi, 5);
+  const upcomingFridaysList = getUpcomingFridays(currentTime, petugasAbadi, 5);
 
-  const totalTimbanganFitrah = timbanganFitrah.reduce((a, b) => a + b, 0);
-  const rincianKebutuhanFitrah = Object.entries(alokasiFitrah).map(([kategori, jatah]) => {
+  const totalTimbanganFitrahValue = timbanganFitrah.reduce((a, b) => a + b, 0);
+  const rincianKebutuhanFitrahData = Object.entries(alokasiFitrah).map(([kategori, jatah]) => {
     const jumlahJiwa = getJumlahJiwaPerKategoriFitrah(jamaahList, kategori);
     const totalButuh = jumlahJiwa * jatah;
     return { kategori, jumlahJiwa, jatah, totalButuh };
   }).filter(item => item.totalButuh > 0);
 
-  const totalButuhFitrah = rincianKebutuhanFitrah.reduce((sum, item) => sum + item.totalButuh, 0);
-  const statusFitrah = totalTimbanganFitrah - totalButuhFitrah;
+  const totalButuhFitrahValue = rincianKebutuhanFitrahData.reduce((sum, item) => sum + item.totalButuh, 0);
+  const statusFitrahValue = totalTimbanganFitrahValue - totalButuhFitrahValue;
 
-  const totalTimbanganZuru = timbanganZuru.reduce((a, b) => a + b, 0);
-  const rincianKebutuhanZuru = Object.entries(alokasiZuru).map(([kategori, jatah]) => {
+  const totalTimbanganZuruValue = timbanganZuru.reduce((a, b) => a + b, 0);
+  const rincianKebutuhanZuruData = Object.entries(alokasiZuru).map(([kategori, jatah]) => {
     const jumlahJiwa = getJumlahJiwaPerKategoriZuru(jamaahList, kategori);
     const totalButuh = jumlahJiwa * jatah;
     return { kategori, jumlahJiwa, jatah, totalButuh };
   }).filter(item => item.totalButuh > 0);
 
-  const totalButuru = rincianKebutuhanZuru.reduce((sum, item) => sum + item.totalButuh, 0);
-  const statusZuru = totalTimbanganZuru - totalButuru;
+  const totalButuruValue = rincianKebutuhanZuruData.reduce((sum, item) => sum + item.totalButuh, 0);
+  const statusZuruValue = totalTimbanganZuruValue - totalButuruValue;
 
-  const totalTimbanganQurbanSapi = timbanganQurbanSapi.reduce((a, b) => a + b, 0);
-  const totalTimbanganQurbanKambing = timbanganQurbanKambing.reduce((a, b) => a + b, 0);
+  const totalTimbanganQurbanSapiValue = timbanganQurbanSapi.reduce((a, b) => a + b, 0);
+  const totalTimbanganQurbanKambingValue = timbanganQurbanKambing.reduce((a, b) => a + b, 0);
 
   const getWargaPenerimaQurban = () => {
     return jamaahList.filter(warga => {
@@ -498,8 +470,8 @@ export default function App() {
   const wargaPenerimaQurban = getWargaPenerimaQurban();
   const totalPenerimaKK = wargaPenerimaQurban.length;
   
-  const jatahDagingSapiPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanSapi / totalPenerimaKK).toFixed(2) : 0;
-  const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanKambing / totalPenerimaKK).toFixed(2) : 0;
+  const jatahDagingSapiPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanSapiValue / totalPenerimaKK).toFixed(2) : 0;
+  const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanKambingValue / totalPenerimaKK).toFixed(2) : 0;
 
   // =========================================================
   // 3. EVENT HANDLERS
@@ -911,8 +883,8 @@ export default function App() {
       });
 
       const localTotalPenerima = qurbanList.length;
-      const localJatahSapi = localTotalPenerima > 0 ? (totalTimbanganQurbanSapi / localTotalPenerima).toFixed(2) : 0;
-      const localJatahKambing = localTotalPenerima > 0 ? (totalTimbanganQurbanKambing / localTotalPenerima).toFixed(2) : 0;
+      const localJatahSapi = localTotalPenerima > 0 ? (totalTimbanganQurbanSapiValue / localTotalPenerima).toFixed(2) : 0;
+      const localJatahKambing = localTotalPenerima > 0 ? (totalTimbanganQurbanKambingValue / localTotalPenerima).toFixed(2) : 0;
 
       tableRowsHTML = qurbanList.length > 0 ? qurbanList.map((j, i) => `
         <tr class="border-b border-slate-200">
@@ -994,8 +966,117 @@ export default function App() {
     printWindow.document.close();
   };
 
+  const handlePrintQurbanRT = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      addNotification("Gagal membuka jendela cetak! Periksa pengaturan pemblokir pop-up browser Anda.", "error");
+      return;
+    }
+
+    const html = `
+      <html>
+        <head>
+          <title>Daftar Distribusi Daging Qurban per Wilayah - ${masjidName}</title>
+          <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+          <style>
+            @media print {
+              body { -webkit-print-color-adjust: exact; margin: 1cm; }
+              .page-break { page-break-after: always; }
+              .avoid-break { page-break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body class="p-8 bg-white text-slate-800">
+          <div class="flex items-center justify-between border-b-4 border-rose-800 pb-4 mb-6">
+            <div class="flex items-center gap-4">
+              <div class="w-16 h-16 text-rose-700 flex items-center justify-center border border-slate-200 rounded-xl overflow-hidden p-1">
+                ${masjidLogoUrl ? `<img src="${masjidLogoUrl}" class="w-full h-full object-contain" />` : `<svg class="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M12 2v3M12 5a7 7 0 0 0-7 7v10h14V12a7 7 0 0 0-7-7ZM9 17h6v5H9z"/></svg>`}
+              </div>
+              <div>
+                <h1 class="text-2xl font-black uppercase text-slate-900 leading-tight">${masjidName}</h1>
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}, Provinsi ${lokasi.provinsi}</p>
+              </div>
+            </div>
+            <div class="text-right text-xs text-slate-400 font-semibold font-mono">
+              <p>Tanggal Cetak:</p>
+              <p class="text-slate-955 font-bold">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+            </div>
+          </div>
+
+          <div class="text-center mb-8">
+            <h2 class="text-lg font-bold uppercase text-rose-800 tracking-wide">Daftar Penerima & Tanda Terima Distribusi Hewan Qurban per RT / RW</h2>
+            <p class="text-xs text-slate-500 mt-1">Total Timbangan: Sapi ${totalTimbanganQurbanSapiValue.toFixed(1)} Kg | Kambing ${totalTimbanganQurbanKambingValue.toFixed(1)} Kg</p>
+          </div>
+          
+          ${WILAYAH_OPTIONS.map((wilayah) => {
+            const list = wargaPenerimaQurban.filter(w => w.rt === wilayah.rt && w.rw === wilayah.rw);
+            return `
+              <div class="mb-10 avoid-break">
+                <div class="bg-rose-50 border border-rose-200 px-4 py-2.5 rounded-xl mb-3 flex justify-between items-center">
+                  <h3 class="text-sm font-black text-rose-800 uppercase tracking-wide">${wilayah.label}</h3>
+                  <span class="text-xs font-bold bg-white text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-lg">Kapasitas: ${list.length} KK Penerima</span>
+                </div>
+                
+                <table class="w-full text-left text-xs border border-collapse border-slate-300">
+                  <thead>
+                    <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
+                      <th class="p-2 border border-slate-300 w-1/12 text-center">No</th>
+                      <th class="p-2 border border-slate-300 w-3/12">Nama Kepala Keluarga</th>
+                      <th class="p-2 border border-slate-300 font-bold text-center">RT / RW</th>
+                      <th class="p-2 border border-slate-300 text-slate-500">Alamat</th>
+                      <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Sapi</th>
+                      <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Kambing</th>
+                      <th class="p-2 border border-slate-300 w-2/12 text-center">Tanda Tangan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${list.length > 0 ? list.map((w, index) => `
+                      <tr class="border-b border-slate-200">
+                        <td class="p-2 border border-slate-300 text-center font-mono">${index + 1}</td>
+                        <td class="p-2 border border-slate-300 font-bold text-slate-900">${w.nama}</td>
+                        <td class="p-2 border border-slate-300 font-bold text-center">RT ${w.rt} / RW ${w.rw}</td>
+                        <td class="p-2 border border-slate-300 text-slate-500 text-[10px]">${w.alamat}</td>
+                        <td class="p-2 border border-slate-300 text-right font-mono font-bold text-rose-700">${jatahDagingSapiPerKK} Kg</td>
+                        <td class="p-2 border border-slate-300 text-right font-mono font-bold text-amber-700">${jatahDagingKambingPerKK} Kg</td>
+                        <td class="p-2 border border-slate-300 h-10 text-center text-slate-300 font-mono text-[9px] relative">
+                          <span class="absolute bottom-1 left-2">${index + 1}.</span>
+                        </td>
+                      </tr>
+                    `).join('') : `
+                      <tr>
+                        <td colspan="7" class="p-4 text-center text-slate-400 italic">Tidak ada warga penerima di wilayah ini.</td>
+                      </tr>
+                    `}
+                  </tbody>
+                </table>
+              </div>
+            `;
+          }).join('')}
+
+          <div class="mt-12 flex justify-between text-xs font-semibold avoid-break">
+            <div>
+              <p>Mengetahui,</p>
+              <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center">Takmir Masjid Al-Ikhlas</p>
+            </div>
+            <div class="text-right">
+              <p>Lamongan, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+              <p>Dilaporkan oleh,</p>
+              <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center mx-auto">Ketua Panitia Qurban</p>
+            </div>
+          </div>
+
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   // =========================================================
-  // 6. LOGIN FORM RENDERING (EVALUATED AT BOTTOM OF APP)
+  // 6. LOGIN FORM RENDERING
   // =========================================================
   if (!isLoggedIn) {
     // Jalur Render Halaman Login Bersih
@@ -1207,12 +1288,37 @@ export default function App() {
       )}
 
       {/* === CONTENT AREA UTAMA === */}
-      <div className="flex-1 flex flex-col md:flex-row">
+      <div className="flex-1 flex flex-col md:flex-row font-sans">
         <main className="flex-1 p-6 overflow-y-auto max-w-7xl mx-auto w-full">
           
           {/* TAB 1: DASHBOARD UTAMA */}
           {activeTab === "dashboard" && (
             <div className="space-y-6">
+              
+              {/* STATUS BAR CLOUD SYNC & REFRESH */}
+              <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row justify-between items-center gap-4 animate-fadeIn">
+                <div className="flex items-center gap-3">
+                   <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 border border-emerald-100">
+                      <RefreshCw size={18} className={isSyncing ? "animate-spin" : ""} />
+                   </div>
+                   <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status Penyimpanan Cloud</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                         <div className={`w-2 h-2 rounded-full ${syncStatus === 'Tersinkronisasi' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                         <p className="text-sm font-black text-slate-800">{syncStatus}</p>
+                      </div>
+                   </div>
+                </div>
+                <button 
+                   onClick={handleFetchFromGoogleSheets}
+                   disabled={isSyncing}
+                   className="w-full sm:w-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                   <Download size={14} className={isSyncing ? "animate-bounce" : ""} /> 
+                   {isSyncing ? "Memuat Data..." : "Refresh Data Terbaru"}
+                </button>
+              </div>
+
               <div className="bg-emerald-700 text-white rounded-2xl p-6 shadow-md shadow-emerald-700/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -1283,28 +1389,28 @@ export default function App() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
                   <h3 className="font-bold text-slate-955 flex items-center gap-2"><Calendar className="text-emerald-600 w-5 h-5" /> Penjadwalan Petugas Jumat Pekan Ini</h3>
-                  {upcomingFridays.length > 0 ? (
+                  {upcomingFridaysList.length > 0 ? (
                     <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
                       <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                        <span className="text-xs text-slate-500 font-bold">{upcomingFridays[0].formattedDate}</span>
-                        <span className="text-xs bg-emerald-600 text-white px-2.5 py-0.5 rounded-full font-bold">Jumat {upcomingFridays[0].pasaran}</span>
+                        <span className="text-xs text-slate-500 font-bold">{upcomingFridaysList[0].formattedDate}</span>
+                        <span className="text-xs bg-emerald-600 text-white px-2.5 py-0.5 rounded-full font-bold">Jumat {upcomingFridaysList[0].pasaran}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
                         <div>
                           <p className="text-slate-400 uppercase text-[10px]">Khatib Utama</p>
-                          <p className="text-slate-900 text-sm font-extrabold">{upcomingFridays[0].petugas.khatib}</p>
+                          <p className="text-slate-900 text-sm font-extrabold">{upcomingFridaysList[0].petugas.khatib}</p>
                         </div>
                         <div>
                           <p className="text-slate-400 uppercase text-[10px]">Imam Cadangan</p>
-                          <p className="text-slate-900 text-sm font-extrabold">{upcomingFridays[0].petugas.imam}</p>
+                          <p className="text-slate-900 text-sm font-extrabold">{upcomingFridaysList[0].petugas.imam}</p>
                         </div>
                         <div>
                           <p className="text-slate-400 uppercase text-[10px]">Muadzin</p>
-                          <p className="text-slate-855 text-sm font-bold">{upcomingFridays[0].petugas.muadzin}</p>
+                          <p className="text-slate-855 text-sm font-bold">{upcomingFridaysList[0].petugas.muadzin}</p>
                         </div>
                         <div>
                           <p className="text-slate-400 uppercase text-[10px]">Bilal / MC</p>
-                          <p className="text-slate-855 text-sm font-bold">{upcomingFridays[0].petugas.bilal}</p>
+                          <p className="text-slate-855 text-sm font-bold">{upcomingFridaysList[0].petugas.bilal}</p>
                         </div>
                       </div>
                     </div>
@@ -1861,7 +1967,7 @@ smsManager.sendTextMessage(
 
                   <div className="bg-emerald-50/70 border border-emerald-100 p-4 rounded-xl flex justify-between items-center">
                     <span className="text-xs text-emerald-800 font-extrabold uppercase">Total Beras Masuk:</span>
-                    <span className="text-xl font-black text-emerald-700 font-mono">{totalTimbanganFitrah.toFixed(1)} Kg</span>
+                    <span className="text-xl font-black text-emerald-700 font-mono">{totalTimbanganFitrahValue.toFixed(1)} Kg</span>
                   </div>
                 </div>
 
@@ -1869,8 +1975,8 @@ smsManager.sendTextMessage(
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs lg:col-span-2 space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-100 pb-2.5 gap-2">
                     <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5"><UsersRound size={16} className="text-emerald-600" /> 2. Rencana Penyaluran Beras (Kriteria Mustahik)</h3>
-                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${statusFitrah >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                      {statusFitrah >= 0 ? `Beras Surplus: +${statusFitrah.toFixed(1)} Kg` : `Defisit/Kurang: ${statusFitrah.toFixed(1)} Kg`}
+                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${statusFitrahValue >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                      {statusFitrahValue >= 0 ? `Beras Surplus: +${statusFitrahValue.toFixed(1)} Kg` : `Defisit/Kurang: ${statusFitrahValue.toFixed(1)} Kg`}
                     </span>
                   </div>
 
@@ -1912,7 +2018,7 @@ smsManager.sendTextMessage(
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                        {rincianKebutuhanFitrah.map((item) => (
+                        {rincianKebutuhanFitrahData.map((item) => (
                           <tr key={item.kategori}>
                             <td className="py-2.5 text-slate-900">Mustahik {item.kategori}</td>
                             <td className="py-2.5 text-center">{item.jumlahJiwa} Orang</td>
@@ -1922,7 +2028,7 @@ smsManager.sendTextMessage(
                         ))}
                         <tr className="bg-slate-50 text-slate-900 font-extrabold">
                           <td className="p-2.5" colSpan="3">Total Kebutuhan Penyaluran:</td>
-                          <td className="p-2.5 text-right text-emerald-800 font-black">{totalButuhFitrah.toFixed(1)} Kg</td>
+                          <td className="p-2.5 text-right text-emerald-800 font-black">{totalButuhFitrahValue.toFixed(1)} Kg</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1979,7 +2085,7 @@ smsManager.sendTextMessage(
 
                   <div className="bg-teal-50/70 border border-teal-100 p-4 rounded-xl flex justify-between items-center">
                     <span className="text-xs text-teal-800 font-extrabold uppercase">Total Terkumpul:</span>
-                    <span className="text-xl font-black text-teal-700 font-mono">{totalTimbanganZuru.toFixed(1)} Kg</span>
+                    <span className="text-xl font-black text-teal-700 font-mono">{totalTimbanganZuruValue.toFixed(1)} Kg</span>
                   </div>
                 </div>
 
@@ -1987,8 +2093,8 @@ smsManager.sendTextMessage(
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs lg:col-span-2 space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-100 pb-2.5 gap-2">
                     <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5"><UsersRound size={16} className="text-teal-600" /> 2. Rencana Penyaluran Hasil Panen</h3>
-                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${statusZuru >= 0 ? 'bg-teal-100 text-teal-800' : 'bg-rose-100 text-rose-800'}`}>
-                      {statusZuru >= 0 ? `Hasil Surplus: +${statusZuru.toFixed(1)} Kg` : `Kekurangan: ${statusZuru.toFixed(1)} Kg`}
+                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${statusZuruValue >= 0 ? 'bg-teal-100 text-teal-800' : 'bg-rose-100 text-rose-800'}`}>
+                      {statusZuruValue >= 0 ? `Hasil Surplus: +${statusZuruValue.toFixed(1)} Kg` : `Kekurangan: ${statusZuruValue.toFixed(1)} Kg`}
                     </span>
                   </div>
 
@@ -2030,7 +2136,7 @@ smsManager.sendTextMessage(
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                        {rincianKebutuhanZuru.map((item) => (
+                        {rincianKebutuhanZuruData.map((item) => (
                           <tr key={item.kategori}>
                             <td className="py-2.5 text-slate-900">Mustahik {item.kategori}</td>
                             <td className="py-2.5 text-center">{item.jumlahJiwa} Orang</td>
@@ -2040,7 +2146,7 @@ smsManager.sendTextMessage(
                         ))}
                         <tr className="bg-slate-50 text-slate-900 font-extrabold">
                           <td className="p-2.5" colSpan="3">Total Kebutuhan Penyaluran Zuru:</td>
-                          <td className="p-2.5 text-right text-teal-800 font-black">{totalButuru.toFixed(1)} Kg</td>
+                          <td className="p-2.5 text-right text-teal-800 font-black">{totalButuruValue.toFixed(1)} Kg</td>
                         </tr>
                       </tbody>
                     </table>
@@ -2092,7 +2198,7 @@ smsManager.sendTextMessage(
                   </div>
                   <div className="bg-rose-50/50 border border-rose-100 p-3.5 rounded-xl flex justify-between items-center">
                     <span className="text-xs text-rose-800 font-extrabold uppercase">Total Bersih Daging Sapi</span>
-                    <span className="text-xl font-black text-rose-700 font-mono">{totalTimbanganQurbanSapi.toFixed(1)} Kg</span>
+                    <span className="text-xl font-black text-rose-700 font-mono">{totalTimbanganQurbanSapiValue.toFixed(1)} Kg</span>
                   </div>
                 </div>
 
@@ -2121,7 +2227,7 @@ smsManager.sendTextMessage(
                   </div>
                   <div className="bg-amber-50/50 border border-amber-100 p-3.5 rounded-xl flex justify-between items-center">
                     <span className="text-xs text-amber-800 font-extrabold uppercase">Total Daging Kambing</span>
-                    <span className="text-xl font-black text-amber-700 font-mono">{totalTimbanganQurbanKambing.toFixed(1)} Kg</span>
+                    <span className="text-xl font-black text-amber-700 font-mono">{totalTimbanganQurbanKambingValue.toFixed(1)} Kg</span>
                   </div>
                 </div>
               </div>
@@ -2202,13 +2308,9 @@ smsManager.sendTextMessage(
                     <div className="flex items-center gap-2">
                       <Download className="text-emerald-600 w-5 h-5 animate-pulse" />
                       <div>
-                        <h3 className="font-black text-slate-900 text-sm">Pusat Sinkronisasi Google Sheets Cloud</h3>
-                        <p className="text-xs text-slate-500">Koneksikan dan simpan seluruh database masjid luring Anda ke Google Sheets secara gratis.</p>
+                        <h3 className="font-black text-slate-900 text-sm">Pengaturan URL Google Sheets Cloud</h3>
+                        <p className="text-xs text-slate-500">Koneksikan sistem ini ke Google Sheets pribadi untuk penyimpanan awan otomatis (Auto-Save).</p>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200/60 px-3 py-1.5 rounded-xl">
-                      <div className={`w-2 h-2 rounded-full ${syncStatus === 'Tersinkronisasi' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
-                      <span className="text-[10px] font-black text-slate-600 uppercase">Status: {syncStatus}</span>
                     </div>
                   </div>
 
@@ -2218,7 +2320,7 @@ smsManager.sendTextMessage(
                       <div className="flex gap-2">
                         <input 
                           type="text" 
-                          placeholder="Tempel URL Google Apps Script Anda di sini..." 
+                          placeholder="Tempel URL (berakhiran /exec) di sini..." 
                           value={tempGoogleSheetsUrl} 
                           onChange={(e) => setTempGoogleSheetsUrl(e.target.value)} 
                           className="flex-1 text-xs border border-slate-200 bg-white p-3 rounded-xl outline-none font-mono text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" 
@@ -2226,25 +2328,14 @@ smsManager.sendTextMessage(
                         <button 
                           onClick={() => {
                             setGoogleSheetsUrl(tempGoogleSheetsUrl);
-                            addNotification("URL Google Sheets berhasil disimpan! Sinkronisasi otomatis diaktifkan.", "success");
+                            addNotification("URL Google Sheets berhasil disimpan! Sinkronisasi otomatis (Auto-Save) kini aktif.", "success");
                           }}
                           className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shrink-0"
                         >
                           Simpan URL
                         </button>
                       </div>
-                      <p className="text-[10px] text-slate-400 font-medium">Sistem penyimpanan awan aman dan luring terenkripsi otomatis di Google Sheets. Baca tab panduan setup disamping untuk instruksi lengkapnya.</p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2.5 pt-2">
-                      <button 
-                        onClick={handleFetchFromGoogleSheets}
-                        disabled={isSyncing}
-                        className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50"
-                      >
-                        <Download size={14} /> Tarik Data Dari Sheets Sekarang (Fetch)
-                      </button>
-                      {/* Tombol Simpan Manual Dihapus karena telah menggunakan fitur AUTO-SAVE otomatis */}
+                      <p className="text-[10px] text-slate-400 font-medium">Sistem kini akan otomatis menyimpan perubahan ke Google Sheets saat Anda mengedit data. Jika butuh menarik data terbaru dari server, gunakan tombol **Refresh Data Terbaru** di menu Dashboard Utama.</p>
                     </div>
                   </div>
                 </div>
