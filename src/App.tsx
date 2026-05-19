@@ -15,6 +15,16 @@ const INITIAL_LOKASI = {
   desa: "Bakalan"
 };
 
+// Daftar Kombinasi RT & RW Terpadu yang Unik & Valid di Desa Bakalan
+const WILAYAH_OPTIONS = [
+  { rt: "01", rw: "01", label: "RT 01 / RW 01" },
+  { rt: "02", rw: "01", label: "RT 02 / RW 01" },
+  { rt: "03", rw: "01", label: "RT 03 / RW 01" },
+  { rt: "01", rw: "02", label: "RT 01 / RW 02" },
+  { rt: "02", rw: "02", label: "RT 02 / RW 02" },
+  { rt: "03", rw: "02", label: "RT 03 / RW 02" }
+];
+
 // Batas Akses default per Peran (Role) yang tetap terkunci keamanannya
 const INITIAL_ROLES = {
   Admin: { label: "Super Admin", access: ["dashboard", "petugas", "jamaah", "fitrah", "zuru", "qurban", "rbac"] },
@@ -30,59 +40,30 @@ const INITIAL_USER_DATABASE = {
   "jamaah": { password: "jamaah123", role: "Jamaah", label: "Jama'ah / Warga" }
 };
 
-// Data Jamaah disesuaikan dengan batasan wilayah (3 RT, 2 RW) dan 3 Kriteria Mustahik (Berat, Sedang, Ringan)
+// Data Jamaah disesuaikan dengan batasan wilayah kombinasi RT & RW serta Kriteria Mustahik
 const INITIAL_JAMAAH = [
-  { id: "1", nama: "Ahmad Subarjo", anggota: 4, rt: "01", rw: "01", alamat: "Jl. Masjid No. 12", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik" },
-  { id: "2", nama: "Slamet Rahardjo", anggota: 3, rt: "01", rw: "01", alamat: "Gang Kelinci No. 2", ekonomi: "Sangat Kurang", fitrah: "Berat", zuru: "Berat" },
-  { id: "3", nama: "Budi Santoso", anggota: 5, rt: "02", rw: "01", alamat: "Jl. Mangga No. 5", ekonomi: "Kurang Mampu", fitrah: "Sedang", zuru: "Sedang" },
-  { id: "4", nama: "H. Abdul Rozak", anggota: 2, rt: "02", rw: "02", alamat: "Jl. Diponegoro No. 88", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik" },
-  { id: "5", nama: "Ustadz Hasan", anggota: 4, rt: "03", rw: "02", alamat: "Kamar Marbot Masjid", ekonomi: "Kurang Mampu", fitrah: "Ringan", zuru: "Bukan Mustahik" },
-  { id: "6", nama: "Mbah Sutini", anggota: 1, rt: "03", rw: "01", alamat: "Gubuk RT 3", ekonomi: "Sangat Kurang", fitrah: "Berat", zuru: "Bukan Mustahik" },
-  { id: "7", nama: "Andi Wijaya", anggota: 3, rt: "01", rw: "02", alamat: "Jl. Baru No. 17", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Ringan" }
+  { id: "1", nama: "Ahmad Subarjo", anggota: 4, rt: "01", rw: "01", alamat: "Jl. Masjid No. 12", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima" },
+  { id: "2", nama: "Slamet Rahardjo", anggota: 3, rt: "01", rw: "01", alamat: "Gang Kelinci No. 2", ekonomi: "Sangat Kurang", fitrah: "Berat", zuru: "Berat", qurban: "Penerima" },
+  { id: "3", nama: "Budi Santoso", anggota: 5, rt: "02", rw: "01", alamat: "Jl. Mangga No. 5", ekonomi: "Kurang Mampu", fitrah: "Sedang", zuru: "Sedang", qurban: "Penerima" },
+  { id: "4", nama: "H. Abdul Rozak", anggota: 2, rt: "02", rw: "02", alamat: "Jl. Diponegoro No. 88", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Sahibul Qurban" },
+  { id: "5", nama: "Ustadz Hasan", anggota: 4, rt: "03", rw: "02", alamat: "Kamar Marbot Masjid", ekonomi: "Kurang Mampu", fitrah: "Ringan", zuru: "Bukan Mustahik", qurban: "Penerima" },
+  { id: "6", nama: "Mbah Sutini", anggota: 1, rt: "03", rw: "01", alamat: "Gubuk RT 3", ekonomi: "Sangat Kurang", fitrah: "Berat", zuru: "Bukan Mustahik", qurban: "Penerima" },
+  { id: "7", nama: "Andi Wijaya", anggota: 3, rt: "01", rw: "02", alamat: "Jl. Baru No. 17", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Ringan", qurban: "Penerima" }
 ];
 
-// === TEMPLATE PETUGAS JUMAT ABADI (BERDASARKAN PASARAN JAWA) ===
+// === TEMPLATE PETUGAS JUMAT ABADI ===
 const INITIAL_PETUGAS_ABADI = {
-  Legi: {
-    khatib: "KH. Syukron Ma'mun",
-    imam: "Ustadz Ahmad Al-Hafiz",
-    muadzin: "Bilal Hanafi",
-    bilal: "Soleh",
-    telp: "081234567890"
-  },
-  Pahing: {
-    khatib: "Prof. Dr. KH. Said Aqil",
-    imam: "Ustadz Hasanuddin",
-    muadzin: "Zainal Abidin",
-    bilal: "Rudi Yulianto",
-    telp: "081398765432"
-  },
-  Pon: {
-    khatib: "Ustadz Adi Hidayat, Lc",
-    imam: "Ustadz Sholihuddin",
-    muadzin: "H. Abdul Qodir",
-    bilal: "Slamet",
-    telp: "085711223344"
-  },
-  Wage: {
-    khatib: "KH. Anwar Zahid",
-    imam: "Ustadz Abdurrahman",
-    muadzin: "Supardi",
-    bilal: "Mulyono",
-    telp: "089988776655"
-  },
-  Kliwon: {
-    khatib: "KH. Bahauddin Nursalim (Gus Baha)",
-    imam: "Ustadz Hasan Al-Banna",
-    muadzin: "M. Thoriq",
-    bilal: "Sidiq Prasetyo",
-    telp: "082144332211"
-  }
+  Legi: { khatib: "KH. Syukron Ma'mun", imam: "Ustadz Ahmad Al-Hafiz", muadzin: "Bilal Hanafi", bilal: "Soleh", telp: "081234567890" },
+  Pahing: { khatib: "Prof. Dr. KH. Said Aqil", imam: "Ustadz Hasanuddin", muadzin: "Zainal Abidin", bilal: "Rudi Yulianto", telp: "081398765432" },
+  Pon: { khatib: "Ustadz Adi Hidayat, Lc", imam: "Ustadz Sholihuddin", muadzin: "H. Abdul Qodir", bilal: "Slamet", telp: "085711223344" },
+  Wage: { khatib: "KH. Anwar Zahid", imam: "Ustadz Abdurrahman", muadzin: "Supardi", bilal: "Mulyono", telp: "089988776655" },
+  Kliwon: { khatib: "KH. Bahauddin Nursalim (Gus Baha)", imam: "Ustadz Hasan Al-Banna", muadzin: "M. Thoriq", bilal: "Sidiq Prasetyo", telp: "082144332211" }
 };
 
 const PASARAN_LIST = ["Legi", "Pahing", "Pon", "Wage", "Kliwon"];
 
-// === CUSTOM SVG MOSQUE LOGO (MASJID AL-IKHLAS BAKALAN STYLE DENGAN INISIAL 'MI') ===
+// === HELPER FUNCTIONS (OUTSIDE OF COMPONENT) ===
+
 function KubahMasjidIcon({ className }) {
   return (
     <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -97,16 +78,11 @@ function KubahMasjidIcon({ className }) {
   );
 }
 
-// Fungsi pembantu untuk memuat data dari LocalStorage dengan nilai fallback aman
 const getLocalStorageData = (key, fallbackValue) => {
   try {
     const saved = localStorage.getItem(key);
     if (saved) {
-      const parsed = JSON.parse(saved);
-      if (typeof fallbackValue === 'string' && typeof parsed !== 'string') {
-        return fallbackValue;
-      }
-      return parsed;
+      return JSON.parse(saved);
     }
   } catch (error) {
     console.error("Gagal membaca LocalStorage key: " + key, error);
@@ -114,7 +90,6 @@ const getLocalStorageData = (key, fallbackValue) => {
   return fallbackValue;
 };
 
-// Fungsi murni generator jadwal sholat (dideklarasikan di lingkup berkas agar aman dari siklus inisialisasi state)
 const getJadwalSholat = (kab) => {
   const hash = kab.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const offset = hash % 15;
@@ -128,15 +103,60 @@ const getJadwalSholat = (kab) => {
   };
 };
 
+const getPasaranJawa = (date) => {
+  const anchor = new Date(2026, 0, 2); 
+  const diffTime = date.getTime() - anchor.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  let pasaranIndex = (diffDays + 3) % 5;
+  if (pasaranIndex < 0) pasaranIndex += 5;
+  return PASARAN_LIST[pasaranIndex];
+};
+
+const getUpcomingFridays = (currentTime, petugasAbadi, count = 5) => {
+  const fridays = [];
+  const tempDate = new Date(currentTime);
+  const dayOfWeek = tempDate.getDay();
+  let daysToFriday = (5 - dayOfWeek + 7) % 7;
+  if (daysToFriday === 0 && tempDate.getHours() >= 13) {
+    daysToFriday = 7;
+  }
+  tempDate.setDate(tempDate.getDate() + daysToFriday);
+  
+  for (let i = 0; i < count; i++) {
+    const target = new Date(tempDate);
+    const pasaran = getPasaranJawa(target);
+    fridays.push({
+      formattedDate: target.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+      rawDate: new Date(target),
+      pasaran: pasaran,
+      petugas: petugasAbadi[pasaran] || {}
+    });
+    tempDate.setDate(tempDate.getDate() + 7);
+  }
+  return fridays;
+};
+
+const getJumlahJiwaPerKategoriFitrah = (jamaahList, kategori) => {
+  return jamaahList
+    .filter(item => item.fitrah === kategori)
+    .reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
+};
+
+const getJumlahJiwaPerKategoriZuru = (jamaahList, kategori) => {
+  return jamaahList
+    .filter(item => item.zuru === kategori)
+    .reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
+};
+
 export default function App() {
   // =========================================================
-  // 1. SEMUA USESTATE DEKLARASI PALING ATAS (MEMAKAI LOCALSTORAGE)
+  // 1. STATE MANAGEMENT & SYSTEM HOOKS
   // =========================================================
   const [masjidName, setMasjidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Ikhlas Bakalan"));
   const [masjidLogoUrl, setMasjidLogoUrl] = useState(() => getLocalStorageData("masjidLogoUrl", ""));
 
   const [tempMasjidName, setTempMasjidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Ikhlas Bakalan"));
-  const [tempMasjidLogoUrl, setTempMasjidLogoUrl] = useState(() => getLocalStorageUrl => getLocalStorageData("masjidLogoUrl", ""));
+  const [tempMasjidLogoUrl, setTempMasjidLogoUrl] = useState(() => getLocalStorageData("masjidLogoUrl", ""));
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentRole, setCurrentRole] = useState("Admin");
@@ -168,9 +188,7 @@ export default function App() {
 
   const [petugasAbadi, setPetugasAbadi] = useState(() => getLocalStorageData("petugasAbadi", INITIAL_PETUGAS_ABADI));
   const [editingPasaran, setEditingPasaran] = useState(null);
-  const [pasaranForm, setPasaranForm] = useState({
-    khatib: "", imam: "", muadzin: "", bilal: "", telp: ""
-  });
+  const [pasaranForm, setPasaranForm] = useState({ khatib: "", imam: "", muadzin: "", bilal: "", telp: "" });
 
   const [activeNotificationSim, setActiveNotificationSim] = useState(null);
   const [notificationType, setNotificationType] = useState("WA"); 
@@ -179,37 +197,26 @@ export default function App() {
   const [showAndroidCode, setShowAndroidCode] = useState(false);
 
   const [jamaahList, setJamaahList] = useState(() => getLocalStorageData("jamaahList", INITIAL_JAMAAH));
+  const [filterWilayahJamaah, setFilterWilayahJamaah] = useState("Semua");
 
   const [timbanganFitrah, setTimbanganFitrah] = useState(() => getLocalStorageData("timbanganFitrah", [25, 50, 15, 30]));
   const [tempBeratFitrah, setTempBeratFitrah] = useState("");
   
   const [alokasiFitrah, setAlokasiFitrah] = useState(() => getLocalStorageData("alokasiFitrah", {
-    "Berat": 5.0,
-    "Sedang": 3.0,
-    "Ringan": 1.5,
-    "Muzakki": 0.0
+    "Berat": 5.0, "Sedang": 3.0, "Ringan": 1.5, "Muzakki": 0.0
   }));
   const [tempAlokasiFitrah, setTempAlokasiFitrah] = useState(() => getLocalStorageData("alokasiFitrah", {
-    "Berat": 5.0,
-    "Sedang": 3.0,
-    "Ringan": 1.5,
-    "Muzakki": 0.0
+    "Berat": 5.0, "Sedang": 3.0, "Ringan": 1.5, "Muzakki": 0.0
   }));
 
   const [timbanganZuru, setTimbanganZuru] = useState(() => getLocalStorageData("timbanganZuru", [120, 250, 80]));
   const [tempBeratZuru, setTempBeratZuru] = useState("");
   
   const [alokasiZuru, setAlokasiZuru] = useState(() => getLocalStorageData("alokasiZuru", {
-    "Berat": 15.0,
-    "Sedang": 10.0,
-    "Ringan": 5.0,
-    "Bukan Mustahik": 0.0
+    "Berat": 15.0, "Sedang": 10.0, "Ringan": 5.0, "Bukan Mustahik": 0.0
   }));
   const [tempAlokasiZuru, setTempAlokasiZuru] = useState(() => getLocalStorageData("alokasiZuru", {
-    "Berat": 15.0,
-    "Sedang": 10.0,
-    "Ringan": 5.0,
-    "Bukan Mustahik": 0.0
+    "Berat": 15.0, "Sedang": 10.0, "Ringan": 5.0, "Bukan Mustahik": 0.0
   }));
 
   const [timbanganQurbanSapi, setTimbanganQurbanSapi] = useState(() => getLocalStorageData("timbanganQurbanSapi", [85.5, 120.0, 95.0, 65.5]));
@@ -219,16 +226,16 @@ export default function App() {
   const [filterWilayahQurban, setFilterWilayahQurban] = useState("Semua");
   const [qurbanHanyaMustahik, setQurbanHanyaMustahik] = useState(false);
 
-  const [selectedPrintRT, setSelectedPrintRT] = useState("Semua");
+  const [selectedPrintWilayah, setSelectedPrintWilayah] = useState("Semua");
 
   const [showJamaahModal, setShowJamaahModal] = useState(false);
   const [editingJamaah, setEditingJamaah] = useState(null);
   const [jamaahForm, setJamaahForm] = useState({
-    nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik"
+    nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima"
   });
 
   // =========================================================
-  // EFFECT UNTUK SYNCHRONIZE STATE KE LOCALSTORAGE SECARA OTOMATIS
+  // EFFECTS FOR STORAGE & TIMER
   // =========================================================
   useEffect(() => {
     localStorage.setItem("masjidName", JSON.stringify(masjidName));
@@ -283,17 +290,15 @@ export default function App() {
   }, [timbanganQurbanKambing]);
 
   useEffect(() => {
-    setTempMasjidName(masjidName);
-  }, [masjidName]);
-
-  useEffect(() => {
-    setTempMasjidLogoUrl(masjidLogoUrl);
-  }, [masjidLogoUrl]);
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // =========================================================
-  // 2. FUNGSI UTILITAS DASAR & SINKRONISASI JADWAL
+  // 2. CORE UTILITY FUNCTIONS
   // =========================================================
-
   const addNotification = (message, type = "success") => {
     const id = Date.now();
     setNotifications(prev => [...prev, { id, message, type }]);
@@ -303,10 +308,9 @@ export default function App() {
   };
 
   const hasAccess = (tabName) => {
-    return rolesConfig[currentRole]?.access.includes(tabName);
+    return rolesConfig[currentRole]?.access?.includes(tabName) || false;
   };
 
-  // PEMBATAS EDITING SPESIFIK: Super Admin memiliki kekuasaan mutlak untuk mem-bypass semua lock
   const canEditPetugas = currentRole === "Admin" || hasAccess("petugas");
   const canEditJamaah = currentRole === "Admin" || hasAccess("jamaah");
   const canEditFitrah = currentRole === "Admin" || hasAccess("fitrah");
@@ -322,7 +326,6 @@ export default function App() {
     }
   };
 
-  // Mendefinisikan renderMasjidLogo di baris awal fungsi App() untuk menjamin ketersediaannya selama render
   const renderMasjidLogo = (imgClassName, fallbackClassName) => {
     if (typeof masjidLogoUrl === 'string' && masjidLogoUrl.trim() !== "") {
       return (
@@ -340,12 +343,8 @@ export default function App() {
     return <KubahMasjidIcon className={fallbackClassName} />;
   };
 
-  const [jadwalSholat, setJadwalSholat] = useState(() => getJadwalSholat(lokasi.kabupaten));
-
-  useEffect(() => {
-    setJadwalSholat(getJadwalSholat(lokasi.kabupaten));
-  }, [lokasi]);
-
+  const jadwalSholat = getJadwalSholat(lokasi.kabupaten);
+  
   const getNextSholat = () => {
     const nowStr = currentTime.toTimeString().split(' ')[0];
     const sholatTimes = Object.entries(jadwalSholat).filter(([k]) => k !== 'Terbit');
@@ -359,57 +358,11 @@ export default function App() {
   };
 
   const nextSholat = getNextSholat();
-
-  const getPasaranJawa = (date) => {
-    const anchor = new Date(2026, 0, 2); 
-    const diffTime = date.getTime() - anchor.getTime();
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-    let pasaranIndex = (diffDays + 3) % 5;
-    if (pasaranIndex < 0) pasaranIndex += 5;
-    return PASARAN_LIST[pasaranIndex];
-  };
-
-  const getUpcomingFridays = (count = 5) => {
-    const fridays = [];
-    const tempDate = new Date(currentTime);
-    const dayOfWeek = tempDate.getDay();
-    let daysToFriday = (5 - dayOfWeek + 7) % 7;
-    if (daysToFriday === 0 && tempDate.getHours() >= 13) {
-      daysToFriday = 7;
-    }
-    tempDate.setDate(tempDate.getDate() + daysToFriday);
-    
-    for (let i = 0; i < count; i++) {
-      const target = new Date(tempDate);
-      const pasaran = getPasaranJawa(target);
-      fridays.push({
-        formattedDate: target.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-        rawDate: new Date(target),
-        pasaran: pasaran,
-        petugas: petugasAbadi[pasaran] || {}
-      });
-      tempDate.setDate(tempDate.getDate() + 7);
-    }
-    return fridays;
-  };
-
-  const upcomingFridays = getUpcomingFridays(5);
-
-  const getJumlahJiwaPerKategoriFitrah = (kategori) => {
-    return jamaahList
-      .filter(item => item.fitrah === kategori)
-      .reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
-  };
-
-  const getJumlahJiwaPerKategoriZuru = (kategori) => {
-    return jamaahList
-      .filter(item => item.zuru === kategori)
-      .reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
-  };
+  const upcomingFridays = getUpcomingFridays(currentTime, petugasAbadi, 5);
 
   const totalTimbanganFitrah = timbanganFitrah.reduce((a, b) => a + b, 0);
   const rincianKebutuhanFitrah = Object.entries(alokasiFitrah).map(([kategori, jatah]) => {
-    const jumlahJiwa = getJumlahJiwaPerKategoriFitrah(kategori);
+    const jumlahJiwa = getJumlahJiwaPerKategoriFitrah(jamaahList, kategori);
     const totalButuh = jumlahJiwa * jatah;
     return { kategori, jumlahJiwa, jatah, totalButuh };
   }).filter(item => item.totalButuh > 0);
@@ -419,7 +372,7 @@ export default function App() {
 
   const totalTimbanganZuru = timbanganZuru.reduce((a, b) => a + b, 0);
   const rincianKebutuhanZuru = Object.entries(alokasiZuru).map(([kategori, jatah]) => {
-    const jumlahJiwa = getJumlahJiwaPerKategoriZuru(kategori);
+    const jumlahJiwa = getJumlahJiwaPerKategoriZuru(jamaahList, kategori);
     const totalButuh = jumlahJiwa * jatah;
     return { kategori, jumlahJiwa, jatah, totalButuh };
   }).filter(item => item.totalButuh > 0);
@@ -432,14 +385,12 @@ export default function App() {
 
   const getWargaPenerimaQurban = () => {
     return jamaahList.filter(warga => {
+      if (warga.qurban === "Sahibul Qurban") {
+        return false;
+      }
       if (filterWilayahQurban !== "Semua") {
-        if (filterWilayahQurban.startsWith("RT")) {
-          const filterRt = filterWilayahQurban.replace("RT ", "");
-          if (warga.rt !== filterRt) return false;
-        } else if (filterWilayahQurban.startsWith("RW")) {
-          const filterRw = filterWilayahQurban.replace("RW ", "");
-          if (warga.rw !== filterRw) return false;
-        }
+        const [filterRt, filterRw] = filterWilayahQurban.split('_');
+        if (warga.rt !== filterRt || warga.rw !== filterRw) return false;
       }
       if (qurbanHanyaMustahik) {
         const isMustahikFitrah = warga.fitrah !== "Muzakki";
@@ -456,14 +407,9 @@ export default function App() {
   const jatahDagingSapiPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanSapi / totalPenerimaKK).toFixed(2) : 0;
   const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanKambing / totalPenerimaKK).toFixed(2) : 0;
 
-  // --- STATE SEMENTARA KHUSUS UNTUK RBAC AGAR BEBAS TYPO ---
-  const [tempMasidName, setTempMasidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Ikhlas Bakalan"));
-
   // =========================================================
-  // 3. HANDLER EVENT UTAMA (LOGIN, LOGOUT, JAMAAH)
+  // 3. EVENT HANDLERS
   // =========================================================
-
-  // === MENDEKLARASIKAN handleLogin & handleLogout SECARA PENUH SEBELUM DIGUNAKAN ===
   const handleLogin = (e) => {
     e.preventDefault();
     const cleanUser = inputUsername.trim().toLowerCase();
@@ -515,12 +461,15 @@ export default function App() {
     }
     setShowJamaahModal(false);
     setEditingJamaah(null);
-    setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik" });
+    setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima" });
   };
 
   const handleEditJamaah = (jamaah) => {
     setEditingJamaah(jamaah);
-    setJamaahForm(jamaah);
+    setJamaahForm({
+      ...jamaah,
+      qurban: jamaah.qurban || "Penerima"
+    });
     setShowJamaahModal(true);
   };
 
@@ -616,18 +565,6 @@ export default function App() {
     setEditingPasaran(null);
   };
 
-  const handlePrepareNotification = (fridayData, type) => {
-    setNotificationType(type);
-    let msg = "";
-    if (type === "WA") {
-      msg = `Assalamualaikum Wr. Wb. Yth. *${fridayData.petugas.khatib}*, menginfokan bahwa besok (hari Jumat ${fridayData.pasaran}, tanggal ${fridayData.formattedDate.replace(/^Jumat, /, "")}) adalah jadwal bapak bertugas sebagai *Khatib Sholat Jumat*. Mohon hadir 15 menit sebelum adzan berkumandang. Terima kasih. Wassalamualaikum Wr. Wb.`;
-    } else {
-      msg = `[MASJID AL-IKHLAS] Yth ${fridayData.petugas.khatib}, mengingatkan kembali besok Jumat ${fridayData.pasaran} jadwal bapak bertugas Khatib & Imam di masjid. Harap hadir 15 menit sebelum adzan. Terima kasih.`;
-    }
-    setSimulatedMessageText(msg);
-    setActiveNotificationSim(fridayData);
-  };
-
   const handleSendSimMessage = () => {
     setIsSendingMessage(true);
     setTimeout(() => {
@@ -637,86 +574,6 @@ export default function App() {
     }, 1500);
   };
 
-  const addTimbangan = (tipe) => {
-    if (tipe === 'fitrah') {
-      const val = parseFloat(tempBeratFitrah);
-      if (isNaN(val) || val <= 0) return;
-      setTimbanganFitrah(prev => [...prev, val]);
-      setTempBeratFitrah("");
-      addNotification("Timbangan Zakat Fitrah berhasil ditambahkan");
-    } else if (tipe === 'zuru') {
-      const val = parseFloat(tempBeratZuru);
-      if (isNaN(val) || val <= 0) return;
-      setTimbanganZuru(prev => [...prev, val]);
-      setTempBeratZuru("");
-      addNotification("Timbangan Zuru' berhasil ditambahkan");
-    } else if (tipe === 'qurbanSapi') {
-      const val = parseFloat(tempBeratQurbanSapi);
-      if (isNaN(val) || val <= 0) return;
-      setTimbanganQurbanSapi(prev => [...prev, val]);
-      setTempBeratQurbanSapi("");
-      addNotification("Timbangan perolehan daging Sapi berhasil ditambahkan");
-    } else if (tipe === 'qurbanKambing') {
-      const val = parseFloat(tempBeratQurbanKambing);
-      if (isNaN(val) || val <= 0) return;
-      setTimbanganQurbanKambing(prev => [...prev, val]);
-      setTempBeratQurbanKambing("");
-      addNotification("Timbangan perolehan daging Kambing berhasil ditambahkan");
-    }
-  };
-
-  const deleteTimbangan = (tipe, index) => {
-    if (tipe === 'fitrah') {
-      setTimbanganFitrah(prev => prev.filter((_, i) => i !== index));
-      addNotification("Timbangan Fitrah dihapus", "warning");
-    } else if (tipe === 'zuru') {
-      setTimbanganZuru(prev => prev.filter((_, i) => i !== index));
-      addNotification("Timbangan Zuru' diurungkan", "warning");
-    } else if (tipe === 'qurbanSapi') {
-      setTimbanganQurbanSapi(prev => prev.filter((_, i) => i !== index));
-      addNotification("Timbangan daging sapi berhasil dihapus", "warning");
-    } else if (tipe === 'qurbanKambing') {
-      setTimbanganQurbanKambing(prev => prev.filter((_, i) => i !== index));
-      addNotification("Timbangan daging kambing berhasil dihapus", "warning");
-    }
-  };
-
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 1.5 * 1024 * 1024) {
-      addNotification("Ukuran berkas gambar terlalu besar! Maksimal adalah 1.5 MB.", "error");
-      return;
-    }
-
-    if (!file.type.startsWith("image/")) {
-      addNotification("Harap pilih berkas gambar valid (PNG, JPG, atau JPEG)!", "error");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setTempMasjidLogoUrl(reader.result);
-      addNotification("Berkas logo sukses diunggah ke memori sementara. Tekan 'Simpan Perubahan'!", "info");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSaveAlokasiFitrah = () => {
-    setAlokasiFitrah(tempAlokasiFitrah);
-    addNotification("Rencana jatah penyaluran Zakat Fitrah (Beras) berhasil diperbarui & disimpan!", "success");
-  };
-
-  const handleSaveAlokasiZuru = () => {
-    setAlokasiZuru(tempAlokasiZuru);
-    addNotification("Rencana jatah penyaluran Zakat Zuru' berhasil diperbarui & disimpan!", "success");
-  };
-
-  // =========================================================
-  // 4. PRINT PDF GENERATION LOGIC
-  // =========================================================
-
   const handlePrintSelectedReport = (reportType) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -724,11 +581,15 @@ export default function App() {
       return;
     }
 
-    const filteredWarga = selectedPrintRT === "Semua" 
-      ? jamaahList 
-      : jamaahList.filter(j => j.rt === selectedPrintRT);
+    let filteredWarga = jamaahList;
+    let rtTitle = "Seluruh Wilayah (Semua RT & RW)";
 
-    const rtTitle = selectedPrintRT === "Semua" ? "Seluruh Wilayah (RT 01-03)" : `RT ${selectedPrintRT}`;
+    if (selectedPrintWilayah !== "Semua") {
+      const [filterRt, filterRw] = selectedPrintWilayah.split('_');
+      filteredWarga = jamaahList.filter(j => j.rt === filterRt && j.rw === filterRw);
+      rtTitle = `RT ${filterRt} / RW ${filterRw}`;
+    }
+
     let docTitle = "";
     let textTheme = "text-emerald-800";
     let tableHeaderHTML = "";
@@ -841,6 +702,8 @@ export default function App() {
       `;
 
       const qurbanList = filteredWarga.filter(warga => {
+        if (warga.qurban === "Sahibul Qurban") return false;
+
         if (qurbanHanyaMustahik) {
           const isMustahikFitrah = warga.fitrah !== "Muzakki";
           const isMustahikZuru = warga.zuru !== "Bukan Mustahik";
@@ -940,15 +803,10 @@ export default function App() {
       return;
     }
 
-    const groupedByRT = {};
-    ["01", "02", "03"].forEach(rt => {
-      groupedByRT[rt] = wargaPenerimaQurban.filter(w => w.rt === rt);
-    });
-
     const html = `
       <html>
         <head>
-          <title>Daftar Distribusi Daging Qurban per RT - ${masjidName}</title>
+          <title>Daftar Distribusi Daging Qurban per Wilayah - ${masjidName}</title>
           <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
           <style>
             @media print {
@@ -971,64 +829,67 @@ export default function App() {
             </div>
             <div class="text-right text-xs text-slate-400 font-semibold font-mono">
               <p>Tanggal Cetak:</p>
-              <p class="text-slate-950 font-bold">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+              <p class="text-slate-955 font-bold">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
             </div>
           </div>
 
           <div class="text-center mb-8">
-            <h2 class="text-lg font-bold uppercase text-rose-800 tracking-wide">Daftar Penerima & Tanda Terima Distribusi Hewan Qurban (Terpisah)</h2>
+            <h2 class="text-lg font-bold uppercase text-rose-800 tracking-wide">Daftar Penerima & Tanda Terima Distribusi Hewan Qurban per RT / RW</h2>
             <p class="text-xs text-slate-500 mt-1">Total Timbangan: Sapi ${totalTimbanganQurbanSapi.toFixed(1)} Kg | Kambing ${totalTimbanganQurbanKambing.toFixed(1)} Kg</p>
           </div>
           
-          ${Object.entries(groupedByRT).map(([rt, list]) => `
-            <div class="mb-10 avoid-break">
-              <div class="bg-rose-50 border border-rose-200 px-4 py-2.5 rounded-xl mb-3 flex justify-between items-center">
-                <h3 class="text-sm font-black text-rose-800 uppercase tracking-wide">Rukun Tetangga (RT) ${rt}</h3>
-                <span class="text-xs font-bold bg-white text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-lg">Kapasitas: ${list.length} KK Penerima</span>
+          ${WILAYAH_OPTIONS.map((wilayah) => {
+            const list = wargaPenerimaQurban.filter(w => w.rt === wilayah.rt && w.rw === wilayah.rw);
+            return `
+              <div class="mb-10 avoid-break">
+                <div class="bg-rose-50 border border-rose-200 px-4 py-2.5 rounded-xl mb-3 flex justify-between items-center">
+                  <h3 class="text-sm font-black text-rose-800 uppercase tracking-wide">${wilayah.label}</h3>
+                  <span class="text-xs font-bold bg-white text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-lg">Kapasitas: ${list.length} KK Penerima</span>
+                </div>
+                
+                <table class="w-full text-left text-xs border border-collapse border-slate-300">
+                  <thead>
+                    <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
+                      <th class="p-2 border border-slate-300 w-1/12 text-center">No</th>
+                      <th class="p-2 border border-slate-300 w-3/12">Nama Kepala Keluarga</th>
+                      <th class="p-2 border border-slate-300 w-2/12 text-center">RT / RW</th>
+                      <th class="p-2 border border-slate-300 text-slate-500">Alamat</th>
+                      <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Sapi</th>
+                      <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Kambing</th>
+                      <th class="p-2 border border-slate-300 w-2/12 text-center">Tanda Tangan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${list.length > 0 ? list.map((w, index) => `
+                      <tr class="border-b border-slate-200">
+                        <td class="p-2 border border-slate-300 text-center font-mono">${index + 1}</td>
+                        <td class="p-2 border border-slate-300 font-bold text-slate-900">${w.nama}</td>
+                        <td class="p-2 border border-slate-300 font-bold text-center">RT ${w.rt} / RW ${w.rw}</td>
+                        <td class="p-2 border border-slate-300 text-slate-500 text-[10px]">${w.alamat}</td>
+                        <td class="p-2 border border-slate-300 text-right font-mono font-bold text-rose-700">${jatahDagingSapiPerKK} Kg</td>
+                        <td class="p-2 border border-slate-300 text-right font-mono font-bold text-amber-700">${jatahDagingKambingPerKK} Kg</td>
+                        <td class="p-2 border border-slate-300 h-10 text-center text-slate-300 font-mono text-[9px] relative">
+                          <span class="absolute bottom-1 left-2">${index + 1}.</span>
+                        </td>
+                      </tr>
+                    `).join('') : `
+                      <tr>
+                        <td colspan="7" class="p-4 text-center text-slate-400 italic">Tidak ada warga penerima di wilayah ini.</td>
+                      </tr>
+                    `}
+                  </tbody>
+                </table>
               </div>
-              
-              <table class="w-full text-left text-xs border border-collapse border-slate-300">
-                <thead>
-                  <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
-                    <th class="p-2 border border-slate-300 w-1/12 text-center">No</th>
-                    <th class="p-2 border border-slate-300 w-3/12">Nama Kepala Keluarga</th>
-                    <th class="p-2 border border-slate-300 w-2/12 text-center">RT / RW</th>
-                    <th class="p-2 border border-slate-300 text-slate-500">Alamat</th>
-                    <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Sapi</th>
-                    <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Kambing</th>
-                    <th class="p-2 border border-slate-300 w-2/12 text-center">Tanda Tangan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${list.length > 0 ? list.map((w, index) => `
-                    <tr class="border-b border-slate-200">
-                      <td class="p-2 border border-slate-300 text-center font-mono">${index + 1}</td>
-                      <td class="p-2 border border-slate-300 font-bold text-slate-900">${w.nama}</td>
-                      <td class="p-2 border border-slate-300 text-center font-bold">RT ${w.rt} / RW ${w.rw}</td>
-                      <td class="p-2 border border-slate-300 text-slate-500 text-[10px]">${w.alamat}</td>
-                      <td class="p-2 border border-slate-300 text-right font-mono font-bold text-rose-700">${jatahDagingSapiPerKK} Kg</td>
-                      <td class="p-2 border border-slate-300 text-right font-mono font-bold text-amber-700">${jatahDagingKambingPerKK} Kg</td>
-                      <td class="p-2 border border-slate-300 h-10 text-center text-slate-300 font-mono text-[9px] relative">
-                        <span class="absolute bottom-1 left-2">${index + 1}.</span>
-                      </td>
-                    </tr>
-                  `).join('') : `
-                    <tr>
-                      <td colspan="7" class="p-4 text-center text-slate-400 italic">Tidak ada warga penerima di RT ini.</td>
-                    </tr>
-                  `}
-                </tbody>
-              </table>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
 
           <div class="mt-12 flex justify-between text-xs font-semibold avoid-break">
             <div>
               <p>Mengetahui,</p>
-              <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center">Ketua Takmir Masjid</p>
+              <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center">Takmir Masjid Al-Ikhlas</p>
             </div>
             <div class="text-right">
-              <p>${lokasi.kabupaten}, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+              <p>Lamongan, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
               <p>Dilaporkan oleh,</p>
               <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center mx-auto">Ketua Panitia Qurban</p>
             </div>
@@ -1045,7 +906,7 @@ export default function App() {
   };
 
   // =========================================================
-  // 5. RENDER SEBELUM LOGIN (HALAMAN LOGIN BERSIH)
+  // 4. VIEW RENDERING & CONTROLLER (EVALUATED AT BOTTOM OF APP)
   // =========================================================
   if (!isLoggedIn) {
     return (
@@ -1142,7 +1003,7 @@ export default function App() {
   }
 
   // =========================================================
-  // 6. RENDER SETELAH LOGIN (DASBOR & MENU UTAMA)
+  // MAIN DASHBOARD INTERFACE (AUTHORIZED USER ONLY)
   // =========================================================
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col antialiased">
@@ -1261,7 +1122,7 @@ export default function App() {
       )}
 
       {/* === CONTENT AREA UTAMA === */}
-      <div className="flex-1 flex flex-col md:flex-row">
+      <div className="flex-1 flex flex-col md:flex-row font-sans">
         <main className="flex-1 p-6 overflow-y-auto max-w-7xl mx-auto w-full">
           
           {/* TAB 1: DASHBOARD UTAMA */}
@@ -1313,7 +1174,7 @@ export default function App() {
               <div className="grid grid-cols-1 gap-6">
                 <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
                   <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                    <h3 className="font-bold text-slate-950 flex items-center gap-2"><Clock className="text-emerald-600 w-5 h-5" /> Jadwal Sholat Hari Ini</h3>
+                    <h3 className="font-bold text-slate-955 flex items-center gap-2"><Clock className="text-emerald-600 w-5 h-5" /> Jadwal Sholat Hari Ini</h3>
                     <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase tracking-wider">Metode Kemenag RI</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -1350,11 +1211,11 @@ export default function App() {
                         </div>
                         <div>
                           <p className="text-slate-400 uppercase text-[10px]">Muadzin</p>
-                          <p className="text-slate-850 text-sm font-bold">{upcomingFridays[0].petugas.muadzin}</p>
+                          <p className="text-slate-855 text-sm font-bold">{upcomingFridays[0].petugas.muadzin}</p>
                         </div>
                         <div>
                           <p className="text-slate-400 uppercase text-[10px]">Bilal / MC</p>
-                          <p className="text-slate-850 text-sm font-bold">{upcomingFridays[0].petugas.bilal}</p>
+                          <p className="text-slate-855 text-sm font-bold">{upcomingFridays[0].petugas.bilal}</p>
                         </div>
                       </div>
                     </div>
@@ -1362,11 +1223,11 @@ export default function App() {
                 </div>
 
                 <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-                  <h3 className="font-bold text-slate-950 flex items-center gap-2"><UsersRound className="text-emerald-600 w-5 h-5" /> Sebaran Jiwa Mustahik (Basis RT)</h3>
+                  <h3 className="font-bold text-slate-95.0 flex items-center gap-2"><UsersRound className="text-emerald-600 w-5 h-5" /> Sebaran Jiwa Mustahik (Basis RT)</h3>
                   <div className="space-y-2">
                     {["Berat", "Sedang", "Ringan"].map((asnaf) => {
-                      const fitrahCount = getJumlahJiwaPerKategoriFitrah(asnaf);
-                      const zuruCount = getJumlahJiwaPerKategoriZuru(asnaf);
+                      const fitrahCount = getJumlahJiwaPerKategoriFitrah(jamaahList, asnaf);
+                      const zuruCount = getJumlahJiwaPerKategoriZuru(jamaahList, asnaf);
                       return (
                         <div key={asnaf} className="flex justify-between items-center text-xs p-2 bg-slate-50 rounded-xl border border-slate-200/50">
                           <span className="font-bold text-slate-700">Mustahik {asnaf}</span>
@@ -1383,12 +1244,12 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 2: PETUGAS SHOLAT JUMAT */}
+          {/* TAB 2: PETUGAS JUMAT */}
           {activeTab === "petugas" && (
             <div className="space-y-6 animate-fadeIn">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-950">Konfigurasi Petugas Sholat Jumat Abadi</h2>
+                  <h2 className="text-xl font-bold text-slate-955">Konfigurasi Petugas Sholat Jumat Abadi</h2>
                   <p className="text-xs text-slate-500">Sistem otomatis mengikat petugas berdasarkan 5 Hari Pasaran Jawa. Tidak perlu membuat jadwal mingguan baru selamanya!</p>
                 </div>
               </div>
@@ -1631,12 +1492,18 @@ smsManager.sendTextMessage(
 
                 <div className="flex flex-col md:flex-row items-end gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200/60">
                   <div className="flex-1 space-y-1.5">
-                    <label className="block text-xs font-black text-slate-500 uppercase tracking-wide">Pilih Wilayah RT yang Mau Dicetak:</label>
-                    <select value={selectedPrintRT} onChange={(e) => setSelectedPrintRT(e.target.value)} className="w-full text-xs border border-slate-200 bg-white p-3 rounded-xl outline-none font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500">
-                      <option value="Semua">Semua RT (RT 01, RT 02, dan RT 03 Sekaligus)</option>
-                      <option value="01">Hanya Wilayah RT 01</option>
-                      <option value="02">Hanya Wilayah RT 02</option>
-                      <option value="03">Hanya Wilayah RT 03</option>
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-wide">Pilih Wilayah RT / RW yang Mau Dicetak:</label>
+                    <select 
+                      value={selectedPrintWilayah} 
+                      onChange={(e) => setSelectedPrintWilayah(e.target.value)} 
+                      className="w-full text-xs border border-slate-200 bg-white p-3 rounded-xl outline-none font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500"
+                    >
+                      <option value="Semua">Semua RT & RW Terdaftar</option>
+                      {WILAYAH_OPTIONS.map((wil) => (
+                        <option key={`${wil.rt}_${wil.rw}`} value={`${wil.rt}_${wil.rw}`}>
+                          {wil.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -1652,16 +1519,42 @@ smsManager.sendTextMessage(
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-slate-950">Database Jemaah Berbasis RT/RW</h2>
-                  <p className="text-xs text-slate-500">Sistem database jemaah kustom yang dibatasi pada **3 RT** (RT 01, 02, 03) dan **2 RW** (RW 01, 02).</p>
+                  <p className="text-xs text-slate-500">Sistem database jemaah kustom yang dibatasi pada sebaran **RT & RW** unik di Desa Bakalan.</p>
                 </div>
                 {canEditJamaah && (
-                  <button onClick={() => { setEditingJamaah(null); setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik" }); setShowJamaahModal(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow shadow-emerald-600/10 hover:scale-102">
+                  <button onClick={() => { setEditingJamaah(null); setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima" }); setShowJamaahModal(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow shadow-emerald-600/10 hover:scale-102">
                     <Plus size={16} /> Tambah Warga Baru
                   </button>
                 )}
               </div>
 
               <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                {/* === FITUR PENYARINGAN RT & RW TERPADU DAN INTERAKTIF === */}
+                <div className="p-4 bg-slate-50/50 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Filter Wilayah Warga:</span>
+                    <select 
+                      value={filterWilayahJamaah} 
+                      onChange={(e) => setFilterWilayahJamaah(e.target.value)}
+                      className="text-xs border border-slate-200 bg-white px-3 py-2 rounded-xl outline-none font-bold text-slate-700 focus:ring-1 focus:ring-emerald-500"
+                    >
+                      <option value="Semua">Semua RT & RW</option>
+                      {WILAYAH_OPTIONS.map((wil) => (
+                        <option key={`${wil.rt}_${wil.rw}`} value={`${wil.rt}_${wil.rw}`}>
+                          {wil.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-xl">
+                    Tampil: {jamaahList.filter(item => {
+                      if (filterWilayahJamaah === "Semua") return true;
+                      const [rtF, rwF] = filterWilayahJamaah.split('_');
+                      return item.rt === rtF && item.rw === rwF;
+                    }).length} KK dari {jamaahList.length} KK
+                  </span>
+                </div>
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm border-collapse">
                     <thead>
@@ -1673,32 +1566,45 @@ smsManager.sendTextMessage(
                         <th className="p-4">Ekonomi</th>
                         <th className="p-4 text-emerald-700">Mustahik Fitrah</th>
                         <th className="p-4 text-teal-700">Mustahik Zuru'</th>
+                        <th className="p-4 text-rose-700">Status Qurban</th>
                         {canEditJamaah && <th className="p-4 text-right">Aksi</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                      {jamaahList.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-50/50 transition-all">
-                          <td className="p-4 text-slate-900 font-bold">{item.nama}</td>
-                          <td className="p-4"><span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-lg border border-slate-200/50 font-mono font-bold">RT {item.rt} / RW {item.rw}</span></td>
-                          <td className="p-4 text-xs font-medium text-slate-500">{item.alamat}</td>
-                          <td className="p-4 text-center text-slate-900">{item.anggota} Jiwa</td>
-                          <td className="p-4">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${item.ekonomi === 'Mampu' ? 'bg-emerald-50 text-emerald-700' : item.ekonomi === 'Kurang Mampu' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'}`}>
-                              {item.ekonomi}
-                            </span>
-                          </td>
-                          <td className="p-4"><span className={`text-xs ${item.fitrah === 'Muzakki' ? 'text-slate-400 font-normal' : 'text-emerald-700 font-bold'}`}>{item.fitrah}</span></td>
-                          <td className="p-4"><span className={`text-xs ${item.zuru === 'Bukan Mustahik' ? 'text-slate-400 font-normal' : 'text-teal-700 font-bold'}`}>{item.zuru}</span></td>
-                          {canEditJamaah && (
-                            <td className="p-4 text-right">
-                              <div className="flex justify-end gap-1.5">
-                                <button onClick={() => handleEditJamaah(item)} className="p-1.5 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 rounded-lg text-slate-600 transition-all" title="Ubah Data"><Edit2 size={14} /></button>
-                                <button onClick={() => handleDeleteJamaah(item.id)} className="p-1.5 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg text-rose-600 transition-all" title="Hapus Data"><Trash2 size={14} /></button>
-                              </div>
+                      {/* === FILTERING BERDASARKAN RT/RW TERPADU === */}
+                      {jamaahList
+                        .filter(item => {
+                          if (filterWilayahJamaah === "Semua") return true;
+                          const [rtF, rwF] = filterWilayahJamaah.split('_');
+                          return item.rt === rtF && item.rw === rwF;
+                        })
+                        .map((item) => (
+                          <tr key={item.id} className="hover:bg-slate-50/50 transition-all">
+                            <td className="p-4 text-slate-900 font-bold">{item.nama}</td>
+                            <td className="p-4"><span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-lg border border-slate-200/50 font-mono font-bold">RT {item.rt} / RW {item.rw}</span></td>
+                            <td className="p-4 text-xs font-medium text-slate-500">{item.alamat}</td>
+                            <td className="p-4 text-center text-slate-900">{item.anggota} Jiwa</td>
+                            <td className="p-4">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${item.ekonomi === 'Mampu' ? 'bg-emerald-50 text-emerald-700' : item.ekonomi === 'Kurang Mampu' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'}`}>
+                                {item.ekonomi}
+                              </span>
                             </td>
-                          )}
-                        </tr>
+                            <td className="p-4"><span className={`text-xs ${item.fitrah === 'Muzakki' ? 'text-slate-400 font-normal' : 'text-emerald-700 font-bold'}`}>{item.fitrah}</span></td>
+                            <td className="p-4"><span className={`text-xs ${item.zuru === 'Bukan Mustahik' ? 'text-slate-400 font-normal' : 'text-teal-700 font-bold'}`}>{item.zuru}</span></td>
+                            <td className="p-4">
+                              <span className={`text-xs px-2.5 py-1 rounded-lg border font-bold ${item.qurban === 'Sahibul Qurban' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-slate-100 text-slate-600 border-slate-200/60'}`}>
+                                {item.qurban || "Penerima"}
+                              </span>
+                            </td>
+                            {canEditJamaah && (
+                              <td className="p-4 text-right">
+                                <div className="flex justify-end gap-1.5">
+                                  <button onClick={() => handleEditJamaah(item)} className="p-1.5 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 rounded-lg text-slate-600 transition-all" title="Ubah Data"><Edit2 size={14} /></button>
+                                  <button onClick={() => handleDeleteJamaah(item.id)} className="p-1.5 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg text-rose-600 transition-all" title="Hapus Data"><Trash2 size={14} /></button>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
                       ))}
                     </tbody>
                   </table>
@@ -1718,31 +1624,36 @@ smsManager.sendTextMessage(
                       <div className="grid grid-cols-1 gap-4">
                         <div>
                           <label className="block text-xs font-bold text-slate-600 mb-1">Nama Kepala Keluarga *</label>
-                          <input type="text" placeholder="Masukkan nama Kepala Keluarga" required value={jamaahForm.nama} onChange={(e) => setJamaahForm({...jamaahForm, nama: e.target.value})} className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold" />
+                          <input type="text" placeholder="Masukkan nama Kepala Keluarga" required value={jamaahForm.nama} onChange={(e) => setJamaahForm({...jamaahForm, nama: e.target.value})} className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-slate-800" />
                         </div>
                         
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-slate-600 mb-1">Jumlah Jiwa</label>
-                            <input type="number" min="1" required value={jamaahForm.anggota} onChange={(e) => setJamaahForm({...jamaahForm, anggota: parseInt(e.target.value) || 1})} className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold" />
+                            <label className="block text-xs font-bold text-slate-600 mb-1">Jumlah Anggota Keluarga (Jiwa) *</label>
+                            <input type="number" min="1" required value={jamaahForm.anggota} onChange={(e) => setJamaahForm({...jamaahForm, anggota: parseInt(e.target.value) || 1})} className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-slate-800" />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-slate-600 mb-1">RT (Maks 3 RT)</label>
-                            <select value={jamaahForm.rt} onChange={(e) => setJamaahForm({...jamaahForm, rt: e.target.value})} className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-bold">
-                              {["01", "02", "03"].map(rt => ( <option key={rt} value={rt}>RT {rt}</option> ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-600 mb-1">RW (Maks 2 RW)</label>
-                            <select value={jamaahForm.rw} onChange={(e) => setJamaahForm({...jamaahForm, rw: e.target.value})} className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-bold">
-                              {["01", "02"].map(rw => ( <option key={rw} value={rw}>RW {rw}</option> ))}
+                            <label className="block text-xs font-bold text-slate-600 mb-1">Pilih Wilayah RT / RW *</label>
+                            <select 
+                              value={`${jamaahForm.rt}_${jamaahForm.rw}`} 
+                              onChange={(e) => {
+                                const [rt, rw] = e.target.value.split('_');
+                                setJamaahForm({...jamaahForm, rt, rw});
+                              }} 
+                              className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500"
+                            >
+                              {WILAYAH_OPTIONS.map((wil) => (
+                                <option key={`${wil.rt}_${wil.rw}`} value={`${wil.rt}_${wil.rw}`}>
+                                  {wil.label}
+                                </option>
+                              ))}
                             </select>
                           </div>
                         </div>
 
                         <div>
                           <label className="block text-xs font-bold text-slate-600 mb-1">Alamat Rumah *</label>
-                          <textarea placeholder="Alamat lengkap warga" required rows="2" value={jamaahForm.alamat} onChange={(e) => setJamaahForm({...jamaahForm, alamat: e.target.value})} className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold resize-none" />
+                          <textarea placeholder="Alamat lengkap warga" required rows="2" value={jamaahForm.alamat} onChange={(e) => setJamaahForm({...jamaahForm, alamat: e.target.value})} className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold resize-none text-slate-855" />
                         </div>
 
                         <div className="border-t border-slate-100 pt-3">
@@ -1768,7 +1679,7 @@ smsManager.sendTextMessage(
                             </select>
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-teal-700 mb-1">Klasifikasi Mustahik Zuru'</label>
+                            <label className="block text-xs font-bold text-[#0d9488] mb-1">Klasifikasi Mustahik Zuru'</label>
                             <select value={jamaahForm.zuru} onChange={(e) => setJamaahForm({...jamaahForm, zuru: e.target.value})} className="w-full text-xs border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-teal-800">
                               <option value="Bukan Mustahik">Bukan Mustahik Zuru'</option>
                               <option value="Berat">Mustahik Berat</option>
@@ -1776,6 +1687,20 @@ smsManager.sendTextMessage(
                               <option value="Ringan">Mustahik Ringan</option>
                             </select>
                           </div>
+                        </div>
+
+                        {/* === INPUT PENAMBAHAN KATEGORI STATUS QURBAN PADA MODAL === */}
+                        <div className="border-t border-slate-100 pt-3">
+                          <label className="block text-xs font-bold text-rose-700 mb-1">Status Qurban (Khusus Distribusi Hari Raya)</label>
+                          <select 
+                            value={jamaahForm.qurban || "Penerima"} 
+                            onChange={(e) => setJamaahForm({...jamaahForm, qurban: e.target.value})} 
+                            className="w-full text-xs border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-rose-800 focus:ring-1 focus:ring-rose-500"
+                          >
+                            <option value="Penerima">Penerima Daging (Warga Biasa / Mustahik)</option>
+                            <option value="Sahibul Qurban">Sahibul Qurban (Pekurban - Tidak Dapat Pembagian Umum)</option>
+                          </select>
+                          <p className="text-[10px] text-slate-400 mt-1 font-medium">Sahibul Qurban otomatis dikeluarkan dari kalkulator pembagian daging qurban dan cetak PDF tanda terima kupon.</p>
                         </div>
 
                       </div>
@@ -1792,71 +1717,87 @@ smsManager.sendTextMessage(
             </div>
           )}
 
-          {/* TAB 4: ZAKAT FITRAH (BERAS) */}
+          {/* TAB 4: ZAKAT FITRAH */}
           {activeTab === "fitrah" && (
             <div className="space-y-6 animate-fadeIn">
-              <div>
-                <h2 className="text-xl font-bold text-slate-950">Pengelolaan Zakat Fitrah (Beras)</h2>
-                <p className="text-xs text-slate-500">Log timbangan berkala, totalisasi penerimaan otomatis, dan rencana penyaluran asnaf (Berat, Sedang, Ringan).</p>
+              <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Modul Pengelolaan Zakat Fitrah</h2>
+                  <p className="text-xs text-slate-500">Mencatat, menimbang, dan mensimulasikan jatah pembagian beras secara adil dan transparan.</p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Log Timbangan Masuk */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-                  <h3 className="font-extrabold text-slate-900 text-sm border-b border-slate-100 pb-2">Log Timbangan Fitrah Masuk</h3>
+                {/* 1. Log Timbangan Masuk */}
+                <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-4">
+                  <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5"><Gift size={16} className="text-emerald-600" /> 1. Log Timbangan Masuk</h3>
+                  
                   {canEditFitrah ? (
                     <div className="flex gap-2">
-                      <input type="number" step="0.1" placeholder="Berat (kg)" value={tempBeratFitrah} onChange={(e) => setTempBeratFitrah(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTimbangan('fitrah')} className="flex-1 text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-1 focus:ring-emerald-500" />
-                      <button onClick={() => addTimbangan('fitrah')} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 rounded-xl font-bold text-xs transition-all animate-none">Tambah</button>
+                      <input 
+                        type="number" step="0.1" 
+                        placeholder="Berat Beras (Kg)" 
+                        value={tempBeratFitrah} 
+                        onChange={(e) => setTempBeratFitrah(e.target.value)} 
+                        onKeyDown={(e) => e.key === 'Enter' && addTimbangan('fitrah')} 
+                        className="flex-1 text-xs border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-1 focus:ring-emerald-500" 
+                      />
+                      <button onClick={() => addTimbangan('fitrah')} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0">Tambah</button>
                     </div>
-                  ) : <p className="text-[11px] text-rose-500 bg-rose-50 border border-rose-100 p-2 rounded-lg font-bold">Hanya Amil Zakat yang memiliki hak menambahkan data.</p>}
+                  ) : (
+                    <p className="text-[10px] text-rose-600 bg-rose-50 border border-rose-100 p-2.5 rounded-lg font-bold">Peran Anda saat ini tidak memiliki otoritas mengubah data timbangan.</p>
+                  )}
 
-                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                    {timbanganFitrah.map((berat, index) => (
-                      <div key={index} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 p-2.5 rounded-xl text-sm font-semibold">
-                        <span className="text-slate-500">Timbangan # {index + 1}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-slate-955 font-extrabold">{berat} Kg</span>
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {timbanganFitrah.map((berat, idx) => (
+                      <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 border border-slate-200/50 rounded-xl font-semibold">
+                        <span className="text-slate-400">Timbangan #{idx + 1}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-900 font-bold font-mono">{berat} Kg</span>
                           {canEditFitrah && (
-                            <button onClick={() => deleteTimbangan('fitrah', index)} className="text-rose-500 p-1 hover:bg-rose-50 rounded-lg"><Trash2 size={14} /></button>
+                            <button onClick={() => deleteTimbangan('fitrah', idx)} className="text-rose-600 hover:bg-rose-50 p-1 rounded-lg"><Trash2 size={13} /></button>
                           )}
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div className="bg-emerald-50 border border-emerald-100/40 p-4 rounded-xl flex justify-between items-center">
-                    <span className="text-xs text-emerald-800 font-extrabold uppercase">Total Beras Terkumpul</span>
-                    <span className="text-2xl font-black text-emerald-700 font-mono">{totalTimbanganFitrah.toFixed(1)} Kg</span>
+
+                  <div className="bg-emerald-50/70 border border-emerald-100 p-4 rounded-xl flex justify-between items-center">
+                    <span className="text-xs text-emerald-800 font-extrabold uppercase">Total Beras Masuk:</span>
+                    <span className="text-xl font-black text-emerald-700 font-mono">{totalTimbanganFitrah.toFixed(1)} Kg</span>
                   </div>
                 </div>
 
-                {/* Rencana Penyaluran */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs lg:col-span-2 space-y-4">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-2 gap-2">
-                    <h3 className="font-extrabold text-slate-900 text-sm">Rencana Penyaluran & Ketersediaan Beras</h3>
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <span className="text-slate-400 font-bold">Status Kebutuhan:</span>
-                      <span className={`px-2.5 py-0.5 rounded-full font-bold ${statusFitrah >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                        {statusFitrah >= 0 ? `SISA BERAS SURPLUS ${statusFitrah.toFixed(1)} Kg` : `BERAS KURANG ${(Math.abs(statusFitrah)).toFixed(1)} Kg`}
-                      </span>
-                    </div>
+                {/* 2. Simulasi & Distribusi Otomatis */}
+                <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs lg:col-span-2 space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-100 pb-2.5 gap-2">
+                    <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5"><UsersRound size={16} className="text-emerald-600" /> 2. Rencana Penyaluran Beras (Kriteria Mustahik)</h3>
+                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${statusFitrah >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                      {statusFitrah >= 0 ? `Beras Surplus: +${statusFitrah.toFixed(1)} Kg` : `Defisit/Kurang: ${statusFitrah.toFixed(1)} Kg`}
+                    </span>
                   </div>
 
-                  <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3">
-                    <div className="flex justify-between items-center">
-                      <p className="text-xs text-slate-500 font-extrabold uppercase tracking-wider">Parameter Pembagian Jatah per Jiwa (Zakat Fitrah)</p>
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-3">
+                    <div className="flex justify-between items-center flex-wrap gap-2">
+                      <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wide">Konstanta Jatah Jemaah (Beras / Jiwa)</p>
                       {canEditFitrah && (
-                        <button onClick={handleSaveAlokasiFitrah} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm"><Check size={12} />Simpan Rencana Penyaluran</button>
+                        <button onClick={handleSaveAlokasiFitrah} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"><Check size={12} />Simpan Parameter</button>
                       )}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                      {["Berat", "Sedang", "Ringan"].map((k) => (
-                        <div key={k} className="bg-white p-2.5 rounded-lg border border-slate-200/60">
-                          <p className="text-slate-500 font-bold">Kriteria {k}</p>
-                          <div className="flex items-center gap-1 mt-1">
-                            <input type="number" step="0.5" min="0" disabled={!canEditFitrah} value={tempAlokasiFitrah[k]} onChange={(e) => setTempAlokasiFitrah({...tempAlokasiFitrah, [k]: parseFloat(e.target.value) || 0})} className="w-full font-extrabold text-sm text-slate-800 outline-none bg-transparent border-b border-dashed border-slate-200 focus:border-emerald-500" />
-                            <span className="text-slate-400 font-bold text-[10px]">Kg</span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {["Berat", "Sedang", "Ringan"].map((asnaf) => (
+                        <div key={asnaf} className="bg-white p-2.5 rounded-xl border border-slate-200/60 flex items-center justify-between">
+                          <span className="text-xs text-slate-500 font-bold">{asnaf}</span>
+                          <div className="flex items-center gap-1">
+                            <input 
+                              type="number" step="0.5" min="0" 
+                              disabled={!canEditFitrah}
+                              value={tempAlokasiFitrah[asnaf] || 0} 
+                              onChange={(e) => setTempAlokasiFitrah({...tempAlokasiFitrah, [asnaf]: parseFloat(e.target.value) || 0})}
+                              className="w-12 text-center text-xs font-black outline-none border-b border-dashed border-slate-300 focus:border-emerald-500 text-slate-800" 
+                            />
+                            <span className="text-[10px] text-slate-400 font-bold">Kg</span>
                           </div>
                         </div>
                       ))}
@@ -1867,96 +1808,114 @@ smsManager.sendTextMessage(
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
                         <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                          <th className="pb-2">Kategori Mustahik</th>
-                          <th className="pb-2 text-center">Jumlah Jiwa (Database)</th>
+                          <th className="pb-2">Golongan Penerima</th>
+                          <th className="pb-2 text-center">Jumlah Jiwa</th>
                           <th className="pb-2 text-center">Jatah / Jiwa (Committed)</th>
                           <th className="pb-2 text-right">Total Kebutuhan</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                      <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                         {rincianKebutuhanFitrah.map((item) => (
                           <tr key={item.kategori}>
-                            <td className="py-2.5 text-slate-900 font-bold">Mustahik {item.kategori}</td>
-                            <td className="py-2.5 text-center text-slate-800">{item.jumlahJiwa} Orang</td>
+                            <td className="py-2.5 text-slate-900">Mustahik {item.kategori}</td>
+                            <td className="py-2.5 text-center">{item.jumlahJiwa} Orang</td>
                             <td className="py-2.5 text-center text-emerald-700">{item.jatah} Kg</td>
-                            <td className="py-2.5 text-right font-bold text-slate-900">{item.totalButuh} Kg</td>
+                            <td className="py-2.5 text-right text-slate-900 font-black">{item.totalButuh.toFixed(1)} Kg</td>
                           </tr>
                         ))}
-                        <tr className="bg-slate-50 font-black text-slate-900">
-                          <td className="p-2.5" colSpan="3">Total Seluruh Kebutuhan Penyaluran</td>
-                          <td className="p-2.5 text-right text-emerald-800">{totalButuhFitrah} Kg</td>
+                        <tr className="bg-slate-50 text-slate-900 font-extrabold">
+                          <td className="p-2.5" colSpan="3">Total Kebutuhan Penyaluran:</td>
+                          <td className="p-2.5 text-right text-emerald-800 font-black">{totalButuhFitrah.toFixed(1)} Kg</td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
                 </div>
-
               </div>
             </div>
           )}
 
-          {/* === TAB 5: ZAKAT ZURU' === */}
+          {/* TAB 5: ZAKAT ZURU' */}
           {activeTab === "zuru" && (
             <div className="space-y-6 animate-fadeIn">
-              <div>
-                <h2 className="text-xl font-bold text-slate-950">Pengelolaan Zakat Zuru' (Pertanian / Hasil Panen)</h2>
-                <p className="text-xs text-slate-500">Log timbangan berkala, totalisasi penerimaan otomatis, dan rencana penyaluran asnaf (Berat, Sedang, Ringan).</p>
+              <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Modul Pengelolaan Zakat Zuru' (Hasil Pertanian)</h2>
+                  <p className="text-xs text-slate-500">Kalkulasi timbangan gabah atau beras hasil zakat pertanian jemaah secara akurat.</p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-                  <h3 className="font-extrabold text-slate-900 text-sm border-b border-slate-100 pb-2">Log Timbangan Zuru' Masuk</h3>
+                {/* 1. Log Timbangan Zuru' Masuk */}
+                <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-4">
+                  <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5"><Coins size={16} className="text-teal-600" /> 1. Log Timbangan Zuru' Masuk</h3>
+                  
                   {canEditZuru ? (
                     <div className="flex gap-2">
-                      <input type="number" step="0.5" placeholder="Berat (kg)" value={tempBeratZuru} onChange={(e) => setTempBeratZuru(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTimbangan('zuru')} className="flex-1 text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-1 focus:ring-teal-500" />
-                      <button onClick={() => addTimbangan('zuru')} className="bg-teal-600 hover:bg-teal-700 text-white px-4 rounded-xl font-bold text-xs transition-all">Tambah</button>
+                      <input 
+                        type="number" step="0.5" 
+                        placeholder="Berat Panen (Kg)" 
+                        value={tempBeratZuru} 
+                        onChange={(e) => setTempBeratZuru(e.target.value)} 
+                        onKeyDown={(e) => e.key === 'Enter' && addTimbangan('zuru')} 
+                        className="flex-1 text-xs border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-1 focus:ring-teal-500" 
+                      />
+                      <button onClick={() => addTimbangan('zuru')} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0">Tambah</button>
                     </div>
-                  ) : <p className="text-[11px] text-[#f43f5e] bg-[#fff5f5] border border-[#ffe4e6] p-2 rounded-lg font-bold">Hanya Amil Zakat yang memiliki hak menambahkan data.</p>}
+                  ) : (
+                    <p className="text-[10px] text-rose-600 bg-rose-50 border border-rose-100 p-2.5 rounded-lg font-bold">Peran Anda tidak diizinkan mengubah timbangan zakat zuru'.</p>
+                  )}
 
-                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                    {timbanganZuru.map((berat, index) => (
-                      <div key={index} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 p-2.5 rounded-xl text-sm font-semibold">
-                        <span className="text-slate-500">Timbangan # {index + 1}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-slate-955 font-extrabold">{berat} Kg</span>
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {timbanganZuru.map((berat, idx) => (
+                      <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 border border-slate-200/50 rounded-xl font-semibold">
+                        <span className="text-slate-400">Timbangan #{idx + 1}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-900 font-bold font-mono">{berat} Kg</span>
                           {canEditZuru && (
-                            <button onClick={() => deleteTimbangan('zuru', index)} className="text-rose-500 p-1 hover:bg-rose-50 rounded-lg"><Trash2 size={14} /></button>
+                            <button onClick={() => deleteTimbangan('zuru', idx)} className="text-rose-600 hover:bg-rose-50 p-1 rounded-lg"><Trash2 size={13} /></button>
                           )}
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div className="bg-teal-50 border border-teal-100 p-4 rounded-xl flex justify-between items-center">
-                    <span className="text-xs text-teal-800 font-extrabold uppercase">Total Zuru' Terkumpul</span>
-                    <span className="text-2xl font-black text-teal-700 font-mono">{totalTimbanganZuru.toFixed(1)} Kg</span>
+
+                  <div className="bg-teal-50/70 border border-teal-100 p-4 rounded-xl flex justify-between items-center">
+                    <span className="text-xs text-teal-800 font-extrabold uppercase">Total Terkumpul:</span>
+                    <span className="text-xl font-black text-teal-700 font-mono">{totalTimbanganZuru.toFixed(1)} Kg</span>
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs lg:col-span-2 space-y-4">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-2 gap-2">
-                    <h3 className="font-extrabold text-slate-900 text-sm">Rencana Penyaluran & Ketersediaan Hasil Pertanian</h3>
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <span className="text-slate-400 font-bold">Status Kebutuhan:</span>
-                      <span className={`px-2.5 py-0.5 rounded-full font-bold ${statusZuru >= 0 ? 'bg-teal-100 text-teal-800' : 'bg-rose-100 text-rose-800'}`}>
-                        {statusZuru >= 0 ? `SISA ZURU SURPLUS ${statusZuru.toFixed(1)} Kg` : `ZURU KURANG ${(Math.abs(statusZuru)).toFixed(1)} Kg`}
-                      </span>
-                    </div>
+                {/* 2. Penyaluran Zuru' */}
+                <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs lg:col-span-2 space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-100 pb-2.5 gap-2">
+                    <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5"><UsersRound size={16} className="text-teal-600" /> 2. Rencana Penyaluran Hasil Panen</h3>
+                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${statusZuru >= 0 ? 'bg-teal-100 text-teal-800' : 'bg-rose-100 text-rose-800'}`}>
+                      {statusZuru >= 0 ? `Hasil Surplus: +${statusZuru.toFixed(1)} Kg` : `Kekurangan: ${statusZuru.toFixed(1)} Kg`}
+                    </span>
                   </div>
 
-                  <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3">
-                    <div className="flex justify-between items-center">
-                      <p className="text-xs text-slate-500 font-extrabold uppercase tracking-wider">Parameter Pembagian Jatah per Jiwa (Zakat Zuru')</p>
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-3">
+                    <div className="flex justify-between items-center flex-wrap gap-2">
+                      <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wide">Konstanta Jatah Jemaah (Zuru' / Jiwa)</p>
                       {canEditZuru && (
-                        <button onClick={handleSaveAlokasiZuru} className="bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm"><Check size={12} />Simpan Rencana Penyaluran</button>
+                        <button onClick={handleSaveAlokasiZuru} className="bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"><Check size={12} />Simpan Parameter</button>
                       )}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                      {["Berat", "Sedang", "Ringan"].map((k) => (
-                        <div key={k} className="bg-white p-2.5 rounded-lg border border-slate-200/60">
-                          <p className="text-slate-400 font-bold">Kriteria {k}</p>
-                          <div className="flex items-center gap-1 mt-1">
-                            <input type="number" step="0.5" min="0" disabled={!canEditZuru} value={tempAlokasiZuru[k]} onChange={(e) => setTempAlokasiZuru({...tempAlokasiZuru, [k]: parseFloat(e.target.value) || 0})} className="w-full font-extrabold text-sm text-slate-800 outline-none bg-transparent border-b border-dashed border-slate-200 focus:border-teal-500" />
-                            <span className="text-slate-400 font-bold text-[10px]">Kg</span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {["Berat", "Sedang", "Ringan"].map((asnaf) => (
+                        <div key={asnaf} className="bg-white p-2.5 rounded-xl border border-slate-200/60 flex items-center justify-between">
+                          <span className="text-xs text-slate-500 font-bold">{asnaf}</span>
+                          <div className="flex items-center gap-1">
+                            <input 
+                              type="number" step="0.5" min="0" 
+                              disabled={!canEditZuru}
+                              value={tempAlokasiZuru[asnaf] || 0} 
+                              onChange={(e) => setTempAlokasiZuru({...tempAlokasiZuru, [asnaf]: parseFloat(e.target.value) || 0})}
+                              className="w-12 text-center text-xs font-black outline-none border-b border-dashed border-slate-300 focus:border-teal-500 text-slate-800" 
+                            />
+                            <span className="text-[10px] text-slate-400 font-bold">Kg</span>
                           </div>
                         </div>
                       ))}
@@ -1967,24 +1926,24 @@ smsManager.sendTextMessage(
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
                         <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                          <th className="pb-2">Kriteria Mustahik Zuru'</th>
-                          <th className="pb-2 text-center">Jumlah Jiwa (Database)</th>
+                          <th className="pb-2">Kriteria Penerima Zuru'</th>
+                          <th className="pb-2 text-center">Jumlah Jiwa</th>
                           <th className="pb-2 text-center">Jatah / Jiwa (Committed)</th>
                           <th className="pb-2 text-right">Total Kebutuhan</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                      <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                         {rincianKebutuhanZuru.map((item) => (
                           <tr key={item.kategori}>
-                            <td className="py-2.5 text-slate-900 font-bold">Mustahik {item.kategori}</td>
-                            <td className="py-2.5 text-center text-slate-800">{item.jumlahJiwa} Orang</td>
+                            <td className="py-2.5 text-slate-900">Mustahik {item.kategori}</td>
+                            <td className="py-2.5 text-center">{item.jumlahJiwa} Orang</td>
                             <td className="py-2.5 text-center text-teal-700">{item.jatah} Kg</td>
-                            <td className="py-2.5 text-right font-bold text-slate-950">{item.totalButuh} Kg</td>
+                            <td className="py-2.5 text-right text-slate-900 font-black">{item.totalButuh.toFixed(1)} Kg</td>
                           </tr>
                         ))}
-                        <tr className="bg-slate-50 font-black text-slate-900">
-                          <td className="p-2.5" colSpan="3">Total Seluruh Kebutuhan Penyaluran</td>
-                          <td className="p-2.5 text-right text-teal-800">{totalButuru} Kg</td>
+                        <tr className="bg-slate-50 text-slate-900 font-extrabold">
+                          <td className="p-2.5" colSpan="3">Total Kebutuhan Penyaluran Zuru':</td>
+                          <td className="p-2.5 text-right text-teal-800 font-black">{totalButuru.toFixed(1)} Kg</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1994,16 +1953,16 @@ smsManager.sendTextMessage(
             </div>
           )}
 
-          {/* === TAB 6: DISTRIBUSI QURBAN === */}
+          {/* TAB 6: DISTRIBUSI QURBAN */}
           {activeTab === "qurban" && (
             <div className="space-y-6 animate-fadeIn">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-950">Pengelolaan & Distribusi Daging Qurban Terpadu</h2>
+                  <h2 className="text-xl font-bold text-slate-900">Pengelolaan & Distribusi Daging Qurban Terpadu</h2>
                   <p className="text-xs text-slate-500">Log timbangan berkala perolehan daging Sapi & Kambing secara terpisah untuk pemerataan pembagian jatah KK.</p>
                 </div>
-                <button onClick={handlePrintQurbanRT} className="bg-slate-800 hover:bg-[#111] text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-sm">
-                  <Download size={15} /> Download PDF Distribusi per RT
+                <button onClick={handlePrintQurbanRT} className="bg-slate-800 hover:bg-slate-955 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-sm">
+                  <Download size={15} /> Download PDF Distribusi per RT/RW
                 </button>
               </div>
 
@@ -2078,14 +2037,18 @@ smsManager.sendTextMessage(
                 <h3 className="font-extrabold text-slate-955 text-sm border-b border-slate-100 pb-2">Filter & Alokasi Jatah per KK Terpilih</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200/50">
                   <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1">Filter Wilayah Distribusi</label>
-                    <select value={filterWilayahQurban} onChange={(e) => setFilterWilayahQurban(e.target.value)} className="w-full text-xs border border-slate-200 p-2.5 rounded-xl outline-none font-bold text-slate-700">
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Filter Wilayah RT / RW Terpadu</label>
+                    <select 
+                      value={filterWilayahQurban} 
+                      onChange={(e) => setFilterWilayahQurban(e.target.value)} 
+                      className="w-full text-xs border border-slate-200 bg-white p-2.5 rounded-xl outline-none font-bold text-slate-700 focus:ring-1 focus:ring-emerald-500"
+                    >
                       <option value="Semua">Semua RT / RW (Seluruh Jamaah)</option>
-                      <option value="RT 01">Hanya RT 01</option>
-                      <option value="RT 02">Hanya RT 02</option>
-                      <option value="RT 03">Hanya RT 03</option>
-                      <option value="RW 01">Hanya RW 01</option>
-                      <option value="RW 02">Hanya RW 02</option>
+                      {WILAYAH_OPTIONS.map((wil) => (
+                        <option key={`${wil.rt}_${wil.rw}`} value={`${wil.rt}_${wil.rw}`}>
+                          {wil.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -2099,7 +2062,7 @@ smsManager.sendTextMessage(
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-                    <p className="text-[10px] text-slate-400 font-extrabold uppercase">Jumlah Penerima</p>
+                    <p className="text-[10px] text-slate-400 font-extrabold uppercase">Jumlah Penerima (Mengeluarkan Shohibul Qurban)</p>
                     <p className="text-xl font-black text-slate-900">{totalPenerimaKK} KK</p>
                   </div>
                   <div className="bg-rose-50/50 border border-rose-100 p-4 rounded-xl">
@@ -2147,7 +2110,7 @@ smsManager.sendTextMessage(
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl border border-slate-200/60">
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-slate-600">Nama Masjid (Akan mengganti semua teks sistem)</label>
-                      <input type="text" value={tempMasidName} onChange={(e) => setTempMasidName(e.target.value)} placeholder="Contoh: Masjid Al-Ikhlas" className="w-full text-sm border border-slate-200 bg-white p-2.5 rounded-xl outline-none font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
+                      <input type="text" value={tempMasjidName} onChange={(e) => setTempMasjidName(e.target.value)} placeholder="Contoh: Masjid Al-Ikhlas" className="w-full text-sm border border-slate-200 bg-white p-2.5 rounded-xl outline-none font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
                     </div>
 
                     <div className="space-y-1.5">
@@ -2163,7 +2126,7 @@ smsManager.sendTextMessage(
                         <div className="flex gap-2">
                           <input type="text" value={tempMasjidLogoUrl} onChange={(e) => setTempMasjidLogoUrl(e.target.value)} placeholder="Atau tempel tautan gambar disini (https://...)" className="flex-1 text-xs border border-slate-200 bg-white p-2.5 rounded-xl outline-none font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
                           {tempMasjidLogoUrl.trim() !== "" && (
-                            <button type="button" onClick={() => { setTempMasjidLogoUrl(""); addNotification("Pratinjau logo kustom dibersihkan."); }} className="bg-rose-50 text-rose-600 hover:bg-rose-100 px-3 rounded-xl border border-rose-200 text-xs font-bold">Reset</button>
+                            <button type="button" onClick={() => { setTempMasjidLogoUrl(""); addNotification("Pratinjau logo kustom dibersihkan."); }} className="bg-rose-50 text-rose-600 hover:bg-rose-100 px-3 rounded-xl border border-[#fca5a5] text-xs font-bold">Reset</button>
                           )}
                         </div>
                       </div>
@@ -2171,9 +2134,8 @@ smsManager.sendTextMessage(
                   </div>
 
                   <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
-                    <button type="button" onClick={() => { setTempMasidName(masjidName); setTempMasjidLogoUrl(masjidLogoUrl); addNotification("Perubahan identitas dibatalkan.", "warning"); }} className="px-4 py-2 border border-slate-200 text-slate-500 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
-                    {/* === PERBAIKAN UTAMA: LOGIKA SIMPAN LOGO DIPERBAIKI (setMasjidLogoUrl) === */}
-                    <button type="button" onClick={() => { if (!tempMasidName.trim()) { addNotification("Nama Masjid tidak boleh kosong!", "error"); return; } setMasjidName(tempMasidName); setMasjidLogoUrl(tempMasjidLogoUrl); addNotification("Identitas dan Logo Masjid berhasil diperbarui!", "success"); }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow shadow-emerald-600/10">Simpan Perubahan</button>
+                    <button type="button" onClick={() => { setTempMasjidName(masjidName); setTempMasjidLogoUrl(masjidLogoUrl); addNotification("Perubahan identitas dibatalkan.", "warning"); }} className="px-4 py-2 border border-slate-200 text-slate-500 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
+                    <button type="button" onClick={() => { if (!tempMasjidName.trim()) { addNotification("Nama Masjid tidak boleh kosong!", "error"); return; } setMasjidName(tempMasjidName); setTempMasjidLogoUrl(tempMasjidLogoUrl); addNotification("Identitas dan Logo Masjid berhasil diperbarui!", "success"); }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow shadow-emerald-600/10">Simpan Perubahan</button>
                   </div>
 
                   <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-center gap-3">
@@ -2182,7 +2144,7 @@ smsManager.sendTextMessage(
                     </div>
                     <div className="text-xs text-emerald-800 font-semibold">
                       <p className="font-bold">Pratinjau Identitas Sementara:</p>
-                      <p className="text-slate-500 mt-0.5">{tempMasidName} (Logo: {tempMasjidLogoUrl.trim() !== "" ? "Gambar Kustom Terdeteksi" : "Menggunakan Kubah Masjid Default"})</p>
+                      <p className="text-slate-500 mt-0.5">{tempMasjidName} (Logo: {tempMasjidLogoUrl.trim() !== "" ? "Gambar Kustom Terdeteksi" : "Menggunakan Kubah Masjid Default"})</p>
                     </div>
                   </div>
                 </div>
