@@ -84,6 +84,18 @@ function KubahMasjidIcon({ className }) {
   );
 }
 
+const getLocalStorageData = (key, fallbackValue) => {
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (error) {
+    console.error("Gagal membaca LocalStorage key: " + key, error);
+  }
+  return fallbackValue;
+};
+
 const getJadwalSholat = (kab) => {
   const hash = kab.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const offset = hash % 15;
@@ -260,11 +272,11 @@ export default function App() {
   });
 
   // State untuk status sinkronisasi Google Sheets
-  const [syncStatus, setSyncStatus] = useState("Local (Offline)");
+  const [syncStatus, setSyncStatus] = useState("Belum Sinkron");
   const [isSyncing, setIsSyncing] = useState(false);
 
   // =========================================================
-  // EFFECTS FOR SYNCHRONIZATION & STORAGE
+  // EFFECTS FOR STORAGE & TIMER
   // =========================================================
   useEffect(() => {
     localStorage.setItem("masjidName", masjidName);
@@ -333,104 +345,16 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // ====================================================================
-  // GOOGLE SHEETS SYNC CONTROLLER (INTEGRASI GRATIS)
-  // ====================================================================
-  
-  // Fungsi penarik data penuh dari Google Sheets saat aplikasi dibuka
-  const handleFetchFromGoogleSheets = async () => {
-    if (!GOOGLE_SHEETS_SCRIPT_URL) {
-      addNotification("Gagal Sinkronisasi: Script URL Google Sheets belum diisi pada app.jsx!", "error");
-      return;
-    }
-    setIsSyncing(true);
-    setSyncStatus("Mengunduh...");
-    try {
-      const response = await fetch(`${GOOGLE_SHEETS_SCRIPT_URL}?action=getData`);
-      const resData = await response.json();
-      if (resData && resData.status === "success") {
-        const payload = resData.data;
-        if (payload.masjidName) setMasjidName(payload.masjidName);
-        if (payload.masjidLogoUrl) setMasjidLogoUrl(payload.masjidLogoUrl);
-        if (payload.lokasi) setLokasi(payload.lokasi);
-        if (payload.petugasAbadi) setPetugasAbadi(payload.petugasAbadi);
-        if (payload.jamaahList) setJamaahList(payload.jamaahList);
-        if (payload.timbanganFitrah) setTimbanganFitrah(payload.timbanganFitrah);
-        if (payload.alokasiFitrah) setAlokasiFitrah(payload.alokasiFitrah);
-        if (payload.timbanganZuru) setTimbanganZuru(payload.timbanganZuru);
-        if (payload.alokasiZuru) setAlokasiZuru(payload.alokasiZuru);
-        if (payload.timbanganQurbanSapi) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
-        if (payload.timbanganQurbanKambing) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
-        if (payload.userDatabase) setUserDatabase(payload.userDatabase);
-        
-        setSyncStatus("Tersinkronisasi");
-        addNotification("Semua data berhasil disinkronisasi dari Google Sheets!", "success");
-      } else {
-        throw new Error("Respon Google Apps Script gagal");
-      }
-    } catch (err) {
-      console.error(err);
-      setSyncStatus("Gagal Sinkron");
-      addNotification("Koneksi gagal! Pastikan Apps Script Web App sudah di-deploy dengan benar.", "error");
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // Fungsi pengirim data terpadu ke Google Sheets secara berkala atau ketika diklik manual
-  const handlePushToGoogleSheets = async () => {
-    if (!GOOGLE_SHEETS_SCRIPT_URL) {
-      addNotification("Silakan atur URL Google Apps Script Anda di bagian atas app.jsx terlebih dahulu!", "error");
-      return;
-    }
-    setIsSyncing(true);
-    setSyncStatus("Mengunggah...");
-    
-    const payload = {
-      masjidName,
-      masjidLogoUrl,
-      lokasi,
-      petugasAbadi,
-      jamaahList,
-      timbanganFitrah,
-      alokasiFitrah,
-      timbanganZuru,
-      alokasiZuru,
-      timbanganQurbanSapi,
-      timbanganQurbanKambing,
-      userDatabase
-    };
-
-    try {
-      const response = await fetch(GOOGLE_SHEETS_SCRIPT_URL, {
-        method: "POST",
-        mode: "no-cors", // penting untuk bypass CORS Google Apps Script Redirect
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-      setSyncStatus("Tersinkronisasi");
-      addNotification("Perubahan berhasil dikirim & disimpan di Google Sheets Anda!", "success");
-    } catch (err) {
-      console.error(err);
-      setSyncStatus("Gagal Sinkron");
-      addNotification("Gagal mengunggah perubahan. Cek konfigurasi Google Sheets.", "error");
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // Lakukan auto-fetch saat pengurus berhasil login
-  useEffect(() => {
-    if (isLoggedIn && GOOGLE_SHEETS_SCRIPT_URL) {
-      handleFetchFromGoogleSheets();
-    }
-  }, [isLoggedIn]);
-
   // =========================================================
-  // CORE UTILITY FUNCTIONS
+  // 2. CORE UTILITY FUNCTIONS
   // =========================================================
+  const addNotification = (message, type = "success") => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 4000);
+  };
 
   const hasAccess = (tabName) => {
     return rolesConfig[currentRole]?.access?.includes(tabName) || false;
@@ -534,7 +458,7 @@ export default function App() {
   const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanKambing / totalPenerimaKK).toFixed(2) : 0;
 
   // =========================================================
-  // 3. EVENT HANDLERS
+  // 3. ACTION HANDLERS
   // =========================================================
   const handleSaveAlokasiFitrah = () => {
     setAlokasiFitrah(tempAlokasiFitrah);
@@ -602,6 +526,68 @@ export default function App() {
     setActiveNotificationSim(fridayData);
   };
 
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 1.5 * 1024 * 1024) {
+      addNotification("Ukuran berkas gambar terlalu besar! Maksimal adalah 1.5 MB.", "error");
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      addNotification("Harap pilih berkas gambar valid (PNG, JPG, atau JPEG)!", "error");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setTempMasjidLogoUrl(reader.result);
+      addNotification("Berkas logo sukses diunggah ke memori sementara. Tekan 'Simpan Perubahan'!", "info");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveNewIdentity = () => {
+    if (!tempMasjidName.trim()) {
+      addNotification("Nama Masjid tidak boleh kosong!", "error");
+      return;
+    }
+    setMasjidName(tempMasjidName);
+    setMasjidLogoUrl(tempMasjidLogoUrl);
+    addNotification("Identitas dan Logo Masjid berhasil diperbarui!", "success");
+  };
+
+  const handleCancelNewIdentity = () => {
+    setTempMasjidName(masjidName);
+    setTempMasjidLogoUrl(masjidLogoUrl);
+    addNotification("Perubahan identitas dibatalkan.", "warning");
+  };
+
+  const handleEditPasaran = (pasaranKey) => {
+    setEditingPasaran(pasaranKey);
+    setPasaranForm(petugasAbadi[pasaranKey]);
+  };
+
+  const handleSavePasaran = (e) => {
+    e.preventDefault();
+    setPetugasAbadi(prev => ({
+      ...prev,
+      [editingPasaran]: pasaranForm
+    }));
+    addNotification(`Template Petugas Jumat ${editingPasaran} berhasil diperbarui!`);
+    setEditingPasaran(null);
+  };
+
+  const handleSendSimMessage = () => {
+    setIsSendingMessage(true);
+    setTimeout(() => {
+      setIsSendingMessage(false);
+      addNotification(`Notifikasi ${notificationType} H-1 pengingat sukses terkirim ke ${activeNotificationSim.petugas.khatib} (${activeNotificationSim.petugas.telp})!`, "success");
+      setActiveNotificationSim(null);
+    }, 1500);
+  };
+
   const handleLogin = (e) => {
     e.preventDefault();
     const cleanUser = inputUsername.trim().toLowerCase();
@@ -626,9 +612,216 @@ export default function App() {
     }
   };
 
-  // =========================================================
-  // 5. PRINT PDF GENERATION
-  // =========================================================
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentUserUsername("");
+    setCurrentUserLabel("");
+    addNotification("Anda telah berhasil keluar dari sistem.", "warning");
+  };
+
+  const handleSaveJamaah = (e) => {
+    e.preventDefault();
+    if (!jamaahForm.nama.trim() || !jamaahForm.alamat.trim()) {
+      addNotification("Mohon lengkapi semua bidang wajib!", "error");
+      return;
+    }
+
+    if (editingJamaah) {
+      setJamaahList(prev => prev.map(item => item.id === editingJamaah.id ? { ...jamaahForm, id: item.id } : item));
+      addNotification("Data jamaah berhasil diperbarui");
+    } else {
+      const newJamaah = {
+        ...jamaahForm,
+        id: Date.now().toString()
+      };
+      setJamaahList(prev => [...prev, newJamaah]);
+      addNotification("Jamaah baru berhasil ditambahkan");
+    }
+    setShowJamaahModal(false);
+    setEditingJamaah(null);
+    setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima" });
+  };
+
+  const handleEditJamaah = (jamaah) => {
+    setEditingJamaah(jamaah);
+    setJamaahForm({
+      ...jamaah,
+      qurban: jamaah.qurban || "Penerima"
+    });
+    setShowJamaahModal(true);
+  };
+
+  const handleDeleteJamaah = (id) => {
+    if (window.confirm("Apakah Anda yakin ingin menghapus data warga ini?")) {
+      setJamaahList(prev => prev.filter(item => item.id !== id));
+      addNotification("Data warga berhasil dihapus", "warning");
+    }
+  };
+
+  const handleCreateAccount = (e) => {
+    e.preventDefault();
+    const cleanUsername = newAccUsername.trim().toLowerCase();
+    
+    if (!cleanUsername || !newAccPassword.trim() || !newAccLabel.trim()) {
+      addNotification("Mohon lengkapi semua bidang isian pembuatan akun!", "error");
+      return;
+    }
+
+    if (userDatabase[cleanUsername]) {
+      addNotification("Username tersebut sudah terdaftar! Gunakan username lain.", "error");
+      return;
+    }
+
+    setUserDatabase(prev => ({
+      ...prev,
+      [cleanUsername]: {
+        password: newAccPassword,
+        role: newAccRole,
+        label: newAccLabel
+      }
+    }));
+
+    addNotification(`Akun baru dengan peran "${newAccRole}" berhasil dibuat!`);
+    
+    setNewAccUsername("");
+    setNewAccPassword("");
+    setNewAccLabel("");
+    setNewAccRole("Jamaah");
+  };
+
+  const handleDeleteAccount = (usernameKey) => {
+    if (usernameKey === "admin") {
+      addNotification("Akun admin utama bawaan tidak boleh dihapus demi keamanan!", "error");
+      return;
+    }
+    if (usernameKey === currentUserUsername) {
+      addNotification("Anda tidak dapat menghapus akun yang sedang Anda gunakan saat ini!", "error");
+      return;
+    }
+    if (window.confirm(`Yakin ingin menghapus akun pengguna "${usernameKey}"?`)) {
+      setUserDatabase(prev => {
+        const copy = { ...prev };
+        delete copy[usernameKey];
+        return copy;
+      });
+      addNotification(`Akun "${usernameKey}" berhasil dihapus.`, "warning");
+    }
+  };
+
+  const handleSaveNewPassword = (e) => {
+    e.preventDefault();
+    if (!newPasswordValue.trim()) {
+      addNotification("Password baru tidak boleh kosong!", "error");
+      return;
+    }
+
+    setUserDatabase(prev => ({
+      ...prev,
+      [editingAccountPassword]: {
+        ...prev[editingAccountPassword],
+        password: newPasswordValue.trim()
+      }
+    }));
+
+    addNotification(`Password untuk akun "${editingAccountPassword}" berhasil diganti!`, "success");
+    setEditingAccountPassword(null);
+    setNewPasswordValue("");
+  };
+
+  // ====================================================================
+  // GOOGLE SHEETS SYNC CONTROLLER (INTEGRASI GRATIS)
+  // ====================================================================
+  
+  // Fungsi penarik data penuh dari Google Sheets saat aplikasi dibuka
+  const handleFetchFromGoogleSheets = async () => {
+    if (!GOOGLE_SHEETS_SCRIPT_URL) {
+      addNotification("Gagal Sinkronisasi: Script URL Google Sheets belum diisi pada app.jsx!", "error");
+      return;
+    }
+    setIsSyncing(true);
+    setSyncStatus("Mengunduh...");
+    try {
+      const response = await fetch(`${GOOGLE_SHEETS_SCRIPT_URL}?action=getData`);
+      const resData = await response.json();
+      if (resData && resData.status === "success") {
+        const payload = resData.data;
+        if (payload.masjidName) setMasjidName(payload.masjidName);
+        if (payload.masjidLogoUrl) setMasjidLogoUrl(payload.masjidLogoUrl);
+        if (payload.lokasi) setLokasi(payload.lokasi);
+        if (payload.petugasAbadi) setPetugasAbadi(payload.petugasAbadi);
+        if (payload.jamaahList) setJamaahList(payload.jamaahList);
+        if (payload.timbanganFitrah) setTimbanganFitrah(payload.timbanganFitrah);
+        if (payload.alokasiFitrah) setAlokasiFitrah(payload.alokasiFitrah);
+        if (payload.timbanganZuru) setTimbanganZuru(payload.timbanganZuru);
+        if (payload.alokasiZuru) setAlokasiZuru(payload.alokasiZuru);
+        if (payload.timbanganQurbanSapi) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
+        if (payload.timbanganQurbanKambing) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
+        if (payload.userDatabase) setUserDatabase(payload.userDatabase);
+        
+        setSyncStatus("Tersinkronisasi");
+        addNotification("Semua data berhasil disinkronisasi dari Google Sheets!", "success");
+      } else {
+        throw new Error("Respon Google Apps Script gagal");
+      }
+    } catch (err) {
+      console.error(err);
+      setSyncStatus("Gagal Sinkron");
+      addNotification("Koneksi gagal! Pastikan Apps Script Web App sudah di-deploy dengan benar.", "error");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Fungsi pengirim data terpadu ke Google Sheets secara berkala atau ketika diklik manual
+  const handlePushToGoogleSheets = async () => {
+    if (!GOOGLE_SHEETS_SCRIPT_URL) {
+      addNotification("Silakan atur URL Google Apps Script Anda di bagian atas app.jsx terlebih dahulu!", "error");
+      return;
+    }
+    setIsSyncing(true);
+    setSyncStatus("Mengunggah...");
+    
+    const payload = {
+      masjidName,
+      masjidLogoUrl,
+      lokasi,
+      petugasAbadi,
+      jamaahList,
+      timbanganFitrah,
+      alokasiFitrah,
+      timbanganZuru,
+      alokasiZuru,
+      timbanganQurbanSapi,
+      timbanganQurbanKambing,
+      userDatabase
+    };
+
+    try {
+      const response = await fetch(GOOGLE_SHEETS_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors", // penting untuk bypass CORS Google Apps Script Redirect
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      setSyncStatus("Tersinkronisasi");
+      addNotification("Perubahan berhasil dikirim & disimpan di Google Sheets Anda!", "success");
+    } catch (err) {
+      console.error(err);
+      setSyncStatus("Gagal Sinkron");
+      addNotification("Gagal mengunggah perubahan. Cek konfigurasi Google Sheets.", "error");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Lakukan auto-fetch saat pengurus berhasil login
+  useEffect(() => {
+    if (isLoggedIn && GOOGLE_SHEETS_SCRIPT_URL) {
+      handleFetchFromGoogleSheets();
+    }
+  }, [isLoggedIn]);
 
   const handlePrintSelectedReport = (reportType) => {
     const printWindow = window.open('', '_blank');
@@ -962,9 +1155,10 @@ export default function App() {
   };
 
   // =========================================================
-  // 6. LOGIN FORM RENDERING (EVALUATED AT BOTTOM OF APP)
+  // 4. VIEW RENDERING & CONTROLLER (EVALUATED AT BOTTOM OF APP)
   // =========================================================
   if (!isLoggedIn) {
+    // Jalur Render Halaman Login Bersih
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans antialiased">
         
@@ -1011,7 +1205,7 @@ export default function App() {
                   placeholder="Masukkan username Anda"
                   value={inputUsername}
                   onChange={(e) => setInputUsername(e.target.value)}
-                  className="w-full text-sm border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold transition-all"
+                  className="w-full text-sm border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold transition-all text-slate-800"
                 />
               </div>
             </div>
@@ -1028,7 +1222,7 @@ export default function App() {
                   placeholder="Masukkan kata sandi Anda"
                   value={inputPassword}
                   onChange={(e) => setInputPassword(e.target.value)}
-                  className="w-full text-sm border border-slate-200 bg-slate-50/50 pl-10 pr-10 py-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold transition-all"
+                  className="w-full text-sm border border-slate-200 bg-slate-50/50 pl-10 pr-10 py-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold transition-all text-slate-800"
                 />
                 <button
                   type="button"
@@ -1086,34 +1280,12 @@ export default function App() {
           </div>
         </div>
 
-        {/* Panel Notifikasi Status Sinkronisasi Google Sheets */}
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={handlePushToGoogleSheets}
-            disabled={isSyncing}
-            className={`text-xs px-3.5 py-2.5 rounded-xl font-bold flex items-center gap-1.5 transition-all shadow-sm ${
-              isSyncing ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700 text-white"
-            }`}
-          >
-            <Download size={14} /> {isSyncing ? "Menyinkronkan..." : "Simpan di Cloud (Sheets)"}
-          </button>
-          <div className="hidden lg:flex items-center gap-1.5 bg-slate-100 border border-slate-200/60 px-3.5 py-2.5 rounded-xl">
-            <div className={`w-2 h-2 rounded-full ${syncStatus === 'Tersinkronisasi' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
-            <span className="text-[10px] font-black text-slate-600 uppercase">Database: {syncStatus}</span>
-          </div>
-        </div>
-
         <div className="flex items-center gap-4">
           <div className="bg-slate-100 px-4 py-2 rounded-2xl border border-slate-200/60 text-slate-700 text-xs font-semibold flex flex-col items-end">
             <div className="flex items-center gap-1.5">
               <Clock className="text-emerald-600 w-4 h-4" />
               <span className="font-mono text-sm tracking-widest font-black">{currentTime.toLocaleTimeString()}</span>
             </div>
-            {upcomingFridays.length > 0 && (
-              <span className="text-[9px] text-slate-500 font-bold mt-0.5 uppercase tracking-wide">
-                Khatib: <strong className="text-emerald-700">{upcomingFridays[0].petugas.khatib}</strong> ({upcomingFridays[0].pasaran})
-              </span>
-            )}
           </div>
 
           <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 pl-3 pr-2 py-1.5 rounded-2xl">
@@ -1195,7 +1367,7 @@ export default function App() {
       )}
 
       {/* === CONTENT AREA UTAMA === */}
-      <div className="flex-1 flex flex-col md:flex-row">
+      <div className="flex-1 flex flex-col md:flex-row font-sans">
         <main className="flex-1 p-6 overflow-y-auto max-w-7xl mx-auto w-full">
           
           {/* TAB 1: DASHBOARD UTAMA */}
@@ -1662,7 +1834,7 @@ smsManager.sendTextMessage(
                             <td className="p-4 text-xs font-medium text-slate-500">{item.alamat}</td>
                             <td className="p-4 text-center text-slate-900">{item.anggota} Jiwa</td>
                             <td className="p-4">
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${item.ekonomi === 'Mampu' ? 'bg-emerald-50 text-emerald-700' : 'item.ekonomi' === 'Kurang Mampu' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'}`}>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${item.ekonomi === 'Mampu' ? 'bg-emerald-50 text-emerald-700' : item.ekonomi === 'Kurang Mampu' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'}`}>
                                 {item.ekonomi}
                               </span>
                             </td>
@@ -1696,6 +1868,7 @@ smsManager.sendTextMessage(
                       <h3 className="font-extrabold text-slate-900">{editingJamaah ? "Ubah Data Warga" : "Tambah Warga Baru"}</h3>
                       <button onClick={() => setShowJamaahModal(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
                     </div>
+                    {/* === FIX: Mengubah handleSaveSaveJamaah = handleSaveJamaah menjadi handleSaveJamaah murni === */}
                     <form onSubmit={handleSaveJamaah} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
                       
                       <div className="grid grid-cols-1 gap-4">
@@ -1730,7 +1903,7 @@ smsManager.sendTextMessage(
 
                         <div>
                           <label className="block text-xs font-bold text-slate-600 mb-1">Alamat Rumah *</label>
-                          <textarea placeholder="Alamat lengkap warga" required rows="2" value={jamaahForm.alamat} onChange={(e) => setJamaahForm({...jamaahForm, alamat: e.target.value})} className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold resize-none text-slate-850" />
+                          <textarea placeholder="Alamat lengkap warga" required rows="2" value={jamaahForm.alamat} onChange={(e) => setJamaahForm({...jamaahForm, alamat: e.target.value})} className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold resize-none text-slate-855" />
                         </div>
 
                         <div className="border-t border-slate-100 pt-3">
@@ -1748,7 +1921,11 @@ smsManager.sendTextMessage(
                         <div className="border-t border-slate-100 pt-3 grid grid-cols-2 gap-4">
                           <div>
                             <label className="block text-xs font-bold text-emerald-700 mb-1">Klasifikasi Mustahik Fitrah</label>
-                            <select value={jamaahForm.fitrah} onChange={(e) => setMasjidName(e.target.value)} className="w-full text-xs border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-emerald-800">
+                            <select 
+                              value={jamaahForm.fitrah} 
+                              onChange={(e) => setJamaahForm({...jamaahForm, fitrah: e.target.value})} 
+                              className="w-full text-xs border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-emerald-800"
+                            >
                               <option value="Muzakki">Muzakki (Bukan Penerima)</option>
                               <option value="Berat">Mustahik Berat</option>
                               <option value="Sedang">Mustahik Sedang</option>
@@ -1757,7 +1934,11 @@ smsManager.sendTextMessage(
                           </div>
                           <div>
                             <label className="block text-xs font-bold text-[#0d9488] mb-1">Klasifikasi Mustahik Zuru'</label>
-                            <select value={jamaahForm.zuru} onChange={(e) => setMasjidName(e.target.value)} className="w-full text-xs border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-teal-800">
+                            <select 
+                              value={jamaahForm.zuru} 
+                              onChange={(e) => setJamaahForm({...jamaahForm, zuru: e.target.value})} 
+                              className="w-full text-xs border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-teal-800"
+                            >
                               <option value="Bukan Mustahik">Bukan Mustahik Zuru'</option>
                               <option value="Berat">Mustahik Berat</option>
                               <option value="Sedang">Mustahik Sedang</option>
@@ -1822,7 +2003,7 @@ smsManager.sendTextMessage(
                       <button onClick={() => addTimbangan('fitrah')} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0">Tambah</button>
                     </div>
                   ) : (
-                    <p className="text-[10px] text-rose-600 bg-rose-50 border border-rose-100 p-2.5 rounded-lg font-bold">Peran Anda saat ini tidak memiliki otoritas mengubah data timbangan.</p>
+                    <p className="text-[11px] text-rose-500 bg-rose-50 border border-rose-100 p-2.5 rounded-lg font-bold">Peran Anda saat ini tidak memiliki otoritas mengubah data timbangan.</p>
                   )}
 
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
@@ -1917,7 +2098,7 @@ smsManager.sendTextMessage(
             <div className="space-y-6 animate-fadeIn">
               <div className="flex justify-between items-center border-b border-slate-200 pb-3">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">Modul Pengelolaan Zakat Zuru' (Hasil Pertanian)</h2>
+                  <h2 className="text-xl font-bold text-slate-950">Modul Pengelolaan Zakat Zuru' (Hasil Pertanian)</h2>
                   <p className="text-xs text-slate-500">Kalkulasi timbangan gabah atau beras hasil zakat pertanian jemaah secara akurat.</p>
                 </div>
               </div>
@@ -1937,15 +2118,15 @@ smsManager.sendTextMessage(
                         onKeyDown={(e) => e.key === 'Enter' && addTimbangan('zuru')} 
                         className="flex-1 text-xs border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-1 focus:ring-teal-500" 
                       />
-                      <button onClick={() => addTimbangan('zuru')} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0">Tambah</button>
+                      <button onClick={() => addTimbangan('zuru')} className="bg-teal-600 hover:bg-teal-700 text-white px-4 rounded-xl text-xs font-bold transition-all shrink-0">Tambah</button>
                     </div>
                   ) : (
-                    <p className="text-[10px] text-rose-600 bg-rose-50 border border-rose-100 p-2.5 rounded-lg font-bold">Peran Anda tidak diizinkan mengubah timbangan zakat zuru'.</p>
+                    <p className="text-[11px] text-rose-600 bg-rose-50 border border-rose-100 p-2.5 rounded-lg font-bold">Peran Anda tidak diizinkan mengubah timbangan zakat zuru'.</p>
                   )}
 
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                     {timbanganZuru.map((berat, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 border border-slate-200/50 rounded-xl font-semibold">
+                      <div key={idx} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 p-2.5 rounded-xl text-sm font-semibold">
                         <span className="text-slate-500">Timbangan #{idx + 1}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-slate-900 font-bold font-mono">{berat} Kg</span>
@@ -2094,8 +2275,11 @@ smsManager.sendTextMessage(
                   <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 font-semibold text-slate-700">
                     {timbanganQurbanKambing.map((berat, index) => (
                       <div key={index} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 px-3 py-2 rounded-xl text-xs font-semibold">
-                        <span className="text-slate-955 font-extrabold">{berat} Kg</span>
-                        {canEditQurban && ( <button onClick={() => deleteTimbangan('qurbanKambing', index)} className="text-rose-500 p-1 hover:bg-rose-50 rounded-lg"><Trash2 size={12} /></button> )}
+                        <span className="text-slate-400">Timbangan Kambing #{index + 1}</span>
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-slate-955 font-extrabold">{berat} Kg</span>
+                          {canEditQurban && ( <button onClick={() => deleteTimbangan('qurbanKambing', index)} className="text-rose-500 p-1 hover:bg-rose-50 rounded-lg"><Trash2 size={12} /></button> )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2174,6 +2358,59 @@ smsManager.sendTextMessage(
           {/* === TAB 7: HAK AKSES, AKUN & IDENTITAS (RBAC) === */}
           {activeTab === "rbac" && (
             <div className="space-y-6 animate-fadeIn">
+              
+              {/* === PANEL SINKRONISASI GOOGLE SHEETS CLOUD DI TAB RBAC === */}
+              {currentRole === "Admin" && (
+                <div className="bg-white border-2 border-emerald-100 p-6 rounded-3xl shadow-sm space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Download className="text-emerald-600 w-5 h-5 animate-pulse" />
+                      <div>
+                        <h3 className="font-black text-slate-900 text-sm">Pusat Sinkronisasi Google Sheets Cloud</h3>
+                        <p className="text-xs text-slate-500">Koneksikan dan simpan seluruh database masjid luring Anda ke Google Sheets secara gratis.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200/60 px-3 py-1.5 rounded-xl">
+                      <div className={`w-2 h-2 rounded-full ${syncStatus === 'Tersinkronisasi' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                      <span className="text-[10px] font-black text-slate-600 uppercase">Status: {syncStatus}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/50 space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-black text-slate-600">Google Apps Script Web App URL:</label>
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="Belum ada URL script yang dikonfigurasi. Edit file app.jsx untuk mengunci URL." 
+                          value={GOOGLE_SHEETS_SCRIPT_URL || "Silakan konfigurasi URL Apps Script Anda di bagian atas app.jsx"} 
+                          disabled 
+                          className="flex-1 text-xs border border-slate-200 bg-slate-100 p-3 rounded-xl outline-none font-mono text-slate-500" 
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-medium">Sistem penyimpanan awan aman dan luring terenkripsi otomatis di Google Sheets. Baca tab panduan setup disamping untuk instruksi lengkapnya.</p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2.5 pt-2">
+                      <button 
+                        onClick={handleFetchFromGoogleSheets}
+                        disabled={isSyncing}
+                        className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                      >
+                        <Download size={14} /> Tarik Data Dari Sheets (Fetch)
+                      </button>
+                      <button 
+                        onClick={handlePushToGoogleSheets}
+                        disabled={isSyncing}
+                        className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                      >
+                        <Upload size={14} /> Unggah / Simpan Ke Sheets (Commit)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {currentRole === "Admin" && (
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-4">
                   <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
@@ -2198,7 +2435,7 @@ smsManager.sendTextMessage(
                           {tempMasjidLogoUrl && <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">Gambar Siap Simpan</span>}
                         </div>
                         <div className="flex gap-2">
-                          <input type="text" value={tempMasidName} onChange={(e) => setTempMasidName(e.target.value)} placeholder="Atau tempel tautan gambar disini (https://...)" className="flex-1 text-xs border border-slate-200 bg-white p-2.5 rounded-xl outline-none font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
+                          <input type="text" value={tempMasjidLogoUrl} onChange={(e) => setTempMasjidLogoUrl(e.target.value)} placeholder="Atau tempel tautan gambar disini (https://...)" className="flex-1 text-xs border border-slate-200 bg-white p-2.5 rounded-xl outline-none font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
                           {tempMasjidLogoUrl.trim() !== "" && (
                             <button type="button" onClick={() => { setTempMasjidLogoUrl(""); addNotification("Pratinjau logo kustom dibersihkan."); }} className="bg-rose-50 text-rose-600 hover:bg-rose-100 px-3 rounded-xl border border-rose-200 text-xs font-bold">Reset</button>
                           )}
