@@ -150,12 +150,13 @@ const getJumlahJiwaPerKategoriZuru = (jamaahList, kategori) => {
 
 export default function App() {
   // =========================================================
-  // 1. STATE MANAGEMENT & SYSTEM HOOKS
+  // 1. USESTATES DEKLARASI (MEMAKAI LOCALSTORAGE)
   // =========================================================
   const [masjidName, setMasjidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Ikhlas Bakalan"));
   const [masjidLogoUrl, setMasjidLogoUrl] = useState(() => getLocalStorageData("masjidLogoUrl", ""));
 
   const [tempMasjidName, setTempMasjidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Ikhlas Bakalan"));
+  // === FIX: Memperbaiki penulisan syntax salah arrow function ganda pada useState logo sementara ===
   const [tempMasjidLogoUrl, setTempMasjidLogoUrl] = useState(() => getLocalStorageData("masjidLogoUrl", ""));
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -233,68 +234,6 @@ export default function App() {
   const [jamaahForm, setJamaahForm] = useState({
     nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima"
   });
-
-  // =========================================================
-  // EFFECTS FOR STORAGE & TIMER
-  // =========================================================
-  useEffect(() => {
-    localStorage.setItem("masjidName", JSON.stringify(masjidName));
-  }, [masjidName]);
-
-  useEffect(() => {
-    localStorage.setItem("masjidLogoUrl", JSON.stringify(masjidLogoUrl));
-  }, [masjidLogoUrl]);
-
-  useEffect(() => {
-    localStorage.setItem("userDatabase", JSON.stringify(userDatabase));
-  }, [userDatabase]);
-
-  useEffect(() => {
-    localStorage.setItem("rolesConfig", JSON.stringify(rolesConfig));
-  }, [rolesConfig]);
-
-  useEffect(() => {
-    localStorage.setItem("lokasi", JSON.stringify(lokasi));
-  }, [lokasi]);
-
-  useEffect(() => {
-    localStorage.setItem("petugasAbadi", JSON.stringify(petugasAbadi));
-  }, [petugasAbadi]);
-
-  useEffect(() => {
-    localStorage.setItem("jamaahList", JSON.stringify(jamaahList));
-  }, [jamaahList]);
-
-  useEffect(() => {
-    localStorage.setItem("timbanganFitrah", JSON.stringify(timbanganFitrah));
-  }, [timbanganFitrah]);
-
-  useEffect(() => {
-    localStorage.setItem("alokasiFitrah", JSON.stringify(alokasiFitrah));
-  }, [alokasiFitrah]);
-
-  useEffect(() => {
-    localStorage.setItem("timbanganZuru", JSON.stringify(timbanganZuru));
-  }, [timbanganZuru]);
-
-  useEffect(() => {
-    localStorage.setItem("alokasiZuru", JSON.stringify(alokasiZuru));
-  }, [alokasiZuru]);
-
-  useEffect(() => {
-    localStorage.setItem("timbanganQurbanSapi", JSON.stringify(timbanganQurbanSapi));
-  }, [timbanganQurbanSapi]);
-
-  useEffect(() => {
-    localStorage.setItem("timbanganQurbanKambing", JSON.stringify(timbanganQurbanKambing));
-  }, [timbanganQurbanKambing]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // =========================================================
   // 2. CORE UTILITY FUNCTIONS
@@ -385,6 +324,7 @@ export default function App() {
 
   const getWargaPenerimaQurban = () => {
     return jamaahList.filter(warga => {
+      // === PENYARINGAN UTAMA: SAHIBUL QURBAN TIDAK MASUK DAFTAR PENERIMA ===
       if (warga.qurban === "Sahibul Qurban") {
         return false;
       }
@@ -410,6 +350,94 @@ export default function App() {
   // =========================================================
   // 3. EVENT HANDLERS
   // =========================================================
+  const handleSaveAlokasiFitrah = () => {
+    setAlokasiFitrah(tempAlokasiFitrah);
+    addNotification("Rencana jatah penyaluran Zakat Fitrah (Beras) berhasil diperbarui & disimpan!", "success");
+  };
+
+  const handleSaveAlokasiZuru = () => {
+    setAlokasiZuru(tempAlokasiZuru);
+    addNotification("Rencana jatah penyaluran Zakat Zuru' berhasil diperbarui & disimpan!", "success");
+  };
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 1.5 * 1024 * 1024) {
+      addNotification("Ukuran berkas gambar terlalu besar! Maksimal adalah 1.5 MB.", "error");
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      addNotification("Harap pilih berkas gambar valid (PNG, JPG, atau JPEG)!", "error");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setTempMasjidLogoUrl(reader.result);
+      addNotification("Berkas logo sukses diunggah ke memori sementara. Tekan 'Simpan Perubahan'!", "info");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const addTimbangan = (tipe) => {
+    if (tipe === 'fitrah') {
+      const val = parseFloat(tempBeratFitrah);
+      if (isNaN(val) || val <= 0) return;
+      setTimbanganFitrah(prev => [...prev, val]);
+      setTempBeratFitrah("");
+      addNotification("Timbangan Zakat Fitrah berhasil ditambahkan");
+    } else if (tipe === 'zuru') {
+      const val = parseFloat(tempBeratZuru);
+      if (isNaN(val) || val <= 0) return;
+      setTimbanganZuru(prev => [...prev, val]);
+      setTempBeratZuru("");
+      addNotification("Timbangan Zuru' berhasil ditambahkan");
+    } else if (tipe === 'qurbanSapi') {
+      const val = parseFloat(tempBeratQurbanSapi);
+      if (isNaN(val) || val <= 0) return;
+      setTimbanganQurbanSapi(prev => [...prev, val]);
+      setTempBeratQurbanSapi("");
+      addNotification("Timbangan perolehan daging Sapi berhasil ditambahkan");
+    } else if (tipe === 'qurbanKambing') {
+      const val = parseFloat(tempBeratQurbanKambing);
+      if (isNaN(val) || val <= 0) return;
+      setTimbanganQurbanKambing(prev => [...prev, val]);
+      setTempBeratQurbanKambing("");
+      addNotification("Timbangan perolehan daging Kambing berhasil ditambahkan");
+    }
+  };
+
+  const deleteTimbangan = (tipe, index) => {
+    if (tipe === 'fitrah') {
+      setTimbanganFitrah(prev => prev.filter((_, i) => i !== index));
+      addNotification("Timbangan Fitrah dihapus", "warning");
+    } else if (tipe === 'zuru') {
+      setTimbanganZuru(prev => prev.filter((_, i) => i !== index));
+      addNotification("Timbangan Zuru' diurungkan", "warning");
+    } else if (tipe === 'qurbanSapi') {
+      setTimbanganQurbanSapi(prev => prev.filter((_, i) => i !== index));
+      addNotification("Timbangan daging sapi berhasil dihapus", "warning");
+    } else if (tipe === 'qurbanKambing') {
+      setTimbanganQurbanKambing(prev => prev.filter((_, i) => i !== index));
+      addNotification("Timbangan daging kambing berhasil dihapus", "warning");
+    }
+  };
+
+  const handlePrepareNotification = (fridayData, type) => {
+    setNotificationType(type);
+    let msg = "";
+    if (type === "WA") {
+      msg = `Assalamualaikum Wr. Wb. Yth. *${fridayData.petugas.khatib}*, menginfokan bahwa besok (hari Jumat ${fridayData.pasaran}, tanggal ${fridayData.formattedDate.replace(/^Jumat, /, "")}) adalah jadwal bapak bertugas sebagai *Khatib Sholat Jumat*. Mohon hadir 15 menit sebelum adzan berkumandang. Terima kasih. Wassalamualaikum Wr. Wb.`;
+    } else {
+      msg = `[MASJID AL-IKHLAS] Yth ${fridayData.petugas.khatib}, mengingatkan kembali besok Jumat ${fridayData.pasaran} jadwal bapak bertugas Khatib & Imam di masjid. Harap hadir 15 menit sebelum adzan. Terima kasih.`;
+    }
+    setSimulatedMessageText(msg);
+    setActiveNotificationSim(fridayData);
+  };
+
   const handleLogin = (e) => {
     e.preventDefault();
     const cleanUser = inputUsername.trim().toLowerCase();
@@ -466,7 +494,7 @@ export default function App() {
 
   const handleEditJamaah = (jamaah) => {
     setEditingJamaah(jamaah);
-    setJamaahForm({
+    setJamaForm({
       ...jamaah,
       qurban: jamaah.qurban || "Penerima"
     });
@@ -548,6 +576,22 @@ export default function App() {
     addNotification(`Password untuk akun "${editingAccountPassword}" berhasil diganti!`, "success");
     setEditingAccountPassword(null);
     setNewPasswordValue("");
+  };
+
+  const handleSaveNewIdentity = () => {
+    if (!tempMasjidName.trim()) {
+      addNotification("Nama Masjid tidak boleh kosong!", "error");
+      return;
+    }
+    setMasjidName(tempMasjidName);
+    setMasjidLogoUrl(tempMasjidLogoUrl);
+    addNotification("Identitas dan Logo Masjid berhasil diperbarui!", "success");
+  };
+
+  const handleCancelNewIdentity = () => {
+    setTempMasjidName(masjidName);
+    setTempMasjidLogoUrl(masjidLogoUrl);
+    addNotification("Perubahan identitas dibatalkan.", "warning");
   };
 
   const handleEditPasaran = (pasaranKey) => {
@@ -852,7 +896,7 @@ export default function App() {
                     <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
                       <th class="p-2 border border-slate-300 w-1/12 text-center">No</th>
                       <th class="p-2 border border-slate-300 w-3/12">Nama Kepala Keluarga</th>
-                      <th class="p-2 border border-slate-300 w-2/12 text-center">RT / RW</th>
+                      <th class="p-2 border border-slate-300 font-bold text-center">RT / RW</th>
                       <th class="p-2 border border-slate-300 text-slate-500">Alamat</th>
                       <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Sapi</th>
                       <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Kambing</th>
@@ -906,7 +950,7 @@ export default function App() {
   };
 
   // =========================================================
-  // 4. VIEW RENDERING & CONTROLLER (EVALUATED AT BOTTOM OF APP)
+  // 6. LOGIN FORM RENDERING (EVALUATED AT BOTTOM OF APP)
   // =========================================================
   if (!isLoggedIn) {
     return (
@@ -1518,7 +1562,7 @@ smsManager.sendTextMessage(
 
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-950">Database Jemaah Berbasis RT/RW</h2>
+                  <h2 className="text-xl font-bold text-slate-955">Database Jemaah Berbasis RT/RW</h2>
                   <p className="text-xs text-slate-500">Sistem database jemaah kustom yang dibatasi pada sebaran **RT & RW** unik di Desa Bakalan.</p>
                 </div>
                 {canEditJamaah && (
@@ -1653,7 +1697,7 @@ smsManager.sendTextMessage(
 
                         <div>
                           <label className="block text-xs font-bold text-slate-600 mb-1">Alamat Rumah *</label>
-                          <textarea placeholder="Alamat lengkap warga" required rows="2" value={jamaahForm.alamat} onChange={(e) => setJamaahForm({...jamaahForm, alamat: e.target.value})} className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold resize-none text-slate-855" />
+                          <textarea placeholder="Alamat lengkap warga" required rows="2" value={jamaahForm.alamat} onChange={(e) => setJamaahForm({...jamaahForm, alamat: e.target.value})} className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold resize-none text-slate-850" />
                         </div>
 
                         <div className="border-t border-slate-100 pt-3">
@@ -1750,8 +1794,8 @@ smsManager.sendTextMessage(
 
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                     {timbanganFitrah.map((berat, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 border border-slate-200/50 rounded-xl font-semibold">
-                        <span className="text-slate-400">Timbangan #{idx + 1}</span>
+                      <div key={idx} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 p-2.5 rounded-xl text-sm font-semibold">
+                        <span className="text-slate-500">Timbangan #{idx + 1}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-slate-900 font-bold font-mono">{berat} Kg</span>
                           {canEditFitrah && (
@@ -1781,7 +1825,7 @@ smsManager.sendTextMessage(
                     <div className="flex justify-between items-center flex-wrap gap-2">
                       <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wide">Konstanta Jatah Jemaah (Beras / Jiwa)</p>
                       {canEditFitrah && (
-                        <button onClick={handleSaveAlokasiFitrah} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"><Check size={12} />Simpan Parameter</button>
+                        <button onClick={handleSaveAlokasiFitrah} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"><Check size={12} />Simpan Parameter</button>
                       )}
                     </div>
 
@@ -1869,7 +1913,7 @@ smsManager.sendTextMessage(
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                     {timbanganZuru.map((berat, idx) => (
                       <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 border border-slate-200/50 rounded-xl font-semibold">
-                        <span className="text-slate-400">Timbangan #{idx + 1}</span>
+                        <span className="text-slate-500">Timbangan #{idx + 1}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-slate-900 font-bold font-mono">{berat} Kg</span>
                           {canEditZuru && (
@@ -1899,7 +1943,7 @@ smsManager.sendTextMessage(
                     <div className="flex justify-between items-center flex-wrap gap-2">
                       <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wide">Konstanta Jatah Jemaah (Zuru' / Jiwa)</p>
                       {canEditZuru && (
-                        <button onClick={handleSaveAlokasiZuru} className="bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"><Check size={12} />Simpan Parameter</button>
+                        <button onClick={handleSaveAlokasiZuru} className="bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"><Check size={12} />Simpan Parameter</button>
                       )}
                     </div>
 
@@ -1942,7 +1986,7 @@ smsManager.sendTextMessage(
                           </tr>
                         ))}
                         <tr className="bg-slate-50 text-slate-900 font-extrabold">
-                          <td className="p-2.5" colSpan="3">Total Kebutuhan Penyaluran Zuru':</td>
+                          <td className="p-2.5" colSpan="3">Total Kebutuhan Penyaluran Zuru:</td>
                           <td className="p-2.5 text-right text-teal-800 font-black">{totalButuru.toFixed(1)} Kg</td>
                         </tr>
                       </tbody>
@@ -1977,7 +2021,7 @@ smsManager.sendTextMessage(
                   </div>
                   {canEditQurban ? (
                     <div className="flex gap-2">
-                      <input type="number" step="0.1" placeholder="Berat Daging Sapi (kg)" value={tempBeratQurbanSapi} onChange={(e) => setTempBeratQurbanSapi(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTimbangan('qurbanSapi')} className="flex-1 text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-1 focus:ring-rose-500" />
+                      <input type="number" step="0.1" placeholder="Berat Daging Sapi (kg)" value={tempBeratQurbanSapi} onChange={(e) => setTempBeratQurbanSapi(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTimbangan('qurbanSapi')} className="flex-1 text-sm border border-slate-200/50 p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-1 focus:ring-rose-500" />
                       <button onClick={() => addTimbangan('qurbanSapi')} className="bg-rose-600 hover:bg-rose-700 text-white px-4 rounded-xl font-bold text-xs transition-all animate-none">Tambah</button>
                     </div>
                   ) : <p className="text-[10px] text-[#f43f5e] bg-[#fff5f5] border border-[#ffe4e6] p-2 rounded-lg font-bold">Hanya Panitia yang memiliki hak menambahkan timbangan Sapi.</p>}
@@ -2017,11 +2061,8 @@ smsManager.sendTextMessage(
                   <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 font-semibold text-slate-700">
                     {timbanganQurbanKambing.map((berat, index) => (
                       <div key={index} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 px-3 py-2 rounded-xl text-xs font-semibold">
-                        <span className="text-slate-400">Timbangan Kambing #{index + 1}</span>
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-slate-955 font-extrabold">{berat} Kg</span>
-                          {canEditQurban && ( <button onClick={() => deleteTimbangan('qurbanKambing', index)} className="text-rose-500 p-1 hover:bg-rose-50 rounded-lg"><Trash2 size={12} /></button> )}
-                        </div>
+                        <span className="text-slate-955 font-extrabold">{berat} Kg</span>
+                        {canEditQurban && ( <button onClick={() => deleteTimbangan('qurbanKambing', index)} className="text-rose-500 p-1 hover:bg-rose-50 rounded-lg"><Trash2 size={12} /></button> )}
                       </div>
                     ))}
                   </div>
@@ -2126,7 +2167,7 @@ smsManager.sendTextMessage(
                         <div className="flex gap-2">
                           <input type="text" value={tempMasjidLogoUrl} onChange={(e) => setTempMasjidLogoUrl(e.target.value)} placeholder="Atau tempel tautan gambar disini (https://...)" className="flex-1 text-xs border border-slate-200 bg-white p-2.5 rounded-xl outline-none font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
                           {tempMasjidLogoUrl.trim() !== "" && (
-                            <button type="button" onClick={() => { setTempMasjidLogoUrl(""); addNotification("Pratinjau logo kustom dibersihkan."); }} className="bg-rose-50 text-rose-600 hover:bg-rose-100 px-3 rounded-xl border border-[#fca5a5] text-xs font-bold">Reset</button>
+                            <button type="button" onClick={() => { setTempMasjidLogoUrl(""); addNotification("Pratinjau logo kustom dibersihkan."); }} className="bg-rose-50 text-rose-600 hover:bg-rose-100 px-3 rounded-xl border border-rose-200 text-xs font-bold">Reset</button>
                           )}
                         </div>
                       </div>
@@ -2134,8 +2175,8 @@ smsManager.sendTextMessage(
                   </div>
 
                   <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
-                    <button type="button" onClick={() => { setTempMasjidName(masjidName); setTempMasjidLogoUrl(masjidLogoUrl); addNotification("Perubahan identitas dibatalkan.", "warning"); }} className="px-4 py-2 border border-slate-200 text-slate-500 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
-                    <button type="button" onClick={() => { if (!tempMasjidName.trim()) { addNotification("Nama Masjid tidak boleh kosong!", "error"); return; } setMasjidName(tempMasjidName); setTempMasjidLogoUrl(tempMasjidLogoUrl); addNotification("Identitas dan Logo Masjid berhasil diperbarui!", "success"); }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow shadow-emerald-600/10">Simpan Perubahan</button>
+                    <button type="button" onClick={handleCancelNewIdentity} className="px-4 py-2 border border-slate-200 text-slate-500 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
+                    <button type="button" onClick={handleSaveNewIdentity} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow shadow-emerald-600/10">Simpan Perubahan</button>
                   </div>
 
                   <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-center gap-3">
