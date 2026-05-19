@@ -7,11 +7,12 @@ import {
   Phone, Send, MessageSquare, BellRing, Upload, Download, Smartphone, Menu
 } from 'lucide-react';
 
-// === SEED DATA LOKASI AWAL ===
+// === SEED DATA LOKASI AWAL (DITAMBAH DESA AGAR LEBIH SPESIFIK) ===
 const INITIAL_LOKASI = {
   provinsi: "Jawa Timur",
   kabupaten: "Lamongan",
-  kecamatan: "Tikung"
+  kecamatan: "Tikung",
+  desa: "Bakalan"
 };
 
 // Batas Akses default per Peran (Role) yang tetap terkunci keamanannya
@@ -58,7 +59,7 @@ const INITIAL_PETUGAS_ABADI = {
   },
   Pon: {
     khatib: "Ustadz Adi Hidayat, Lc",
-    imam: "Ustadz Syihabuddin",
+    imam: "Ustadz Sholihuddin",
     muadzin: "H. Abdul Qodir",
     bilal: "Slamet",
     telp: "085711223344"
@@ -81,16 +82,17 @@ const INITIAL_PETUGAS_ABADI = {
 
 const PASARAN_LIST = ["Legi", "Pahing", "Pon", "Wage", "Kliwon"];
 
-// === CUSTOM SVG MOSQUE LOGO ===
+// === CUSTOM SVG MOSQUE LOGO (MASJID AL-IKHLAS BAKALAN STYLE DENGAN INISIAL 'MI') ===
 function KubahMasjidIcon({ className }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 22h20" />
-      <path d="M12 2v3" />
-      <path d="M12 5a7 7 0 0 0-7 7v10h14V12a7 7 0 0 0-7-7Z" />
-      <path d="M9 17h6v5H9z" />
-      <path d="M5 22V15a3 3 0 0 1 3-3M19 22V15a3 3 0 0 0-3-3" />
-      <circle cx="12" cy="1" r="0.5" fill="currentColor" />
+    <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="46" fill="#f0fdf4" stroke="#10b981" strokeWidth="3" />
+      <path d="M50 15C42 28 32 35 32 55C32 65 35 72 50 72C65 72 68 65 68 55C68 35 58 28 50 15Z" fill="#10b981" />
+      <path d="M50 10V15" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="50" cy="8" r="2.5" fill="#f59e0b" />
+      <path d="M48 6C49 5 52 5 53 6" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" />
+      <text x="50" y="58" fill="#ffffff" fontSize="13" fontWeight="900" textAnchor="middle" fontFamily="sans-serif">M I</text>
+      <path d="M45 72V64C45 61.5 47.5 59 50 59C52.5 59 55 61.5 55 64V72" fill="#047857" />
     </svg>
   );
 }
@@ -112,20 +114,30 @@ const getLocalStorageData = (key, fallbackValue) => {
   return fallbackValue;
 };
 
+// Fungsi murni generator jadwal sholat (dideklarasikan di lingkup berkas agar aman dari siklus inisialisasi state)
+const getJadwalSholat = (kab) => {
+  const hash = kab.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const offset = hash % 15;
+  return {
+    Subuh: `04:${(15 + offset).toString().padStart(2, '0')}`,
+    Terbit: `05:${(30 + offset).toString().padStart(2, '0')}`,
+    Dzuhur: `11:${(35 + offset).toString().padStart(2, '0')}`,
+    Ashar: `14:${(55 + offset).toString().padStart(2, '0')}`,
+    Maghrib: `17:${(30 + offset).toString().padStart(2, '0')}`,
+    Isya: `18:${(45 + offset).toString().padStart(2, '0')}`
+  };
+};
+
 export default function App() {
   // =========================================================
   // 1. SEMUA USESTATE DEKLARASI PALING ATAS (MEMAKAI LOCALSTORAGE)
   // =========================================================
-  
-  // --- STATE IDENTITAS MASJID CUSTOM ---
-  const [masjidName, setMasjidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Ikhlas"));
+  const [masjidName, setMasjidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Ikhlas Bakalan"));
   const [masjidLogoUrl, setMasjidLogoUrl] = useState(() => getLocalStorageData("masjidLogoUrl", ""));
 
-  // State Sementara untuk Form Identitas Masjid agar tidak langsung tersimpan saat diketik
-  const [tempMasjidName, setTempMasjidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Abadi"));
-  const [tempMasjidLogoUrl, setTempMasjidLogoUrl] = useState(() => getLocalStorageData("masjidLogoUrl", ""));
+  const [tempMasjidName, setTempMasjidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Ikhlas Bakalan"));
+  const [tempMasjidLogoUrl, setTempMasjidLogoUrl] = useState(() => getLocalStorageUrl => getLocalStorageData("masjidLogoUrl", ""));
 
-  // --- STATE SYSTEM, AUTH & DYNAMIC USERS ---
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentRole, setCurrentRole] = useState("Admin");
   const [currentUserLabel, setCurrentUserLabel] = useState("");
@@ -135,59 +147,48 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [notifications, setNotifications] = useState([]);
   
-  // State Navigasi Hamburger (Garis 3) Drawer
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // State Form Login
   const [inputUsername, setInputUsername] = useState("");
   const [inputPassword, setInputPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  // State Form Tambah Akun (Admin Only)
   const [newAccUsername, setNewAccUsername] = useState("");
   const [newAccPassword, setNewAccPassword] = useState("");
   const [newAccRole, setNewAccRole] = useState("Jamaah");
   const [newAccLabel, setNewAccLabel] = useState("");
 
-  // State Ubah Password Akun (Admin Only)
   const [editingAccountPassword, setEditingAccountPassword] = useState(null); 
   const [newPasswordValue, setNewPasswordValue] = useState("");
 
-  // --- STATE LOKASI & JADWAL SHOLAT ---
   const [lokasi, setLokasi] = useState(() => getLocalStorageData("lokasi", INITIAL_LOKASI));
   const [isSettingLokasi, setIsSettingLokasi] = useState(false);
   const [tempLokasi, setTempLokasi] = useState(() => getLocalStorageData("lokasi", INITIAL_LOKASI));
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // --- STATE PETUGAS SHOLAT JUMAT ---
   const [petugasAbadi, setPetugasAbadi] = useState(() => getLocalStorageData("petugasAbadi", INITIAL_PETUGAS_ABADI));
   const [editingPasaran, setEditingPasaran] = useState(null);
   const [pasaranForm, setPasaranForm] = useState({
     khatib: "", imam: "", muadzin: "", bilal: "", telp: ""
   });
 
-  // State Simulasi Notifikasi HP Petugas (WhatsApp & SMS)
   const [activeNotificationSim, setActiveNotificationSim] = useState(null);
   const [notificationType, setNotificationType] = useState("WA"); 
   const [simulatedMessageText, setSimulatedMessageText] = useState("");
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showAndroidCode, setShowAndroidCode] = useState(false);
 
-  // --- STATE DATA MASTER ---
   const [jamaahList, setJamaahList] = useState(() => getLocalStorageData("jamaahList", INITIAL_JAMAAH));
 
-  // --- STATE MANAGEMENT ZAKAT FITRAH ---
   const [timbanganFitrah, setTimbanganFitrah] = useState(() => getLocalStorageData("timbanganFitrah", [25, 50, 15, 30]));
   const [tempBeratFitrah, setTempBeratFitrah] = useState("");
   
-  // State Parameter Penyaluran Fitrah (Telah berkomitmen)
   const [alokasiFitrah, setAlokasiFitrah] = useState(() => getLocalStorageData("alokasiFitrah", {
     "Berat": 5.0,
     "Sedang": 3.0,
     "Ringan": 1.5,
     "Muzakki": 0.0
   }));
-  // State Sementara Rencana Penyaluran Fitrah (Sebelum ditekan tombol simpan)
   const [tempAlokasiFitrah, setTempAlokasiFitrah] = useState(() => getLocalStorageData("alokasiFitrah", {
     "Berat": 5.0,
     "Sedang": 3.0,
@@ -195,18 +196,15 @@ export default function App() {
     "Muzakki": 0.0
   }));
 
-  // --- STATE MANAGEMENT ZAKAT ZURU' ---
   const [timbanganZuru, setTimbanganZuru] = useState(() => getLocalStorageData("timbanganZuru", [120, 250, 80]));
   const [tempBeratZuru, setTempBeratZuru] = useState("");
   
-  // State Parameter Penyaluran Zuru' (Telah berkomitmen)
   const [alokasiZuru, setAlokasiZuru] = useState(() => getLocalStorageData("alokasiZuru", {
     "Berat": 15.0,
     "Sedang": 10.0,
     "Ringan": 5.0,
     "Bukan Mustahik": 0.0
   }));
-  // State Sementara Rencana Penyaluran Zuru' (Sebelum ditekan tombol simpan)
   const [tempAlokasiZuru, setTempAlokasiZuru] = useState(() => getLocalStorageData("alokasiZuru", {
     "Berat": 15.0,
     "Sedang": 10.0,
@@ -214,7 +212,6 @@ export default function App() {
     "Bukan Mustahik": 0.0
   }));
 
-  // --- STATE MANAGEMENT QURBAN ---
   const [timbanganQurbanSapi, setTimbanganQurbanSapi] = useState(() => getLocalStorageData("timbanganQurbanSapi", [85.5, 120.0, 95.0, 65.5]));
   const [timbanganQurbanKambing, setTimbanganQurbanKambing] = useState(() => getLocalStorageData("timbanganQurbanKambing", [22.0, 18.5, 25.0]));
   const [tempBeratQurbanSapi, setTempBeratQurbanSapi] = useState("");
@@ -285,6 +282,14 @@ export default function App() {
     localStorage.setItem("timbanganQurbanKambing", JSON.stringify(timbanganQurbanKambing));
   }, [timbanganQurbanKambing]);
 
+  useEffect(() => {
+    setTempMasjidName(masjidName);
+  }, [masjidName]);
+
+  useEffect(() => {
+    setTempMasjidLogoUrl(masjidLogoUrl);
+  }, [masjidLogoUrl]);
+
   // =========================================================
   // 2. FUNGSI UTILITAS DASAR & SINKRONISASI JADWAL
   // =========================================================
@@ -317,6 +322,7 @@ export default function App() {
     }
   };
 
+  // Mendefinisikan renderMasjidLogo di baris awal fungsi App() untuk menjamin ketersediaannya selama render
   const renderMasjidLogo = (imgClassName, fallbackClassName) => {
     if (typeof masjidLogoUrl === 'string' && masjidLogoUrl.trim() !== "") {
       return (
@@ -332,19 +338,6 @@ export default function App() {
       );
     }
     return <KubahMasjidIcon className={fallbackClassName} />;
-  };
-
-  const getJadwalSholat = (kab) => {
-    const hash = kab.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const offset = hash % 15;
-    return {
-      Subuh: `04:${(15 + offset).toString().padStart(2, '0')}`,
-      Terbit: `05:${(30 + offset).toString().padStart(2, '0')}`,
-      Dzuhur: `11:${(35 + offset).toString().padStart(2, '0')}`,
-      Ashar: `14:${(55 + offset).toString().padStart(2, '0')}`,
-      Maghrib: `17:${(30 + offset).toString().padStart(2, '0')}`,
-      Isya: `18:${(45 + offset).toString().padStart(2, '0')}`
-    };
   };
 
   const [jadwalSholat, setJadwalSholat] = useState(() => getJadwalSholat(lokasi.kabupaten));
@@ -431,8 +424,8 @@ export default function App() {
     return { kategori, jumlahJiwa, jatah, totalButuh };
   }).filter(item => item.totalButuh > 0);
 
-  const totalButuhZuru = rincianKebutuhanZuru.reduce((sum, item) => sum + item.totalButuh, 0);
-  const statusZuru = totalTimbanganZuru - totalButuhZuru;
+  const totalButuru = rincianKebutuhanZuru.reduce((sum, item) => sum + item.totalButuh, 0);
+  const statusZuru = totalTimbanganZuru - totalButuru;
 
   const totalTimbanganQurbanSapi = timbanganQurbanSapi.reduce((a, b) => a + b, 0);
   const totalTimbanganQurbanKambing = timbanganQurbanKambing.reduce((a, b) => a + b, 0);
@@ -463,10 +456,14 @@ export default function App() {
   const jatahDagingSapiPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanSapi / totalPenerimaKK).toFixed(2) : 0;
   const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanKambing / totalPenerimaKK).toFixed(2) : 0;
 
+  // --- STATE SEMENTARA KHUSUS UNTUK RBAC AGAR BEBAS TYPO ---
+  const [tempMasidName, setTempMasidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Ikhlas Bakalan"));
+
   // =========================================================
   // 3. HANDLER EVENT UTAMA (LOGIN, LOGOUT, JAMAAH)
   // =========================================================
 
+  // === MENDEKLARASIKAN handleLogin & handleLogout SECARA PENUH SEBELUM DIGUNAKAN ===
   const handleLogin = (e) => {
     e.preventDefault();
     const cleanUser = inputUsername.trim().toLowerCase();
@@ -488,21 +485,6 @@ export default function App() {
       setInputPassword("");
     } else {
       addNotification("Username atau Kata Sandi salah! Hubungi Super Admin.", "error");
-    }
-  };
-
-  const handleQuickLogin = (roleKey) => {
-    const acc = {
-      Admin: { username: "admin", password: "admin123" },
-      Takmir: { username: "takmir", password: "takmir123" },
-      Amil: { username: "amil", password: "amil123" },
-      Jamaah: { username: "jamaah", password: "jamaah123" }
-    }[roleKey];
-
-    if (acc) {
-      setInputUsername(acc.username);
-      setInputPassword(acc.password);
-      addNotification(`Form pengujian ${roleKey} diisi otomatis. Klik tombol Masuk.`);
     }
   };
 
@@ -673,13 +655,13 @@ export default function App() {
       if (isNaN(val) || val <= 0) return;
       setTimbanganQurbanSapi(prev => [...prev, val]);
       setTempBeratQurbanSapi("");
-      addNotification("Timbangan perolehan daging sapi berhasil ditambahkan");
+      addNotification("Timbangan perolehan daging Sapi berhasil ditambahkan");
     } else if (tipe === 'qurbanKambing') {
       const val = parseFloat(tempBeratQurbanKambing);
       if (isNaN(val) || val <= 0) return;
       setTimbanganQurbanKambing(prev => [...prev, val]);
       setTempBeratQurbanKambing("");
-      addNotification("Timbangan perolehan daging kambing berhasil ditambahkan");
+      addNotification("Timbangan perolehan daging Kambing berhasil ditambahkan");
     }
   };
 
@@ -703,15 +685,20 @@ export default function App() {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.type !== "image/png") {
-      addNotification("Harap pilih berkas gambar berformat khusus PNG (.png)!", "error");
+    if (file.size > 1.5 * 1024 * 1024) {
+      addNotification("Ukuran berkas gambar terlalu besar! Maksimal adalah 1.5 MB.", "error");
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      addNotification("Harap pilih berkas gambar valid (PNG, JPG, atau JPEG)!", "error");
       return;
     }
 
     const reader = new FileReader();
     reader.onloadend = () => {
       setTempMasjidLogoUrl(reader.result);
-      addNotification("Berkas logo PNG sukses diunggah ke memori sementara. Tekan 'Simpan Perubahan' untuk menerapkan!", "info");
+      addNotification("Berkas logo sukses diunggah ke memori sementara. Tekan 'Simpan Perubahan'!", "info");
     };
     reader.readAsDataURL(file);
   };
@@ -725,6 +712,10 @@ export default function App() {
     setAlokasiZuru(tempAlokasiZuru);
     addNotification("Rencana jatah penyaluran Zakat Zuru' berhasil diperbarui & disimpan!", "success");
   };
+
+  // =========================================================
+  // 4. PRINT PDF GENERATION LOGIC
+  // =========================================================
 
   const handlePrintSelectedReport = (reportType) => {
     const printWindow = window.open('', '_blank');
@@ -842,6 +833,7 @@ export default function App() {
           <th class="p-2.5 border border-slate-300 w-1/12 text-center">No</th>
           <th class="p-2.5 border border-slate-300 w-3/12">Nama Kepala Keluarga</th>
           <th class="p-2.5 border border-slate-300 w-2/12 text-center">RT / RW</th>
+          <th class="p-2.5 border border-slate-300 text-slate-500">Alamat</th>
           <th class="p-2.5 border border-slate-300 w-1.5/12 text-right">Daging Sapi</th>
           <th class="p-2.5 border border-slate-300 w-1.5/12 text-right">Daging Kambing</th>
           <th class="p-2.5 border border-slate-300 w-3/12 text-center">Tanda Tangan / Paraf</th>
@@ -866,13 +858,14 @@ export default function App() {
           <td class="p-2.5 border border-slate-300 text-center font-mono">${i + 1}</td>
           <td class="p-2.5 border border-slate-300 font-bold text-slate-900">${j.nama}</td>
           <td class="p-2.5 border border-slate-300 text-center font-bold">RT ${j.rt} / RW ${j.rw}</td>
+          <td class="p-2.5 border border-slate-300 text-slate-500 text-[10px]">${j.alamat}</td>
           <td class="p-2.5 border border-slate-300 text-right font-mono font-bold text-rose-700">${localJatahSapi} Kg</td>
           <td class="p-2.5 border border-slate-300 text-right font-mono font-bold text-amber-700">${localJatahKambing} Kg</td>
           <td class="p-2.5 border border-slate-300 text-left font-mono text-[9px] text-slate-300 relative h-12">
             <span class="absolute bottom-1 left-2">${i + 1}.</span>
           </td>
         </tr>
-      `).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Tidak ada warga penerima daging qurban pada wilayah terpilih ini.</td></tr>`;
+      `).join('') : `<tr><td colspan="7" class="p-8 text-center text-slate-400 italic">Tidak ada warga penerima daging qurban pada wilayah terpilih ini.</td></tr>`;
     }
 
     const html = `
@@ -895,7 +888,7 @@ export default function App() {
               </div>
               <div>
                 <h1 class="text-2xl font-black uppercase text-slate-900 leading-none">${masjidName}</h1>
-                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1.5">Kec. Tikung, Kab. Lamongan, Provinsi Jawa Timur</p>
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1.5">Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}, Provinsi ${lokasi.provinsi}</p>
               </div>
             </div>
             <div class="text-right text-xs text-slate-400 font-semibold font-mono">
@@ -973,12 +966,12 @@ export default function App() {
               </div>
               <div>
                 <h1 class="text-2xl font-black uppercase text-slate-900 leading-tight">${masjidName}</h1>
-                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Wilayah: ${lokasi.kecamatan}, ${lokasi.kabupaten}, ${lokasi.provinsi}</p>
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}, Provinsi ${lokasi.provinsi}</p>
               </div>
             </div>
             <div class="text-right text-xs text-slate-400 font-semibold font-mono">
               <p>Tanggal Cetak:</p>
-              <p class="text-slate-900 font-bold">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+              <p class="text-slate-950 font-bold">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
             </div>
           </div>
 
@@ -1051,16 +1044,8 @@ export default function App() {
     printWindow.document.close();
   };
 
-  // --- CLOCK EFFECTS ---
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   // =========================================================
-  // 5. RENDER SEBELUM LOGIN (HALAMAN LOGIN BERSIH - TANPA DEMO ACCOUNTS)
+  // 5. RENDER SEBELUM LOGIN (HALAMAN LOGIN BERSIH)
   // =========================================================
   if (!isLoggedIn) {
     return (
@@ -1082,7 +1067,7 @@ export default function App() {
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Card Login Utama (DEMO ACCOUNTS TELAH DIHAPUS SEPENUHNYA SESUAI PERMINTAAN USER) */}
+        {/* Card Login Utama */}
         <div className="w-full max-w-md bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-white/20 overflow-hidden z-10 flex flex-col p-6 sm:p-8 space-y-6">
           
           <div className="text-center space-y-2">
@@ -1091,7 +1076,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">{masjidName}</h1>
-              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Bakalanpule - Tikung - Lamongan</p>
+              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Gerbang Pengelolaan Masjid & Zakat</p>
             </div>
           </div>
 
@@ -1179,7 +1164,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-slate-900 tracking-tight leading-none">{masjidName}</h1>
-              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-wider">Aplikasi Manajemen Terpadu</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-wider">Aplikasi Masjid Terpadu</p>
             </div>
           </div>
         </div>
@@ -1288,7 +1273,7 @@ export default function App() {
                     <MapPin className="text-emerald-300 w-5 h-5" />
                     <span className="text-xs uppercase tracking-wider font-extrabold text-emerald-200">Lokasi Penentuan Jadwal Sholat</span>
                   </div>
-                  <h2 className="text-2xl font-extrabold tracking-tight">{lokasi.kecamatan}, {lokasi.kabupaten}, {lokasi.provinsi}</h2>
+                  <h2 className="text-2xl font-extrabold tracking-tight">Desa {lokasi.desa || ''}, {lokasi.kecamatan}, {lokasi.kabupaten}, {lokasi.provinsi}</h2>
                 </div>
                 {hasAccess("rbac") && ( 
                   <button onClick={() => { setTempLokasi(lokasi); setIsSettingLokasi(true); }} className="bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/20 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2">
@@ -1300,23 +1285,27 @@ export default function App() {
               {isSettingLokasi && (
                 <div className="bg-white border border-emerald-100 rounded-2xl p-5 shadow-lg space-y-4 animate-fadeIn">
                   <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2 text-emerald-700"><MapPin size={16} /> Konfigurasi Geografis Masjid</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                      <label className="block text-xs text-slate-500 font-bold mb-1">Provinsi</label>
-                      <input type="text" value={tempLokasi.provinsi} onChange={(e) => setTempLokasi({...tempLokasi, provinsi: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none font-semibold" />
+                      <label className="block text-xs text-slate-500 font-bold mb-1">Desa / Kelurahan</label>
+                      <input type="text" value={tempLokasi.desa || ""} onChange={(e) => setTempLokasi({...tempLokasi, desa: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold focus:ring-2 focus:ring-emerald-500/20" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 font-bold mb-1">Kecamatan</label>
+                      <input type="text" value={tempLokasi.kecamatan} onChange={(e) => setTempLokasi({...tempLokasi, kecamatan: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold focus:ring-2 focus:ring-emerald-500/20" />
                     </div>
                     <div>
                       <label className="block text-xs text-slate-500 font-bold mb-1">Kabupaten / Kota</label>
-                      <input type="text" value={tempLokasi.kabupaten} onChange={(e) => setTempLokasi({...tempLokasi, kabupaten: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none font-semibold" />
+                      <input type="text" value={tempLokasi.kabupaten} onChange={(e) => setTempLokasi({...tempLokasi, kabupaten: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold focus:ring-2 focus:ring-emerald-500/20" />
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-500 font-bold mb-1">Kecamatan / Desa</label>
-                      <input type="text" value={tempLokasi.kecamatan} onChange={(e) => setTempLokasi({...tempLokasi, kecamatan: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none font-semibold" />
+                      <label className="block text-xs text-slate-500 font-bold mb-1">Provinsi</label>
+                      <input type="text" value={tempLokasi.provinsi} onChange={(e) => setTempLokasi({...tempLokasi, provinsi: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold focus:ring-2 focus:ring-emerald-500/20" />
                     </div>
                   </div>
                   <div className="flex justify-end gap-2.5 pt-2">
                     <button onClick={() => setIsSettingLokasi(false)} className="px-4 py-2 border border-slate-200 text-slate-500 hover:bg-slate-50 text-xs font-bold rounded-xl transition-all">Batal</button>
-                    <button onClick={() => { setLokasi(tempLokasi); setIsSettingLokasi(false); addNotification("Lokasi masjid berhasil dikonfigurasi ulang!"); }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow shadow-emerald-600/10">Terapkan Perubahan</button>
+                    <button onClick={() => { setLokasi(tempLokasi); setIsSettingLokasi(false); addNotification("Lokasi masjid berhasil dikonfigurasi ulang secara presisi!"); }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow shadow-emerald-600/10">Terapkan Perubahan</button>
                   </div>
                 </div>
               )}
@@ -1343,7 +1332,7 @@ export default function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-                  <h3 className="font-bold text-slate-950 flex items-center gap-2"><Calendar className="text-emerald-600 w-5 h-5" /> Penjadwalan Petugas Jumat Pekan Ini</h3>
+                  <h3 className="font-bold text-slate-955 flex items-center gap-2"><Calendar className="text-emerald-600 w-5 h-5" /> Penjadwalan Petugas Jumat Pekan Ini</h3>
                   {upcomingFridays.length > 0 ? (
                     <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
                       <div className="flex justify-between items-center pb-2 border-b border-slate-100">
@@ -1361,11 +1350,11 @@ export default function App() {
                         </div>
                         <div>
                           <p className="text-slate-400 uppercase text-[10px]">Muadzin</p>
-                          <p className="text-slate-800 text-sm font-bold">{upcomingFridays[0].petugas.muadzin}</p>
+                          <p className="text-slate-850 text-sm font-bold">{upcomingFridays[0].petugas.muadzin}</p>
                         </div>
                         <div>
                           <p className="text-slate-400 uppercase text-[10px]">Bilal / MC</p>
-                          <p className="text-slate-800 text-sm font-bold">{upcomingFridays[0].petugas.bilal}</p>
+                          <p className="text-slate-850 text-sm font-bold">{upcomingFridays[0].petugas.bilal}</p>
                         </div>
                       </div>
                     </div>
@@ -1423,7 +1412,6 @@ export default function App() {
                         <div>
                           <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-2">
                             <span className="text-xs font-black text-emerald-700 uppercase">JUMAT {pasaran}</span>
-                            {/* PENGEDITAN PETUGAS DAPAT BERFUNGSI SEMPURNA BAGI ADMIN & TAKMIR */}
                             {canEditPetugas && (
                               <button onClick={() => handleEditPasaran(pasaran)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 transition-all border border-transparent hover:border-slate-200 shadow-2xs" title="Ubah Template Petugas"><Edit2 size={13} /></button>
                             )}
@@ -1442,19 +1430,18 @@ export default function App() {
                               <span>{data.telp}</span>
                             </div>
                             
-                            {/* INTEGRASI SIMULASI NOTIFIKASI LANGSUNG PADA KARTU TEMPLATE */}
                             {data.khatib && (
                               <div className="flex items-center gap-1.5 mt-1 pt-1.5 border-t border-slate-100/50">
                                 <button
                                   onClick={() => handlePrepareNotification({ petugas: data, pasaran, formattedDate: "Jumat, 22 Mei 2026" }, "WA")}
-                                  className="flex-1 bg-[#128c7e] hover:bg-[#075e54] text-white font-bold py-1 rounded text-[9px] transition-all text-center"
+                                  className="flex-1 bg-[#128c7e] hover:bg-[#075e54] text-white font-bold py-1 rounded text-[9px] transition-all text-center animate-none"
                                   title="Simulasi WA"
                                 >
                                   Kirim WA
                                 </button>
                                 <button
                                   onClick={() => handlePrepareNotification({ petugas: data, pasaran, formattedDate: "Jumat, 22 Mei 2026" }, "SMS")}
-                                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 rounded text-[9px] transition-all text-center"
+                                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 rounded text-[9px] transition-all text-center animate-none"
                                   title="Simulasi SMS"
                                 >
                                   Kirim SMS
@@ -1508,6 +1495,126 @@ export default function App() {
                   </div>
                 </div>
               )}
+
+              {/* MODAL SIMULATOR WHATSAPP/SMS NOTIFIKASI H-1 */}
+              {activeNotificationSim && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+                  <div className={`w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-scaleIn transition-all ${
+                    notificationType === "WA" ? "bg-[#eae6df] h-[550px]" : "bg-slate-100 h-[580px] border border-slate-300"
+                  }`}>
+                    
+                    {/* Header Sesuai Platform */}
+                    {notificationType === "WA" ? (
+                      <div className="bg-[#008069] text-white px-4 py-3.5 flex items-center justify-between shadow-md">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-emerald-700 rounded-full flex items-center justify-center font-bold text-sm text-white">WA</div>
+                          <div>
+                            <p className="font-bold text-sm">Masjid Gateway</p>
+                            <p className="text-[10px] text-emerald-100">Online • Kepada: {activeNotificationSim.petugas.khatib}</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setActiveNotificationSim(null)} className="text-white hover:text-slate-200"><X size={20} /></button>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-800 text-white px-5 py-4 flex items-center justify-between shadow-md">
+                        <div className="flex items-center gap-3">
+                          <Smartphone className="text-blue-400 w-5 h-5" />
+                          <div>
+                            <p className="font-bold text-sm">SMS Messenger (Android)</p>
+                            <p className="text-[10px] text-slate-300">Penerima: {activeNotificationSim.petugas.khatib} ({activeNotificationSim.petugas.telp})</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setActiveNotificationSim(null)} className="text-white hover:text-slate-200"><X size={20} /></button>
+                      </div>
+                    )}
+
+                    {/* Chat / Message Area */}
+                    <div className="flex-1 p-4 overflow-y-auto flex flex-col justify-end space-y-4" style={notificationType === "WA" ? { 
+                      backgroundImage: "url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')", 
+                      backgroundSize: "contain" 
+                    } : { backgroundColor: "#f3f4f6" }}>
+                      
+                      <div className="flex flex-col space-y-4">
+                        <div className="bg-slate-200/80 text-slate-600 px-3 py-1 rounded-lg text-[9px] font-bold text-center self-center uppercase shadow-xs">
+                          Hari Kamis (H-1) • Pengingat Sholat Jumat
+                        </div>
+
+                        {/* Tampilan Sesuai Platform */}
+                        {notificationType === "WA" ? (
+                          <div className="bg-[#d9fdd3] text-slate-800 p-3.5 rounded-2xl rounded-tr-none shadow-sm max-w-[85%] self-end relative border border-[#c1ebd0]">
+                            <p className="text-xs whitespace-pre-line leading-relaxed">{simulatedMessageText}</p>
+                            <span className="text-[8px] text-slate-400 text-right block mt-2 font-mono">14:00 ✓✓</span>
+                          </div>
+                        ) : (
+                          <div className="bg-blue-600 text-white p-3.5 rounded-2xl rounded-tr-none shadow-sm max-w-[85%] self-end relative">
+                            <p className="text-xs whitespace-pre-line leading-relaxed">{simulatedMessageText}</p>
+                            <span className="text-[8px] text-blue-200 text-right block mt-2 font-mono">Sent via Android Gateway</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Info & Panduan Kode Android (Untuk Developer Anda) */}
+                      {notificationType === "SMS" && (
+                        <div className="bg-white border border-blue-200 p-3 rounded-2xl mt-4 space-y-2 shadow-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-blue-800 uppercase tracking-wider flex items-center gap-1">
+                              <Smartphone size={12} />
+                              Panduan Kode Android (Kotlin)
+                            </span>
+                            <button 
+                              type="button"
+                              onClick={() => setShowAndroidCode(!showAndroidCode)}
+                              className="text-[10px] text-blue-600 font-bold hover:underline"
+                            >
+                              Sembunyikan
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-slate-500 leading-relaxed">
+                            Aplikasi Android Anda nantinya dapat memantau API web ini lalu mengirim SMS secara otomatis menggunakan kode program native berikut:
+                          </p>
+                          {showAndroidCode && (
+                            <pre className="text-[8px] bg-slate-950 text-emerald-400 p-2.5 rounded-xl font-mono overflow-x-auto max-h-24">
+{`val smsManager = SmsManager.getDefault()
+smsManager.sendTextMessage(
+    "${activeNotificationSim.petugas.telp}", 
+    null, 
+    "...\${pesan}...", 
+    null, 
+    null
+)`}
+                            </pre>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Input Footer */}
+                    <div className="bg-[#f0f2f5] p-3 flex gap-2 items-center border-t border-slate-200">
+                      <input 
+                        type="text" 
+                        value={simulatedMessageText}
+                        onChange={(e) => setSimulatedMessageText(e.target.value)}
+                        className="flex-1 bg-white border border-slate-200 px-4 py-2.5 rounded-full text-xs outline-none focus:ring-1 focus:ring-emerald-500 font-semibold text-slate-800"
+                      />
+                      <button 
+                        onClick={handleSendSimMessage}
+                        disabled={isSendingMessage}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:bg-slate-400 shrink-0 shadow ${
+                          notificationType === "WA" ? "bg-[#00a884] hover:bg-[#008f6f]" : "bg-blue-600 hover:bg-blue-700"
+                        } text-white`}
+                      >
+                        {isSendingMessage ? (
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Send size={15} className="ml-0.5" />
+                        )}
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
 
@@ -1534,7 +1641,7 @@ export default function App() {
                   </div>
 
                   <div className="flex-2 flex flex-wrap gap-2">
-                    <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 hover:bg-slate-950 text-white text-xs font-bold px-3.5 py-3 rounded-xl flex items-center gap-1.5 transition-all shadow-sm"><Download size={14} />Cetak Jamaah</button>
+                    <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 hover:bg-[#111] text-white text-xs font-bold px-3.5 py-3 rounded-xl flex items-center gap-1.5 transition-all shadow-sm"><Download size={14} />Cetak Jamaah</button>
                     <button onClick={() => handlePrintSelectedReport("fitrah")} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-3 rounded-xl flex items-center gap-1.5 transition-all shadow-sm"><Download size={14} />Cetak Fitrah</button>
                     <button onClick={() => handlePrintSelectedReport("zuru")} className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3.5 py-3 rounded-xl flex items-center gap-1.5 transition-all shadow-sm"><Download size={14} />Cetak Zuru'</button>
                     <button onClick={() => handlePrintSelectedReport("qurban")} className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3.5 py-3 rounded-xl flex items-center gap-1.5 transition-all shadow-sm"><Download size={14} />Cetak Qurban</button>
@@ -1547,7 +1654,6 @@ export default function App() {
                   <h2 className="text-xl font-bold text-slate-950">Database Jemaah Berbasis RT/RW</h2>
                   <p className="text-xs text-slate-500">Sistem database jemaah kustom yang dibatasi pada **3 RT** (RT 01, 02, 03) dan **2 RW** (RW 01, 02).</p>
                 </div>
-                {/* DIPERBAIKI: HAK AKSES JAMAAH DIAKTIFKAN KEMBALI */}
                 {canEditJamaah && (
                   <button onClick={() => { setEditingJamaah(null); setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik" }); setShowJamaahModal(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow shadow-emerald-600/10 hover:scale-102">
                     <Plus size={16} /> Tambah Warga Baru
@@ -1711,7 +1817,7 @@ export default function App() {
                       <div key={index} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 p-2.5 rounded-xl text-sm font-semibold">
                         <span className="text-slate-500">Timbangan # {index + 1}</span>
                         <div className="flex items-center gap-3">
-                          <span className="text-slate-950 font-extrabold">{berat} Kg</span>
+                          <span className="text-slate-955 font-extrabold">{berat} Kg</span>
                           {canEditFitrah && (
                             <button onClick={() => deleteTimbangan('fitrah', index)} className="text-rose-500 p-1 hover:bg-rose-50 rounded-lg"><Trash2 size={14} /></button>
                           )}
@@ -1805,14 +1911,14 @@ export default function App() {
                       <input type="number" step="0.5" placeholder="Berat (kg)" value={tempBeratZuru} onChange={(e) => setTempBeratZuru(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTimbangan('zuru')} className="flex-1 text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-1 focus:ring-teal-500" />
                       <button onClick={() => addTimbangan('zuru')} className="bg-teal-600 hover:bg-teal-700 text-white px-4 rounded-xl font-bold text-xs transition-all">Tambah</button>
                     </div>
-                  ) : <p className="text-[11px] text-rose-500 bg-rose-50 border border-rose-100 p-2 rounded-lg font-bold">Hanya Amil Zakat yang memiliki hak menambahkan data.</p>}
+                  ) : <p className="text-[11px] text-[#f43f5e] bg-[#fff5f5] border border-[#ffe4e6] p-2 rounded-lg font-bold">Hanya Amil Zakat yang memiliki hak menambahkan data.</p>}
 
                   <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                     {timbanganZuru.map((berat, index) => (
                       <div key={index} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 p-2.5 rounded-xl text-sm font-semibold">
                         <span className="text-slate-500">Timbangan # {index + 1}</span>
                         <div className="flex items-center gap-3">
-                          <span className="text-slate-950 font-extrabold">{berat} Kg</span>
+                          <span className="text-slate-955 font-extrabold">{berat} Kg</span>
                           {canEditZuru && (
                             <button onClick={() => deleteTimbangan('zuru', index)} className="text-rose-500 p-1 hover:bg-rose-50 rounded-lg"><Trash2 size={14} /></button>
                           )}
@@ -1873,12 +1979,12 @@ export default function App() {
                             <td className="py-2.5 text-slate-900 font-bold">Mustahik {item.kategori}</td>
                             <td className="py-2.5 text-center text-slate-800">{item.jumlahJiwa} Orang</td>
                             <td className="py-2.5 text-center text-teal-700">{item.jatah} Kg</td>
-                            <td className="py-2.5 text-right font-bold text-slate-900">{item.totalButuh} Kg</td>
+                            <td className="py-2.5 text-right font-bold text-slate-950">{item.totalButuh} Kg</td>
                           </tr>
                         ))}
                         <tr className="bg-slate-50 font-black text-slate-900">
                           <td className="p-2.5" colSpan="3">Total Seluruh Kebutuhan Penyaluran</td>
-                          <td className="p-2.5 text-right text-teal-800">{totalButuhZuru} Kg</td>
+                          <td className="p-2.5 text-right text-teal-800">{totalButuru} Kg</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1896,7 +2002,7 @@ export default function App() {
                   <h2 className="text-xl font-bold text-slate-950">Pengelolaan & Distribusi Daging Qurban Terpadu</h2>
                   <p className="text-xs text-slate-500">Log timbangan berkala perolehan daging Sapi & Kambing secara terpisah untuk pemerataan pembagian jatah KK.</p>
                 </div>
-                <button onClick={handlePrintQurbanRT} className="bg-slate-800 hover:bg-slate-955 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-sm">
+                <button onClick={handlePrintQurbanRT} className="bg-slate-800 hover:bg-[#111] text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-sm">
                   <Download size={15} /> Download PDF Distribusi per RT
                 </button>
               </div>
@@ -1913,11 +2019,11 @@ export default function App() {
                   {canEditQurban ? (
                     <div className="flex gap-2">
                       <input type="number" step="0.1" placeholder="Berat Daging Sapi (kg)" value={tempBeratQurbanSapi} onChange={(e) => setTempBeratQurbanSapi(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTimbangan('qurbanSapi')} className="flex-1 text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-1 focus:ring-rose-500" />
-                      <button onClick={() => addTimbangan('qurbanSapi')} className="bg-rose-600 hover:bg-rose-700 text-white px-4 rounded-xl font-bold text-xs transition-all">Tambah</button>
+                      <button onClick={() => addTimbangan('qurbanSapi')} className="bg-rose-600 hover:bg-rose-700 text-white px-4 rounded-xl font-bold text-xs transition-all animate-none">Tambah</button>
                     </div>
-                  ) : <p className="text-[10px] text-rose-500 bg-rose-50 border border-rose-100 p-2 rounded-lg font-bold">Hanya Panitia yang memiliki hak menambahkan timbangan Sapi.</p>}
+                  ) : <p className="text-[10px] text-[#f43f5e] bg-[#fff5f5] border border-[#ffe4e6] p-2 rounded-lg font-bold">Hanya Panitia yang memiliki hak menambahkan timbangan Sapi.</p>}
 
-                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 font-semibold text-slate-700">
                     {timbanganQurbanSapi.map((berat, index) => (
                       <div key={index} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 px-3 py-2 rounded-xl text-xs font-semibold">
                         <span className="text-slate-400">Timbangan Sapi #{index + 1}</span>
@@ -1945,16 +2051,16 @@ export default function App() {
                   {canEditQurban ? (
                     <div className="flex gap-2">
                       <input type="number" step="0.1" placeholder="Berat Daging Kambing (kg)" value={tempBeratQurbanKambing} onChange={(e) => setTempBeratQurbanKambing(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTimbangan('qurbanKambing')} className="flex-1 text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-1 focus:ring-amber-500" />
-                      <button onClick={() => addTimbangan('qurbanKambing')} className="bg-amber-600 hover:bg-amber-700 text-white px-4 rounded-xl font-bold text-xs transition-all">Tambah</button>
+                      <button onClick={() => addTimbangan('qurbanKambing')} className="bg-amber-600 hover:bg-amber-700 text-white px-4 rounded-xl font-bold text-xs transition-all animate-none">Tambah</button>
                     </div>
-                  ) : <p className="text-[10px] text-amber-500 bg-amber-50 border border-amber-100 p-2 rounded-lg font-bold">Hanya Panitia yang memiliki hak menambahkan timbangan Kambing.</p>}
+                  ) : <p className="text-[10px] text-[#f43f5e] bg-[#fff5f5] border border-[#ffe4e6] p-2 rounded-lg font-bold">Hanya Panitia yang memiliki hak menambahkan timbangan Kambing.</p>}
 
-                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 font-semibold text-slate-700">
                     {timbanganQurbanKambing.map((berat, index) => (
                       <div key={index} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 px-3 py-2 rounded-xl text-xs font-semibold">
                         <span className="text-slate-400">Timbangan Kambing #{index + 1}</span>
                         <div className="flex items-center gap-2.5">
-                          <span className="text-slate-900 font-extrabold">{berat} Kg</span>
+                          <span className="text-slate-955 font-extrabold">{berat} Kg</span>
                           {canEditQurban && ( <button onClick={() => deleteTimbangan('qurbanKambing', index)} className="text-rose-500 p-1 hover:bg-rose-50 rounded-lg"><Trash2 size={12} /></button> )}
                         </div>
                       </div>
@@ -1969,7 +2075,7 @@ export default function App() {
 
               {/* Alokasi */}
               <div className="bg-white border border-slate-200 rounded-3xl p-6 space-y-4 shadow-xs">
-                <h3 className="font-extrabold text-slate-900 text-sm border-b border-slate-100 pb-2">Filter & Alokasi Jatah per KK Terpilih</h3>
+                <h3 className="font-extrabold text-slate-955 text-sm border-b border-slate-100 pb-2">Filter & Alokasi Jatah per KK Terpilih</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200/50">
                   <div>
                     <label className="block text-xs font-bold text-slate-600 mb-1">Filter Wilayah Distribusi</label>
@@ -2041,7 +2147,7 @@ export default function App() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl border border-slate-200/60">
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-slate-600">Nama Masjid (Akan mengganti semua teks sistem)</label>
-                      <input type="text" value={tempMasjidName} onChange={(e) => setTempMasjidName(e.target.value)} placeholder="Contoh: Masjid Al-Ikhlas" className="w-full text-sm border border-slate-200 bg-white p-2.5 rounded-xl outline-none font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
+                      <input type="text" value={tempMasidName} onChange={(e) => setTempMasidName(e.target.value)} placeholder="Contoh: Masjid Al-Ikhlas" className="w-full text-sm border border-slate-200 bg-white p-2.5 rounded-xl outline-none font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
                     </div>
 
                     <div className="space-y-1.5">
@@ -2050,7 +2156,7 @@ export default function App() {
                         <div className="flex items-center gap-3">
                           <label className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all shadow-sm">
                             <Upload size={14} className="text-emerald-600" /> Pilih Berkas Gambar PNG
-                            <input type="file" accept="image/png" onChange={handleLogoUpload} className="hidden" />
+                            <input type="file" accept="image/png, image/jpeg, image/jpg" onChange={handleLogoUpload} className="hidden" />
                           </label>
                           {tempMasjidLogoUrl && <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">Gambar Siap Simpan</span>}
                         </div>
@@ -2065,8 +2171,9 @@ export default function App() {
                   </div>
 
                   <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
-                    <button type="button" onClick={() => { setTempMasjidName(masjidName); setTempMasjidLogoUrl(masjidLogoUrl); addNotification("Perubahan identitas dibatalkan.", "warning"); }} className="px-4 py-2 border border-slate-200 text-slate-500 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
-                    <button type="button" onClick={() => { if (!tempMasjidName.trim()) { addNotification("Nama Masjid tidak boleh kosong!", "error"); return; } setMasjidName(tempMasjidName); setTempMasjidLogoUrl(tempMasjidLogoUrl); addNotification("Identitas dan Logo Masjid berhasil diperbarui!", "success"); }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow shadow-emerald-600/10">Simpan Perubahan</button>
+                    <button type="button" onClick={() => { setTempMasidName(masjidName); setTempMasjidLogoUrl(masjidLogoUrl); addNotification("Perubahan identitas dibatalkan.", "warning"); }} className="px-4 py-2 border border-slate-200 text-slate-500 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
+                    {/* === PERBAIKAN UTAMA: LOGIKA SIMPAN LOGO DIPERBAIKI (setMasjidLogoUrl) === */}
+                    <button type="button" onClick={() => { if (!tempMasidName.trim()) { addNotification("Nama Masjid tidak boleh kosong!", "error"); return; } setMasjidName(tempMasidName); setMasjidLogoUrl(tempMasjidLogoUrl); addNotification("Identitas dan Logo Masjid berhasil diperbarui!", "success"); }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow shadow-emerald-600/10">Simpan Perubahan</button>
                   </div>
 
                   <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-center gap-3">
@@ -2075,7 +2182,7 @@ export default function App() {
                     </div>
                     <div className="text-xs text-emerald-800 font-semibold">
                       <p className="font-bold">Pratinjau Identitas Sementara:</p>
-                      <p className="text-slate-500 mt-0.5">{tempMasjidName} (Logo: {tempMasjidLogoUrl.trim() !== "" ? "Gambar Kustom Terdeteksi" : "Menggunakan Kubah Masjid Default"})</p>
+                      <p className="text-slate-500 mt-0.5">{tempMasidName} (Logo: {tempMasjidLogoUrl.trim() !== "" ? "Gambar Kustom Terdeteksi" : "Menggunakan Kubah Masjid Default"})</p>
                     </div>
                   </div>
                 </div>
@@ -2207,9 +2314,9 @@ export default function App() {
                     </tbody>
                   </table>
                 </div>
-                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3">
+                <div className="bg-[#fffbeb] border border-[#fef3c7] p-4 rounded-xl flex items-start gap-3">
                   <AlertTriangle className="text-amber-600 shrink-0 w-5 h-5 mt-0.5" />
-                  <div className="text-xs text-amber-800 space-y-1">
+                  <div className="text-xs text-amber-850 space-y-1">
                     <p className="font-bold">Informasi Hak Akses Dinamis</p>
                     <p>Hanya peran <strong>Super Admin</strong> yang dapat mendaftarkan akun pengurus baru, mengaktifkan, atau menonaktifkan matriks hak akses di atas. Peran lainnya hanya dapat melihat tabel ini tanpa melakukan modifikasi.</p>
                   </div>
