@@ -10,7 +10,8 @@ import {
 // ====================================================================
 // CONFIG CONFIGURATION GOOGLE SHEETS API (GRATIS)
 // ====================================================================
-// URL default (Opsional). Anda sekarang BISA langsung memasukkannya melalui antarmuka aplikasi di tab RBAC!
+// Anda dapat langsung menempelkan URL Apps Script di bawah ini secara permanen
+// Contoh: const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycb.../exec";
 const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlT-MtuAXW_wl-KnFnqUkhX4fPf6YIyXNMPTE4Syi66_uDhxGiKVVK9_imo25DpRCm/exec"; 
 
 // === SEED DATA LOKASI AWAL (DITAMBAH DESA AGAR LEBIH SPESIFIK) ===
@@ -68,7 +69,7 @@ const INITIAL_PETUGAS_ABADI = {
 
 const PASARAN_LIST = ["Legi", "Pahing", "Pon", "Wage", "Kliwon"];
 
-// === HELPER FUNCTIONS (OUTSIDE OF COMPONENT) ===
+// === HELPER FUNCTIONS ===
 
 function KubahMasjidIcon({ className }) {
   return (
@@ -304,6 +305,89 @@ export default function App() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // ====================================================================
+  // GOOGLE SHEETS AUTO-SYNC CONTROLLER (BACKGROUND SYNC)
+  // ====================================================================
+  
+  // Fungsi penarik data penuh dari Google Sheets saat aplikasi dibuka
+  const handleFetchFromGoogleSheets = async () => {
+    if (!googleSheetsUrl) return;
+    
+    setIsSyncing(true);
+    setSyncStatus("Mengunduh Data...");
+    try {
+      const response = await fetch(`${googleSheetsUrl}?action=getData`);
+      const resData = await response.json();
+      if (resData && resData.status === "success" && Object.keys(resData.data).length > 0) {
+        const payload = resData.data;
+        if (payload.masjidName) setMasjidName(payload.masjidName);
+        if (payload.masjidLogoUrl) setMasjidLogoUrl(payload.masjidLogoUrl);
+        if (payload.lokasi) setLokasi(payload.lokasi);
+        if (payload.petugasAbadi) setPetugasAbadi(payload.petugasAbadi);
+        if (payload.jamaahList) setJamaahList(payload.jamaahList);
+        if (payload.timbanganFitrah) setTimbanganFitrah(payload.timbanganFitrah);
+        if (payload.alokasiFitrah) setAlokasiFitrah(payload.alokasiFitrah);
+        if (payload.timbanganZuru) setTimbanganZuru(payload.timbanganZuru);
+        if (payload.alokasiZuru) setAlokasiZuru(payload.alokasiZuru);
+        if (payload.timbanganQurbanSapi) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
+        if (payload.timbanganQurbanKambing) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
+        if (payload.userDatabase) setUserDatabase(payload.userDatabase);
+        
+        setSyncStatus("Tersinkronisasi");
+      }
+    } catch (err) {
+      console.error(err);
+      setSyncStatus("Gagal Sinkron");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Auto-Fetch saat login pertama kali
+  useEffect(() => {
+    if (isLoggedIn && googleSheetsUrl) {
+      handleFetchFromGoogleSheets();
+    }
+  }, [isLoggedIn]);
+
+  // Efek AUTO-SAVE (Sistem akan mengunggah otomatis ke Google Sheets setiap kali ada data yang berubah)
+  useEffect(() => {
+    if (!isLoggedIn || !googleSheetsUrl) return;
+
+    const payload = {
+      masjidName, masjidLogoUrl, lokasi, petugasAbadi, jamaahList,
+      timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
+      timbanganQurbanSapi, timbanganQurbanKambing, userDatabase
+    };
+
+    setSyncStatus("Menyimpan Otomatis...");
+    
+    // Memberikan jeda 3 detik (debounce) sebelum mengirim agar tidak membebani API Google saat mengetik
+    const timeoutId = setTimeout(async () => {
+      try {
+        await fetch(googleSheetsUrl, {
+          method: "POST",
+          mode: "no-cors", 
+          headers: {
+            "Content-Type": "text/plain"
+          },
+          body: JSON.stringify(payload)
+        });
+        setSyncStatus("Tersinkronisasi");
+      } catch (err) {
+        console.error(err);
+        setSyncStatus("Gagal Menyimpan");
+      }
+    }, 3000); 
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    masjidName, masjidLogoUrl, lokasi, petugasAbadi, jamaahList, 
+    timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, 
+    timbanganQurbanSapi, timbanganQurbanKambing, userDatabase, 
+    googleSheetsUrl, isLoggedIn
+  ]);
 
   // =========================================================
   // 2. CORE UTILITY FUNCTIONS
@@ -688,101 +772,6 @@ export default function App() {
     setNewPasswordValue("");
   };
 
-  // ====================================================================
-  // GOOGLE SHEETS SYNC CONTROLLER (INTEGRASI GRATIS)
-  // ====================================================================
-  
-  // Fungsi penarik data penuh dari Google Sheets saat aplikasi dibuka
-  const handleFetchFromGoogleSheets = async () => {
-    if (!googleSheetsUrl) {
-      addNotification("Gagal Sinkronisasi: Script URL Google Sheets belum dikonfigurasi!", "error");
-      return;
-    }
-    setIsSyncing(true);
-    setSyncStatus("Mengunduh...");
-    try {
-      const response = await fetch(`${googleSheetsUrl}?action=getData`);
-      const resData = await response.json();
-      if (resData && resData.status === "success") {
-        const payload = resData.data;
-        if (payload.masjidName) setMasjidName(payload.masjidName);
-        if (payload.masjidLogoUrl) setMasjidLogoUrl(payload.masjidLogoUrl);
-        if (payload.lokasi) setLokasi(payload.lokasi);
-        if (payload.petugasAbadi) setPetugasAbadi(payload.petugasAbadi);
-        if (payload.jamaahList) setJamaahList(payload.jamaahList);
-        if (payload.timbanganFitrah) setTimbanganFitrah(payload.timbanganFitrah);
-        if (payload.alokasiFitrah) setAlokasiFitrah(payload.alokasiFitrah);
-        if (payload.timbanganZuru) setTimbanganZuru(payload.timbanganZuru);
-        if (payload.alokasiZuru) setAlokasiZuru(payload.alokasiZuru);
-        if (payload.timbanganQurbanSapi) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
-        if (payload.timbanganQurbanKambing) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
-        if (payload.userDatabase) setUserDatabase(payload.userDatabase);
-        
-        setSyncStatus("Tersinkronisasi");
-        addNotification("Semua data berhasil disinkronisasi dari Google Sheets!", "success");
-      } else {
-        throw new Error("Respon Google Apps Script gagal");
-      }
-    } catch (err) {
-      console.error(err);
-      setSyncStatus("Gagal Sinkron");
-      addNotification("Koneksi gagal! Pastikan Apps Script Web App sudah di-deploy dengan benar.", "error");
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // Fungsi pengirim data terpadu ke Google Sheets secara berkala atau ketika diklik manual
-  const handlePushToGoogleSheets = async () => {
-    if (!googleSheetsUrl) {
-      addNotification("Silakan simpan URL Google Apps Script Anda di menu ini terlebih dahulu!", "error");
-      return;
-    }
-    setIsSyncing(true);
-    setSyncStatus("Mengunggah...");
-    
-    const payload = {
-      masjidName,
-      masjidLogoUrl,
-      lokasi,
-      petugasAbadi,
-      jamaahList,
-      timbanganFitrah,
-      alokasiFitrah,
-      timbanganZuru,
-      alokasiZuru,
-      timbanganQurbanSapi,
-      timbanganQurbanKambing,
-      userDatabase
-    };
-
-    try {
-      await fetch(googleSheetsUrl, {
-        method: "POST",
-        mode: "no-cors", 
-        headers: {
-          "Content-Type": "text/plain"
-        },
-        body: JSON.stringify(payload)
-      });
-      setSyncStatus("Tersinkronisasi");
-      addNotification("Perubahan berhasil dikirim & disimpan di Google Sheets Anda!", "success");
-    } catch (err) {
-      console.error(err);
-      setSyncStatus("Gagal Sinkron");
-      addNotification("Gagal mengunggah perubahan. Periksa koneksi internet Anda.", "error");
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // Lakukan auto-fetch saat pengurus berhasil login
-  useEffect(() => {
-    if (isLoggedIn && googleSheetsUrl) {
-      handleFetchFromGoogleSheets();
-    }
-  }, [isLoggedIn]);
-
   const handlePrintSelectedReport = (reportType) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -995,115 +984,6 @@ export default function App() {
             </div>
           </div>
           
-          <script>
-            window.onload = function() { window.print(); window.close(); }
-          </script>
-        </body>
-      </html>
-    `;
-    printWindow.document.write(html);
-    printWindow.document.close();
-  };
-
-  const handlePrintQurbanRT = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      addNotification("Gagal membuka jendela cetak! Periksa pengaturan pemblokir pop-up browser Anda.", "error");
-      return;
-    }
-
-    const html = `
-      <html>
-        <head>
-          <title>Daftar Distribusi Daging Qurban per Wilayah - ${masjidName}</title>
-          <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-          <style>
-            @media print {
-              body { -webkit-print-color-adjust: exact; margin: 1cm; }
-              .page-break { page-break-after: always; }
-              .avoid-break { page-break-inside: avoid; }
-            }
-          </style>
-        </head>
-        <body class="p-8 bg-white text-slate-800">
-          <div class="flex items-center justify-between border-b-4 border-rose-800 pb-4 mb-6">
-            <div class="flex items-center gap-4">
-              <div class="w-16 h-16 text-rose-700 flex items-center justify-center border border-slate-200 rounded-xl overflow-hidden p-1">
-                ${masjidLogoUrl ? `<img src="${masjidLogoUrl}" class="w-full h-full object-contain" />` : `<svg class="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M12 2v3M12 5a7 7 0 0 0-7 7v10h14V12a7 7 0 0 0-7-7ZM9 17h6v5H9z"/></svg>`}
-              </div>
-              <div>
-                <h1 class="text-2xl font-black uppercase text-slate-900 leading-tight">${masjidName}</h1>
-                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}, Provinsi ${lokasi.provinsi}</p>
-              </div>
-            </div>
-            <div class="text-right text-xs text-slate-400 font-semibold font-mono">
-              <p>Tanggal Cetak:</p>
-              <p class="text-slate-955 font-bold">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
-            </div>
-          </div>
-
-          <div class="text-center mb-8">
-            <h2 class="text-lg font-bold uppercase text-rose-800 tracking-wide">Daftar Penerima & Tanda Terima Distribusi Hewan Qurban per RT / RW</h2>
-            <p class="text-xs text-slate-500 mt-1">Total Timbangan: Sapi ${totalTimbanganQurbanSapi.toFixed(1)} Kg | Kambing ${totalTimbanganQurbanKambing.toFixed(1)} Kg</p>
-          </div>
-          
-          ${WILAYAH_OPTIONS.map((wilayah) => {
-            const list = wargaPenerimaQurban.filter(w => w.rt === wilayah.rt && w.rw === wilayah.rw);
-            return `
-              <div class="mb-10 avoid-break">
-                <div class="bg-rose-50 border border-rose-200 px-4 py-2.5 rounded-xl mb-3 flex justify-between items-center">
-                  <h3 class="text-sm font-black text-rose-800 uppercase tracking-wide">${wilayah.label}</h3>
-                  <span class="text-xs font-bold bg-white text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-lg">Kapasitas: ${list.length} KK Penerima</span>
-                </div>
-                
-                <table class="w-full text-left text-xs border border-collapse border-slate-300">
-                  <thead>
-                    <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
-                      <th class="p-2 border border-slate-300 w-1/12 text-center">No</th>
-                      <th class="p-2 border border-slate-300 w-3/12">Nama Kepala Keluarga</th>
-                      <th class="p-2 border border-slate-300 font-bold text-center">RT / RW</th>
-                      <th class="p-2 border border-slate-300 text-slate-500">Alamat</th>
-                      <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Sapi</th>
-                      <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Kambing</th>
-                      <th class="p-2 border border-slate-300 w-2/12 text-center">Tanda Tangan</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${list.length > 0 ? list.map((w, index) => `
-                      <tr class="border-b border-slate-200">
-                        <td class="p-2 border border-slate-300 text-center font-mono">${index + 1}</td>
-                        <td class="p-2 border border-slate-300 font-bold text-slate-900">${w.nama}</td>
-                        <td class="p-2 border border-slate-300 font-bold text-center">RT ${w.rt} / RW ${w.rw}</td>
-                        <td class="p-2 border border-slate-300 text-slate-500 text-[10px]">${w.alamat}</td>
-                        <td class="p-2 border border-slate-300 text-right font-mono font-bold text-rose-700">${jatahDagingSapiPerKK} Kg</td>
-                        <td class="p-2 border border-slate-300 text-right font-mono font-bold text-amber-700">${jatahDagingKambingPerKK} Kg</td>
-                        <td class="p-2 border border-slate-300 h-10 text-center text-slate-300 font-mono text-[9px] relative">
-                          <span class="absolute bottom-1 left-2">${index + 1}.</span>
-                        </td>
-                      </tr>
-                    `).join('') : `
-                      <tr>
-                        <td colspan="7" class="p-4 text-center text-slate-400 italic">Tidak ada warga penerima di wilayah ini.</td>
-                      </tr>
-                    `}
-                  </tbody>
-                </table>
-              </div>
-            `;
-          }).join('')}
-
-          <div class="mt-12 flex justify-between text-xs font-semibold avoid-break">
-            <div>
-              <p>Mengetahui,</p>
-              <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center">Takmir Masjid Al-Ikhlas</p>
-            </div>
-            <div class="text-right">
-              <p>Lamongan, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
-              <p>Dilaporkan oleh,</p>
-              <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center mx-auto">Ketua Panitia Qurban</p>
-            </div>
-          </div>
-
           <script>
             window.onload = function() { window.print(); window.close(); }
           </script>
@@ -1327,7 +1207,7 @@ export default function App() {
       )}
 
       {/* === CONTENT AREA UTAMA === */}
-      <div className="flex-1 flex flex-col md:flex-row font-sans">
+      <div className="flex-1 flex flex-col md:flex-row">
         <main className="flex-1 p-6 overflow-y-auto max-w-7xl mx-auto w-full">
           
           {/* TAB 1: DASHBOARD UTAMA */}
@@ -2346,7 +2226,7 @@ smsManager.sendTextMessage(
                         <button 
                           onClick={() => {
                             setGoogleSheetsUrl(tempGoogleSheetsUrl);
-                            addNotification("URL Google Sheets berhasil disimpan! Silakan klik tombol Unggah.", "success");
+                            addNotification("URL Google Sheets berhasil disimpan! Sinkronisasi otomatis diaktifkan.", "success");
                           }}
                           className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shrink-0"
                         >
@@ -2362,15 +2242,9 @@ smsManager.sendTextMessage(
                         disabled={isSyncing}
                         className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50"
                       >
-                        <Download size={14} /> Tarik Data Dari Sheets (Fetch)
+                        <Download size={14} /> Tarik Data Dari Sheets Sekarang (Fetch)
                       </button>
-                      <button 
-                        onClick={handlePushToGoogleSheets}
-                        disabled={isSyncing}
-                        className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50"
-                      >
-                        <Upload size={14} /> Unggah / Simpan Ke Sheets (Commit)
-                      </button>
+                      {/* Tombol Simpan Manual Dihapus karena telah menggunakan fitur AUTO-SAVE otomatis */}
                     </div>
                   </div>
                 </div>
