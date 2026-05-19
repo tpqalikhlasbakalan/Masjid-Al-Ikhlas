@@ -52,7 +52,7 @@ const INITIAL_JAMAAH = [
   { id: "1", nama: "Ahmad Subarjo", anggota: 4, rt: "01", rw: "01", alamat: "Jl. Masjid No. 12", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima" },
   { id: "2", nama: "Slamet Rahardjo", anggota: 3, rt: "01", rw: "01", alamat: "Gang Kelinci No. 2", ekonomi: "Sangat Kurang", fitrah: "Berat", zuru: "Berat", qurban: "Penerima" },
   { id: "3", nama: "Budi Santoso", anggota: 5, rt: "02", rw: "01", alamat: "Jl. Mangga No. 5", ekonomi: "Kurang Mampu", fitrah: "Sedang", zuru: "Sedang", qurban: "Penerima" },
-  { id: "4", nama: "H. Abdul Rozak", anggota: 2, rt: "02", rw: "02", alamat: "Jl. Diponegoro No. 88", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Sahibul Qurban" },
+  { id: "4", nama: "H. Abdul Rozak", anggota: 2, rt: "02", rw: "02", alamat: "Jl. Diponegoro No. 88", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Sahibul Qurban - Sapi" },
   { id: "5", nama: "Ustadz Hasan", anggota: 4, rt: "03", rw: "02", alamat: "Kamar Marbot Masjid", ekonomi: "Kurang Mampu", fitrah: "Ringan", zuru: "Bukan Mustahik", qurban: "Penerima" },
   { id: "6", nama: "Mbah Sutini", anggota: 1, rt: "03", rw: "01", alamat: "Gubuk RT 3", ekonomi: "Sangat Kurang", fitrah: "Berat", zuru: "Bukan Mustahik", qurban: "Penerima" },
   { id: "7", nama: "Andi Wijaya", anggota: 3, rt: "01", rw: "02", alamat: "Jl. Baru No. 17", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Ringan", qurban: "Penerima" }
@@ -239,8 +239,6 @@ export default function App() {
   });
 
   // State untuk status sinkronisasi Google Sheets
-  const [googleSheetsUrl, setGoogleSheetsUrl] = useState(() => getLocalStorageData("googleSheetsUrl", GOOGLE_SHEETS_SCRIPT_URL));
-  const [tempGoogleSheetsUrl, setTempGoogleSheetsUrl] = useState(googleSheetsUrl);
   const [syncStatus, setSyncStatus] = useState("Belum Sinkron");
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -260,7 +258,6 @@ export default function App() {
   useEffect(() => { localStorage.setItem("alokasiZuru", JSON.stringify(alokasiZuru)); }, [alokasiZuru]);
   useEffect(() => { localStorage.setItem("timbanganQurbanSapi", JSON.stringify(timbanganQurbanSapi)); }, [timbanganQurbanSapi]);
   useEffect(() => { localStorage.setItem("timbanganQurbanKambing", JSON.stringify(timbanganQurbanKambing)); }, [timbanganQurbanKambing]);
-  useEffect(() => { localStorage.setItem("googleSheetsUrl", JSON.stringify(googleSheetsUrl)); }, [googleSheetsUrl]);
 
   useEffect(() => { setTempMasjidName(masjidName); }, [masjidName]);
   useEffect(() => { setTempMasjidLogoUrl(masjidLogoUrl); }, [masjidLogoUrl]);
@@ -278,14 +275,14 @@ export default function App() {
   
   // Fungsi penarik data penuh dari Google Sheets (Dapat dipanggil via tombol Refresh di Dashboard)
   const handleFetchFromGoogleSheets = async () => {
-    if (!googleSheetsUrl) {
-      addNotification("Gagal: URL Google Sheets belum dikonfigurasi di dalam menu Pengaturan!", "error");
+    if (!GOOGLE_SHEETS_SCRIPT_URL) {
+      addNotification("Gagal: URL Google Sheets belum dikonfigurasi di dalam kode app.jsx!", "error");
       return;
     }
     setIsSyncing(true);
     setSyncStatus("Mengunduh Cloud...");
     try {
-      const response = await fetch(`${googleSheetsUrl}?action=getData`);
+      const response = await fetch(`${GOOGLE_SHEETS_SCRIPT_URL}?action=getData`);
       const resData = await response.json();
       if (resData && resData.status === "success" && Object.keys(resData.data).length > 0) {
         const payload = resData.data;
@@ -318,14 +315,14 @@ export default function App() {
 
   // Auto-Fetch saat login pertama kali
   useEffect(() => {
-    if (isLoggedIn && googleSheetsUrl) {
+    if (isLoggedIn && GOOGLE_SHEETS_SCRIPT_URL) {
       handleFetchFromGoogleSheets();
     }
   }, [isLoggedIn]);
 
   // Efek AUTO-SAVE (Sistem akan mengunggah otomatis ke Google Sheets setiap kali ada data yang berubah)
   useEffect(() => {
-    if (!isLoggedIn || !googleSheetsUrl) return;
+    if (!isLoggedIn || !GOOGLE_SHEETS_SCRIPT_URL) return;
 
     const payload = {
       masjidName, masjidLogoUrl, lokasi, petugasAbadi, jamaahList,
@@ -338,7 +335,7 @@ export default function App() {
     // Memberikan jeda 3 detik (debounce) sebelum mengirim agar tidak membebani API Google saat mengetik
     const timeoutId = setTimeout(async () => {
       try {
-        await fetch(googleSheetsUrl, {
+        await fetch(GOOGLE_SHEETS_SCRIPT_URL, {
           method: "POST",
           mode: "no-cors", 
           headers: {
@@ -358,7 +355,7 @@ export default function App() {
     masjidName, masjidLogoUrl, lokasi, petugasAbadi, jamaahList, 
     timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, 
     timbanganQurbanSapi, timbanganQurbanKambing, userDatabase, 
-    isLoggedIn, googleSheetsUrl
+    isLoggedIn
   ]);
 
   // =========================================================
@@ -451,7 +448,7 @@ export default function App() {
   const getWargaPenerimaQurban = () => {
     return jamaahList.filter(warga => {
       // === PENYARINGAN UTAMA: SAHIBUL QURBAN TIDAK MASUK DAFTAR PENERIMA ===
-      if (warga.qurban === "Sahibul Qurban") {
+      if (warga.qurban && warga.qurban.startsWith("Sahibul Qurban")) {
         return false;
       }
       if (filterWilayahQurban !== "Semua") {
@@ -543,25 +540,7 @@ export default function App() {
   };
 
   const handleLogoUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 1.5 * 1024 * 1024) {
-      addNotification("Ukuran berkas gambar terlalu besar! Maksimal adalah 1.5 MB.", "error");
-      return;
-    }
-
-    if (!file.type.startsWith("image/")) {
-      addNotification("Harap pilih berkas gambar valid (PNG, JPG, atau JPEG)!", "error");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setTempMasjidLogoUrl(reader.result);
-      addNotification("Berkas logo sukses diunggah ke memori sementara. Tekan 'Simpan Perubahan'!", "info");
-    };
-    reader.readAsDataURL(file);
+    addNotification("Untuk sinkronisasi antar perangkat yang stabil, kami mematikan sistem unggah dokumen lokal. Cukup tempel URL gambar yang berawalan https://...", "warning");
   };
 
   const handleSaveNewIdentity = () => {
@@ -872,7 +851,7 @@ export default function App() {
       `;
 
       const qurbanList = filteredWarga.filter(warga => {
-        if (warga.qurban === "Sahibul Qurban") return false;
+        if (warga.qurban && warga.qurban.startsWith("Sahibul Qurban")) return false;
 
         if (qurbanHanyaMustahik) {
           const isMustahikFitrah = warga.fitrah !== "Muzakki";
@@ -899,6 +878,37 @@ export default function App() {
           </td>
         </tr>
       `).join('') : `<tr><td colspan="7" class="p-8 text-center text-slate-400 italic">Tidak ada warga penerima daging qurban pada wilayah terpilih ini.</td></tr>`;
+    }
+
+    else if (reportType === "pekurban") {
+      docTitle = `Daftar Nama Pekurban (Sahibul Qurban)`;
+      textTheme = "text-rose-800";
+      tableHeaderHTML = `
+        <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
+          <th class="p-2.5 border border-slate-300 w-1/12 text-center">No</th>
+          <th class="p-2.5 border border-slate-300 w-3/12">Nama Pekurban</th>
+          <th class="p-2.5 border border-slate-300 w-2/12 text-center">RT / RW</th>
+          <th class="p-2.5 border border-slate-300 text-slate-500">Alamat</th>
+          <th class="p-2.5 border border-slate-300 w-2/12 text-center">Jenis Hewan Qurban</th>
+          <th class="p-2.5 border border-slate-300 w-2/12 text-center">Keterangan</th>
+        </tr>
+      `;
+
+      const pekurbanList = filteredWarga.filter(warga => warga.qurban && warga.qurban.startsWith("Sahibul Qurban"));
+
+      tableRowsHTML = pekurbanList.length > 0 ? pekurbanList.map((j, i) => {
+        const jenisHewan = j.qurban.replace("Sahibul Qurban - ", "");
+        return `
+          <tr class="border-b border-slate-200">
+            <td class="p-2.5 border border-slate-300 text-center font-mono">${i + 1}</td>
+            <td class="p-2.5 border border-slate-300 font-bold text-slate-900">${j.nama}</td>
+            <td class="p-2.5 border border-slate-300 text-center font-bold">RT ${j.rt} / RW ${j.rw}</td>
+            <td class="p-2.5 border border-slate-300 text-slate-500 text-[10px]">${j.alamat}</td>
+            <td class="p-2.5 border border-slate-300 text-center font-bold text-rose-700">${jenisHewan}</td>
+            <td class="p-2.5 border border-slate-300 text-center font-mono text-[9px] text-slate-300 relative h-12"></td>
+          </tr>
+        `;
+      }).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Tidak ada data pekurban (Sahibul Qurban) pada wilayah terpilih ini.</td></tr>`;
     }
 
     const html = `
@@ -1707,6 +1717,7 @@ smsManager.sendTextMessage(
                     <button onClick={() => handlePrintSelectedReport("fitrah")} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-3 rounded-xl flex items-center gap-1.5 transition-all shadow-sm"><Download size={14} />Cetak Fitrah</button>
                     <button onClick={() => handlePrintSelectedReport("zuru")} className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3.5 py-3 rounded-xl flex items-center gap-1.5 transition-all shadow-sm"><Download size={14} />Cetak Zuru'</button>
                     <button onClick={() => handlePrintSelectedReport("qurban")} className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3.5 py-3 rounded-xl flex items-center gap-1.5 transition-all shadow-sm"><Download size={14} />Cetak Qurban</button>
+                    <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3.5 py-3 rounded-xl flex items-center gap-1.5 transition-all shadow-sm"><Download size={14} />Cetak Pekurban</button>
                   </div>
                 </div>
               </div>
@@ -1901,7 +1912,8 @@ smsManager.sendTextMessage(
                             className="w-full text-xs border border-slate-200 p-2.5 rounded-xl outline-none font-semibold text-rose-800 focus:ring-1 focus:ring-rose-500"
                           >
                             <option value="Penerima">Penerima Daging (Warga Biasa / Mustahik)</option>
-                            <option value="Sahibul Qurban">Sahibul Qurban (Pekurban - Tidak Dapat Pembagian Umum)</option>
+                            <option value="Sahibul Qurban - Sapi">Sahibul Qurban Sapi (Pekurban)</option>
+                            <option value="Sahibul Qurban - Kambing">Sahibul Qurban Kambing (Pekurban)</option>
                           </select>
                           <p className="text-[10px] text-slate-400 mt-1 font-medium">Sahibul Qurban otomatis dikeluarkan dari kalkulator pembagian daging qurban dan cetak PDF tanda terima kupon.</p>
                         </div>
@@ -2301,46 +2313,6 @@ smsManager.sendTextMessage(
           {activeTab === "rbac" && (
             <div className="space-y-6 animate-fadeIn">
               
-              {/* === PANEL SINKRONISASI GOOGLE SHEETS CLOUD DI TAB RBAC === */}
-              {currentRole === "Admin" && (
-                <div className="bg-white border-2 border-emerald-100 p-6 rounded-3xl shadow-sm space-y-4">
-                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2">
-                      <Download className="text-emerald-600 w-5 h-5 animate-pulse" />
-                      <div>
-                        <h3 className="font-black text-slate-900 text-sm">Pengaturan URL Google Sheets Cloud</h3>
-                        <p className="text-xs text-slate-500">Koneksikan sistem ini ke Google Sheets pribadi untuk penyimpanan awan otomatis (Auto-Save).</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/50 space-y-3">
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-black text-slate-600">Google Apps Script Web App URL:</label>
-                      <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          placeholder="Tempel URL (berakhiran /exec) di sini..." 
-                          value={tempGoogleSheetsUrl} 
-                          onChange={(e) => setTempGoogleSheetsUrl(e.target.value)} 
-                          className="flex-1 text-xs border border-slate-200 bg-white p-3 rounded-xl outline-none font-mono text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" 
-                        />
-                        <button 
-                          onClick={() => {
-                            setGoogleSheetsUrl(tempGoogleSheetsUrl);
-                            addNotification("URL Google Sheets berhasil disimpan! Sinkronisasi otomatis (Auto-Save) kini aktif.", "success");
-                          }}
-                          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shrink-0"
-                        >
-                          Simpan URL
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-slate-400 font-medium">Sistem kini akan otomatis menyimpan perubahan ke Google Sheets saat Anda mengedit data. Jika butuh menarik data terbaru dari server, gunakan tombol **Refresh Data Terbaru** di menu Dashboard Utama.</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {currentRole === "Admin" && (
                 <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-4">
                   <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
@@ -2348,28 +2320,22 @@ smsManager.sendTextMessage(
                     <h3 className="font-extrabold text-slate-900 text-sm">Pengaturan Identitas & Logo Masjid</h3>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl border border-slate-200/60">
+                  <div className="grid grid-cols-1 gap-6 bg-slate-50 p-4 rounded-xl border border-slate-200/60">
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-slate-600">Nama Masjid (Akan mengganti semua teks sistem)</label>
                       <input type="text" value={tempMasjidName} onChange={(e) => setTempMasjidName(e.target.value)} placeholder="Contoh: Masjid Al-Ikhlas" className="w-full text-sm border border-slate-200 bg-white p-2.5 rounded-xl outline-none font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-600">Unggah Berkas Logo PNG atau Tautan Gambar</label>
+                      <label className="block text-xs font-bold text-slate-600">Tautan Gambar Logo (URL)</label>
                       <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <label className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all shadow-sm">
-                            <Upload size={14} className="text-emerald-600" /> Pilih Berkas Gambar PNG
-                            <input type="file" accept="image/png, image/jpeg, image/jpg" onChange={handleLogoUpload} className="hidden" />
-                          </label>
-                          {tempMasjidLogoUrl && <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">Gambar Siap Simpan</span>}
-                        </div>
                         <div className="flex gap-2">
-                          <input type="text" value={tempMasjidLogoUrl} onChange={(e) => setTempMasjidLogoUrl(e.target.value)} placeholder="Atau tempel tautan gambar disini (https://...)" className="flex-1 text-xs border border-slate-200 bg-white p-2.5 rounded-xl outline-none font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
+                          <input type="text" value={tempMasjidLogoUrl} onChange={(e) => setTempMasjidLogoUrl(e.target.value)} placeholder="Tempel tautan gambar logo secara online (berawalan https://...)" className="flex-1 text-xs border border-slate-200 bg-white p-2.5 rounded-xl outline-none font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
                           {tempMasjidLogoUrl.trim() !== "" && (
                             <button type="button" onClick={() => { setTempMasjidLogoUrl(""); addNotification("Pratinjau logo kustom dibersihkan."); }} className="bg-rose-50 text-rose-600 hover:bg-rose-100 px-3 rounded-xl border border-rose-200 text-xs font-bold">Reset</button>
                           )}
                         </div>
+                        <p className="text-[10px] text-slate-500 font-medium">Agar sinkronisasi ke cloud berjalan lancar, <strong>JANGAN mengunggah file gambar dari komputer</strong> karena ukurannya akan membebani database. Cukup tempel URL gambar yang sudah online.</p>
                       </div>
                     </div>
                   </div>
