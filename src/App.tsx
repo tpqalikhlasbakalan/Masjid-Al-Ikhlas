@@ -7,12 +7,6 @@ import {
   Phone, Send, MessageSquare, BellRing, Upload, Download, Smartphone, Menu
 } from 'lucide-react';
 
-// ====================================================================
-// CONFIG CONFIGURATION GOOGLE SHEETS API (GRATIS)
-// ====================================================================
-// Silakan tempel URL Web App Google Apps Script Anda di sini setelah melakukan setup
-const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlT-MtuAXW_wl-KnFnqUkhX4fPf6YIyXNMPTE4Syi66_uDhxGiKVVK9_imo25DpRCm/exec"; 
-
 // === SEED DATA LOKASI AWAL (DITAMBAH DESA AGAR LEBIH SPESIFIK) ===
 const INITIAL_LOKASI = {
   provinsi: "Jawa Timur",
@@ -158,12 +152,8 @@ export default function App() {
   // =========================================================
   // 1. STATE MANAGEMENT DENGAN STRATEGI PENYIMPANAN DOUBLE-BACKUP
   // =========================================================
-  const [masjidName, setMasjidName] = useState(() => {
-    return localStorage.getItem("masjidName") || "Masjid Al-Ikhlas Bakalan";
-  });
-  const [masjidLogoUrl, setMasjidLogoUrl] = useState(() => {
-    return localStorage.getItem("masjidLogoUrl") || "";
-  });
+  const [masjidName, setMasjidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Ikhlas Bakalan"));
+  const [masjidLogoUrl, setMasjidLogoUrl] = useState(() => getLocalStorageData("masjidLogoUrl", ""));
 
   const [tempMasjidName, setTempMasjidName] = useState(masjidName);
   const [tempMasjidLogoUrl, setTempMasjidLogoUrl] = useState(masjidLogoUrl);
@@ -173,15 +163,8 @@ export default function App() {
   const [currentUserLabel, setCurrentUserLabel] = useState("");
   const [currentUserUsername, setCurrentUserUsername] = useState("");
   
-  const [rolesConfig, setRolesConfig] = useState(() => {
-    const saved = localStorage.getItem("rolesConfig");
-    return saved ? JSON.parse(saved) : INITIAL_ROLES;
-  });
-  
-  const [userDatabase, setUserDatabase] = useState(() => {
-    const saved = localStorage.getItem("userDatabase");
-    return saved ? JSON.parse(saved) : INITIAL_USER_DATABASE;
-  });
+  const [rolesConfig, setRolesConfig] = useState(() => getLocalStorageData("rolesConfig", INITIAL_ROLES));
+  const [userDatabase, setUserDatabase] = useState(() => getLocalStorageData("userDatabase", INITIAL_USER_DATABASE));
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [notifications, setNotifications] = useState([]);
@@ -199,18 +182,12 @@ export default function App() {
   const [editingAccountPassword, setEditingAccountPassword] = useState(null); 
   const [newPasswordValue, setNewPasswordValue] = useState("");
 
-  const [lokasi, setLokasi] = useState(() => {
-    const saved = localStorage.getItem("lokasi");
-    return saved ? JSON.parse(saved) : INITIAL_LOKASI;
-  });
+  const [lokasi, setLokasi] = useState(() => getLocalStorageData("lokasi", INITIAL_LOKASI));
   const [isSettingLokasi, setIsSettingLokasi] = useState(false);
   const [tempLokasi, setTempLokasi] = useState(lokasi);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const [petugasAbadi, setPetugasAbadi] = useState(() => {
-    const saved = localStorage.getItem("petugasAbadi");
-    return saved ? JSON.parse(saved) : INITIAL_PETUGAS_ABADI;
-  });
+  const [petugasAbadi, setPetugasAbadi] = useState(() => getLocalStorageData("petugasAbadi", INITIAL_PETUGAS_ABADI));
   const [editingPasaran, setEditingPasaran] = useState(null);
   const [pasaranForm, setPasaranForm] = useState({ khatib: "", imam: "", muadzin: "", bilal: "", telp: "" });
 
@@ -220,44 +197,27 @@ export default function App() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showAndroidCode, setShowAndroidCode] = useState(false);
 
-  const [jamaahList, setJamaahList] = useState(() => {
-    const saved = localStorage.getItem("jamaahList");
-    return saved ? JSON.parse(saved) : INITIAL_JAMAAH;
-  });
+  const [jamaahList, setJamaahList] = useState(() => getLocalStorageData("jamaahList", INITIAL_JAMAAH));
   const [filterWilayahJamaah, setFilterWilayahJamaah] = useState("Semua");
 
-  const [timbanganFitrah, setTimbanganFitrah] = useState(() => {
-    const saved = localStorage.getItem("timbanganFitrah");
-    return saved ? JSON.parse(saved) : [25, 50, 15, 30];
-  });
+  const [timbanganFitrah, setTimbanganFitrah] = useState(() => getLocalStorageData("timbanganFitrah", [25, 50, 15, 30]));
   const [tempBeratFitrah, setTempBeratFitrah] = useState("");
   
-  const [alokasiFitrah, setAlokasiFitrah] = useState(() => {
-    const saved = localStorage.getItem("alokasiFitrah");
-    return saved ? JSON.parse(saved) : { "Berat": 5.0, "Sedang": 3.0, "Ringan": 1.5, "Muzakki": 0.0 };
-  });
+  const [alokasiFitrah, setAlokasiFitrah] = useState(() => getLocalStorageData("alokasiFitrah", {
+    "Berat": 5.0, "Sedang": 3.0, "Ringan": 1.5, "Muzakki": 0.0
+  }));
   const [tempAlokasiFitrah, setTempAlokasiFitrah] = useState(alokasiFitrah);
 
-  const [timbanganZuru, setTimbanganZuru] = useState(() => {
-    const saved = localStorage.getItem("timbanganZuru");
-    return saved ? JSON.parse(saved) : [120, 250, 80];
-  });
+  const [timbanganZuru, setTimbanganZuru] = useState(() => getLocalStorageData("timbanganZuru", [120, 250, 80]));
   const [tempBeratZuru, setTempBeratZuru] = useState("");
   
-  const [alokasiZuru, setAlokasiZuru] = useState(() => {
-    const saved = localStorage.getItem("alokasiZuru");
-    return saved ? JSON.parse(saved) : { "Berat": 15.0, "Sedang": 10.0, "Ringan": 5.0, "Bukan Mustahik": 0.0 };
-  });
+  const [alokasiZuru, setAlokasiZuru] = useState(() => getLocalStorageData("alokasiZuru", {
+    "Berat": 15.0, "Sedang": 10.0, "Ringan": 5.0, "Bukan Mustahik": 0.0
+  }));
   const [tempAlokasiZuru, setTempAlokasiZuru] = useState(alokasiZuru);
 
-  const [timbanganQurbanSapi, setTimbanganQurbanSapi] = useState(() => {
-    const saved = localStorage.getItem("timbanganQurbanSapi");
-    return saved ? JSON.parse(saved) : [85.5, 120.0, 95.0, 65.5];
-  });
-  const [timbanganQurbanKambing, setTimbanganQurbanKambing] = useState(() => {
-    const saved = localStorage.getItem("timbanganQurbanKambing");
-    return saved ? JSON.parse(saved) : [22.0, 18.5, 25.0];
-  });
+  const [timbanganQurbanSapi, setTimbanganQurbanSapi] = useState(() => getLocalStorageData("timbanganQurbanSapi", [85.5, 120.0, 95.0, 65.5]));
+  const [timbanganQurbanKambing, setTimbanganQurbanKambing] = useState(() => getLocalStorageData("timbanganQurbanKambing", [22.0, 18.5, 25.0]));
   const [tempBeratQurbanSapi, setTempBeratQurbanSapi] = useState("");
   const [tempBeratQurbanKambing, setTempBeratQurbanKambing] = useState("");
   const [filterWilayahQurban, setFilterWilayahQurban] = useState("Semua");
@@ -272,71 +232,31 @@ export default function App() {
   });
 
   // State untuk status sinkronisasi Google Sheets
+  const [googleSheetsUrl, setGoogleSheetsUrl] = useState(() => getLocalStorageData("googleSheetsUrl", ""));
+  const [tempGoogleSheetsUrl, setTempGoogleSheetsUrl] = useState(googleSheetsUrl);
   const [syncStatus, setSyncStatus] = useState("Belum Sinkron");
   const [isSyncing, setIsSyncing] = useState(false);
 
   // =========================================================
   // EFFECTS FOR STORAGE & TIMER
   // =========================================================
-  useEffect(() => {
-    localStorage.setItem("masjidName", masjidName);
-  }, [masjidName]);
+  useEffect(() => { localStorage.setItem("masjidName", JSON.stringify(masjidName)); }, [masjidName]);
+  useEffect(() => { localStorage.setItem("masjidLogoUrl", JSON.stringify(masjidLogoUrl)); }, [masjidLogoUrl]);
+  useEffect(() => { localStorage.setItem("userDatabase", JSON.stringify(userDatabase)); }, [userDatabase]);
+  useEffect(() => { localStorage.setItem("rolesConfig", JSON.stringify(rolesConfig)); }, [rolesConfig]);
+  useEffect(() => { localStorage.setItem("lokasi", JSON.stringify(lokasi)); }, [lokasi]);
+  useEffect(() => { localStorage.setItem("petugasAbadi", JSON.stringify(petugasAbadi)); }, [petugasAbadi]);
+  useEffect(() => { localStorage.setItem("jamaahList", JSON.stringify(jamaahList)); }, [jamaahList]);
+  useEffect(() => { localStorage.setItem("timbanganFitrah", JSON.stringify(timbanganFitrah)); }, [timbanganFitrah]);
+  useEffect(() => { localStorage.setItem("alokasiFitrah", JSON.stringify(alokasiFitrah)); }, [alokasiFitrah]);
+  useEffect(() => { localStorage.setItem("timbanganZuru", JSON.stringify(timbanganZuru)); }, [timbanganZuru]);
+  useEffect(() => { localStorage.setItem("alokasiZuru", JSON.stringify(alokasiZuru)); }, [alokasiZuru]);
+  useEffect(() => { localStorage.setItem("timbanganQurbanSapi", JSON.stringify(timbanganQurbanSapi)); }, [timbanganQurbanSapi]);
+  useEffect(() => { localStorage.setItem("timbanganQurbanKambing", JSON.stringify(timbanganQurbanKambing)); }, [timbanganQurbanKambing]);
+  useEffect(() => { localStorage.setItem("googleSheetsUrl", JSON.stringify(googleSheetsUrl)); }, [googleSheetsUrl]);
 
-  useEffect(() => {
-    localStorage.setItem("masjidLogoUrl", masjidLogoUrl);
-  }, [masjidLogoUrl]);
-
-  useEffect(() => {
-    localStorage.setItem("userDatabase", JSON.stringify(userDatabase));
-  }, [userDatabase]);
-
-  useEffect(() => {
-    localStorage.setItem("rolesConfig", JSON.stringify(rolesConfig));
-  }, [rolesConfig]);
-
-  useEffect(() => {
-    localStorage.setItem("lokasi", JSON.stringify(lokasi));
-  }, [lokasi]);
-
-  useEffect(() => {
-    localStorage.setItem("petugasAbadi", JSON.stringify(petugasAbadi));
-  }, [petugasAbadi]);
-
-  useEffect(() => {
-    localStorage.setItem("jamaahList", JSON.stringify(jamaahList));
-  }, [jamaahList]);
-
-  useEffect(() => {
-    localStorage.setItem("timbanganFitrah", JSON.stringify(timbanganFitrah));
-  }, [timbanganFitrah]);
-
-  useEffect(() => {
-    localStorage.setItem("alokasiFitrah", JSON.stringify(alokasiFitrah));
-  }, [alokasiFitrah]);
-
-  useEffect(() => {
-    localStorage.setItem("timbanganZuru", JSON.stringify(timbanganZuru));
-  }, [timbanganZuru]);
-
-  useEffect(() => {
-    localStorage.setItem("alokasiZuru", JSON.stringify(alokasiZuru));
-  }, [alokasiZuru]);
-
-  useEffect(() => {
-    localStorage.setItem("timbanganQurbanSapi", JSON.stringify(timbanganQurbanSapi));
-  }, [timbanganQurbanSapi]);
-
-  useEffect(() => {
-    localStorage.setItem("timbanganQurbanKambing", JSON.stringify(timbanganQurbanKambing));
-  }, [timbanganQurbanKambing]);
-
-  useEffect(() => {
-    setTempMasjidName(masjidName);
-  }, [masjidName]);
-
-  useEffect(() => {
-    setTempMasjidLogoUrl(masjidLogoUrl);
-  }, [masjidLogoUrl]);
+  useEffect(() => { setTempMasjidName(masjidName); }, [masjidName]);
+  useEffect(() => { setTempMasjidLogoUrl(masjidLogoUrl); }, [masjidLogoUrl]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -458,7 +378,7 @@ export default function App() {
   const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanKambing / totalPenerimaKK).toFixed(2) : 0;
 
   // =========================================================
-  // 3. ACTION HANDLERS
+  // 3. EVENT HANDLERS
   // =========================================================
   const handleSaveAlokasiFitrah = () => {
     setAlokasiFitrah(tempAlokasiFitrah);
@@ -734,14 +654,14 @@ export default function App() {
   
   // Fungsi penarik data penuh dari Google Sheets saat aplikasi dibuka
   const handleFetchFromGoogleSheets = async () => {
-    if (!GOOGLE_SHEETS_SCRIPT_URL) {
-      addNotification("Gagal Sinkronisasi: Script URL Google Sheets belum diisi pada app.jsx!", "error");
+    if (!googleSheetsUrl) {
+      addNotification("Gagal Sinkronisasi: Script URL Google Sheets belum dikonfigurasi!", "error");
       return;
     }
     setIsSyncing(true);
     setSyncStatus("Mengunduh...");
     try {
-      const response = await fetch(`${GOOGLE_SHEETS_SCRIPT_URL}?action=getData`);
+      const response = await fetch(`${googleSheetsUrl}?action=getData`);
       const resData = await response.json();
       if (resData && resData.status === "success") {
         const payload = resData.data;
@@ -774,8 +694,8 @@ export default function App() {
 
   // Fungsi pengirim data terpadu ke Google Sheets secara berkala atau ketika diklik manual
   const handlePushToGoogleSheets = async () => {
-    if (!GOOGLE_SHEETS_SCRIPT_URL) {
-      addNotification("Silakan atur URL Google Apps Script Anda di bagian atas app.jsx terlebih dahulu!", "error");
+    if (!googleSheetsUrl) {
+      addNotification("Silakan simpan URL Google Apps Script Anda di menu ini terlebih dahulu!", "error");
       return;
     }
     setIsSyncing(true);
@@ -797,11 +717,11 @@ export default function App() {
     };
 
     try {
-      const response = await fetch(GOOGLE_SHEETS_SCRIPT_URL, {
+      await fetch(googleSheetsUrl, {
         method: "POST",
-        mode: "no-cors", // penting untuk bypass CORS Google Apps Script Redirect
+        mode: "no-cors", 
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "text/plain"
         },
         body: JSON.stringify(payload)
       });
@@ -810,7 +730,7 @@ export default function App() {
     } catch (err) {
       console.error(err);
       setSyncStatus("Gagal Sinkron");
-      addNotification("Gagal mengunggah perubahan. Cek konfigurasi Google Sheets.", "error");
+      addNotification("Gagal mengunggah perubahan. Periksa koneksi internet Anda.", "error");
     } finally {
       setIsSyncing(false);
     }
@@ -818,7 +738,7 @@ export default function App() {
 
   // Lakukan auto-fetch saat pengurus berhasil login
   useEffect(() => {
-    if (isLoggedIn && GOOGLE_SHEETS_SCRIPT_URL) {
+    if (isLoggedIn && googleSheetsUrl) {
       handleFetchFromGoogleSheets();
     }
   }, [isLoggedIn]);
@@ -1045,117 +965,8 @@ export default function App() {
     printWindow.document.close();
   };
 
-  const handlePrintQurbanRT = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      addNotification("Gagal membuka jendela cetak! Periksa pengaturan pemblokir pop-up browser Anda.", "error");
-      return;
-    }
-
-    const html = `
-      <html>
-        <head>
-          <title>Daftar Distribusi Daging Qurban per Wilayah - ${masjidName}</title>
-          <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-          <style>
-            @media print {
-              body { -webkit-print-color-adjust: exact; margin: 1cm; }
-              .page-break { page-break-after: always; }
-              .avoid-break { page-break-inside: avoid; }
-            }
-          </style>
-        </head>
-        <body class="p-8 bg-white text-slate-800">
-          <div class="flex items-center justify-between border-b-4 border-rose-800 pb-4 mb-6">
-            <div class="flex items-center gap-4">
-              <div class="w-16 h-16 text-rose-700 flex items-center justify-center border border-slate-200 rounded-xl overflow-hidden p-1">
-                ${masjidLogoUrl ? `<img src="${masjidLogoUrl}" class="w-full h-full object-contain" />` : `<svg class="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M12 2v3M12 5a7 7 0 0 0-7 7v10h14V12a7 7 0 0 0-7-7ZM9 17h6v5H9z"/></svg>`}
-              </div>
-              <div>
-                <h1 class="text-2xl font-black uppercase text-slate-900 leading-tight">${masjidName}</h1>
-                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}, Provinsi ${lokasi.provinsi}</p>
-              </div>
-            </div>
-            <div class="text-right text-xs text-slate-400 font-semibold font-mono">
-              <p>Tanggal Cetak:</p>
-              <p class="text-slate-955 font-bold">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
-            </div>
-          </div>
-
-          <div class="text-center mb-8">
-            <h2 class="text-lg font-bold uppercase text-rose-800 tracking-wide">Daftar Penerima & Tanda Terima Distribusi Hewan Qurban per RT / RW</h2>
-            <p class="text-xs text-slate-500 mt-1">Total Timbangan: Sapi ${totalTimbanganQurbanSapi.toFixed(1)} Kg | Kambing ${totalTimbanganQurbanKambing.toFixed(1)} Kg</p>
-          </div>
-          
-          ${WILAYAH_OPTIONS.map((wilayah) => {
-            const list = wargaPenerimaQurban.filter(w => w.rt === wilayah.rt && w.rw === wilayah.rw);
-            return `
-              <div class="mb-10 avoid-break">
-                <div class="bg-rose-50 border border-rose-200 px-4 py-2.5 rounded-xl mb-3 flex justify-between items-center">
-                  <h3 class="text-sm font-black text-rose-800 uppercase tracking-wide">${wilayah.label}</h3>
-                  <span class="text-xs font-bold bg-white text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-lg">Kapasitas: ${list.length} KK Penerima</span>
-                </div>
-                
-                <table class="w-full text-left text-xs border border-collapse border-slate-300">
-                  <thead>
-                    <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
-                      <th class="p-2 border border-slate-300 w-1/12 text-center">No</th>
-                      <th class="p-2 border border-slate-300 w-3/12">Nama Kepala Keluarga</th>
-                      <th class="p-2 border border-slate-300 font-bold text-center">RT / RW</th>
-                      <th class="p-2 border border-slate-300 text-slate-500">Alamat</th>
-                      <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Sapi</th>
-                      <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Kambing</th>
-                      <th class="p-2 border border-slate-300 w-2/12 text-center">Tanda Tangan</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${list.length > 0 ? list.map((w, index) => `
-                      <tr class="border-b border-slate-200">
-                        <td class="p-2 border border-slate-300 text-center font-mono">${index + 1}</td>
-                        <td class="p-2 border border-slate-300 font-bold text-slate-900">${w.nama}</td>
-                        <td class="p-2 border border-slate-300 font-bold text-center">RT ${w.rt} / RW ${w.rw}</td>
-                        <td class="p-2 border border-slate-300 text-slate-500 text-[10px]">${w.alamat}</td>
-                        <td class="p-2 border border-slate-300 text-right font-mono font-bold text-rose-700">${jatahDagingSapiPerKK} Kg</td>
-                        <td class="p-2 border border-slate-300 text-right font-mono font-bold text-amber-700">${jatahDagingKambingPerKK} Kg</td>
-                        <td class="p-2 border border-slate-300 h-10 text-center text-slate-300 font-mono text-[9px] relative">
-                          <span class="absolute bottom-1 left-2">${index + 1}.</span>
-                        </td>
-                      </tr>
-                    `).join('') : `
-                      <tr>
-                        <td colspan="7" class="p-4 text-center text-slate-400 italic">Tidak ada warga penerima di wilayah ini.</td>
-                      </tr>
-                    `}
-                  </tbody>
-                </table>
-              </div>
-            `;
-          }).join('')}
-
-          <div class="mt-12 flex justify-between text-xs font-semibold avoid-break">
-            <div>
-              <p>Mengetahui,</p>
-              <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center">Takmir Masjid Al-Ikhlas</p>
-            </div>
-            <div class="text-right">
-              <p>Lamongan, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
-              <p>Dilaporkan oleh,</p>
-              <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center mx-auto">Ketua Panitia Qurban</p>
-            </div>
-          </div>
-
-          <script>
-            window.onload = function() { window.print(); window.close(); }
-          </script>
-        </body>
-      </html>
-    `;
-    printWindow.document.write(html);
-    printWindow.document.close();
-  };
-
   // =========================================================
-  // 4. VIEW RENDERING & CONTROLLER (EVALUATED AT BOTTOM OF APP)
+  // 6. LOGIN FORM RENDERING (EVALUATED AT BOTTOM OF APP)
   // =========================================================
   if (!isLoggedIn) {
     // Jalur Render Halaman Login Bersih
@@ -1868,7 +1679,6 @@ smsManager.sendTextMessage(
                       <h3 className="font-extrabold text-slate-900">{editingJamaah ? "Ubah Data Warga" : "Tambah Warga Baru"}</h3>
                       <button onClick={() => setShowJamaahModal(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
                     </div>
-                    {/* === FIX: Mengubah handleSaveSaveJamaah = handleSaveJamaah menjadi handleSaveJamaah murni === */}
                     <form onSubmit={handleSaveJamaah} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
                       
                       <div className="grid grid-cols-1 gap-4">
@@ -1903,7 +1713,7 @@ smsManager.sendTextMessage(
 
                         <div>
                           <label className="block text-xs font-bold text-slate-600 mb-1">Alamat Rumah *</label>
-                          <textarea placeholder="Alamat lengkap warga" required rows="2" value={jamaahForm.alamat} onChange={(e) => setJamaahForm({...jamaahForm, alamat: e.target.value})} className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold resize-none text-slate-855" />
+                          <textarea placeholder="Alamat lengkap warga" required rows="2" value={jamaahForm.alamat} onChange={(e) => setJamaahForm({...jamaahForm, alamat: e.target.value})} className="w-full text-sm border border-slate-200 p-2.5 rounded-xl outline-none font-semibold resize-none text-slate-850" />
                         </div>
 
                         <div className="border-t border-slate-100 pt-3">
@@ -2098,7 +1908,7 @@ smsManager.sendTextMessage(
             <div className="space-y-6 animate-fadeIn">
               <div className="flex justify-between items-center border-b border-slate-200 pb-3">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-950">Modul Pengelolaan Zakat Zuru' (Hasil Pertanian)</h2>
+                  <h2 className="text-xl font-bold text-slate-900">Modul Pengelolaan Zakat Zuru' (Hasil Pertanian)</h2>
                   <p className="text-xs text-slate-500">Kalkulasi timbangan gabah atau beras hasil zakat pertanian jemaah secara akurat.</p>
                 </div>
               </div>
@@ -2118,7 +1928,7 @@ smsManager.sendTextMessage(
                         onKeyDown={(e) => e.key === 'Enter' && addTimbangan('zuru')} 
                         className="flex-1 text-xs border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-1 focus:ring-teal-500" 
                       />
-                      <button onClick={() => addTimbangan('zuru')} className="bg-teal-600 hover:bg-teal-700 text-white px-4 rounded-xl text-xs font-bold transition-all shrink-0">Tambah</button>
+                      <button onClick={() => addTimbangan('zuru')} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0">Tambah</button>
                     </div>
                   ) : (
                     <p className="text-[11px] text-rose-600 bg-rose-50 border border-rose-100 p-2.5 rounded-lg font-bold">Peran Anda tidak diizinkan mengubah timbangan zakat zuru'.</p>
@@ -2126,7 +1936,7 @@ smsManager.sendTextMessage(
 
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                     {timbanganZuru.map((berat, idx) => (
-                      <div key={idx} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 p-2.5 rounded-xl text-sm font-semibold">
+                      <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 border border-slate-200/50 rounded-xl font-semibold">
                         <span className="text-slate-500">Timbangan #{idx + 1}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-slate-900 font-bold font-mono">{berat} Kg</span>
@@ -2275,11 +2085,8 @@ smsManager.sendTextMessage(
                   <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 font-semibold text-slate-700">
                     {timbanganQurbanKambing.map((berat, index) => (
                       <div key={index} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 px-3 py-2 rounded-xl text-xs font-semibold">
-                        <span className="text-slate-400">Timbangan Kambing #{index + 1}</span>
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-slate-955 font-extrabold">{berat} Kg</span>
-                          {canEditQurban && ( <button onClick={() => deleteTimbangan('qurbanKambing', index)} className="text-rose-500 p-1 hover:bg-rose-50 rounded-lg"><Trash2 size={12} /></button> )}
-                        </div>
+                        <span className="text-slate-955 font-extrabold">{berat} Kg</span>
+                        {canEditQurban && ( <button onClick={() => deleteTimbangan('qurbanKambing', index)} className="text-rose-500 p-1 hover:bg-rose-50 rounded-lg"><Trash2 size={12} /></button> )}
                       </div>
                     ))}
                   </div>
@@ -2383,7 +2190,7 @@ smsManager.sendTextMessage(
                         <input 
                           type="text" 
                           placeholder="Belum ada URL script yang dikonfigurasi. Edit file app.jsx untuk mengunci URL." 
-                          value={GOOGLE_SHEETS_SCRIPT_URL || "Silakan konfigurasi URL Apps Script Anda di bagian atas app.jsx"} 
+                          value={googleSheetsUrl} 
                           disabled 
                           className="flex-1 text-xs border border-slate-200 bg-slate-100 p-3 rounded-xl outline-none font-mono text-slate-500" 
                         />
