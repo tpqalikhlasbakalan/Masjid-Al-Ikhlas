@@ -10,8 +10,8 @@ import {
 // ====================================================================
 // CONFIG CONFIGURATION GOOGLE SHEETS API (GRATIS)
 // ====================================================================
-// Anda dapat langsung menempelkan URL Apps Script di bawah ini secara permanen
-// Contoh: const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycb.../exec";
+// Tempelkan URL Google Apps Script Anda di sini secara permanen.
+// Contoh: const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby.../exec";
 const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlT-MtuAXW_wl-KnFnqUkhX4fPf6YIyXNMPTE4Syi66_uDhxGiKVVK9_imo25DpRCm/exec"; 
 
 // === SEED DATA LOKASI AWAL ===
@@ -246,13 +246,9 @@ export default function App() {
     nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima"
   });
 
-  // State untuk status sinkronisasi Google Sheets
-  const [googleSheetsUrl, setGoogleSheetsUrl] = useState(() => getLocalStorageData("googleSheetsUrl", GOOGLE_SHEETS_SCRIPT_URL));
-  const [tempGoogleSheetsUrl, setTempGoogleSheetsUrl] = useState(googleSheetsUrl);
   const [syncStatus, setSyncStatus] = useState("Tersinkronisasi Lokal");
   const [isSyncing, setIsSyncing] = useState(false);
   
-  // Penjaga (Guard) untuk mencegah auto-save menimpa cloud dengan data lokal saat sedang memuat
   const [isDataFetched, setIsDataFetched] = useState(false);
 
   // =========================================================
@@ -262,7 +258,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem("masjidLogoUrl", JSON.stringify(masjidLogoUrl)); }, [masjidLogoUrl]);
   useEffect(() => { localStorage.setItem("userDatabase", JSON.stringify(userDatabase)); }, [userDatabase]);
   useEffect(() => { localStorage.setItem("rolesConfig", JSON.stringify(rolesConfig)); }, [rolesConfig]);
-  useEffect(() => { localStorage.setItem("lokasi", JSON.stringify(lokasi)); }, [lokasi]);
+  useEffect(() => { localStorage.setItem("lokasi", JSON.stringify(lokasi)); }, [lokasi]); // Lokasi hanya disimpan LOKAL, tidak disinkronisasi ke Google Sheets
   useEffect(() => { localStorage.setItem("petugasAbadi", JSON.stringify(petugasAbadi)); }, [petugasAbadi]);
   useEffect(() => { localStorage.setItem("jamaahList", JSON.stringify(jamaahList)); }, [jamaahList]);
   useEffect(() => { localStorage.setItem("timbanganFitrah", JSON.stringify(timbanganFitrah)); }, [timbanganFitrah]);
@@ -271,7 +267,6 @@ export default function App() {
   useEffect(() => { localStorage.setItem("alokasiZuru", JSON.stringify(alokasiZuru)); }, [alokasiZuru]);
   useEffect(() => { localStorage.setItem("timbanganQurbanSapi", JSON.stringify(timbanganQurbanSapi)); }, [timbanganQurbanSapi]);
   useEffect(() => { localStorage.setItem("timbanganQurbanKambing", JSON.stringify(timbanganQurbanKambing)); }, [timbanganQurbanKambing]);
-  useEffect(() => { localStorage.setItem("googleSheetsUrl", JSON.stringify(googleSheetsUrl)); }, [googleSheetsUrl]);
 
   useEffect(() => { setTempMasjidName(masjidName); }, [masjidName]);
   useEffect(() => { setTempMasjidLogoUrl(masjidLogoUrl); }, [masjidLogoUrl]);
@@ -288,22 +283,22 @@ export default function App() {
   // ====================================================================
   
   const handleFetchFromGoogleSheets = async () => {
-    if (!googleSheetsUrl) {
+    if (!GOOGLE_SHEETS_SCRIPT_URL) {
       setIsDataFetched(true);
-      addNotification("URL Google Sheets belum dikonfigurasi!", "error");
+      addNotification("URL Google Sheets belum dikonfigurasi pada kode sumber aplikasi!", "error");
       return;
     }
     setIsDataFetched(false); 
     setIsSyncing(true);
     setSyncStatus("Mengunduh Server...");
     try {
-      const response = await fetch(`${googleSheetsUrl}?action=getData`);
+      const response = await fetch(`${GOOGLE_SHEETS_SCRIPT_URL}?action=getData`);
       const resData = await response.json();
       if (resData && resData.status === "success" && Object.keys(resData.data).length > 0) {
         const payload = resData.data;
         if (payload.masjidName !== undefined) setMasjidName(payload.masjidName);
         if (payload.masjidLogoUrl !== undefined) setMasjidLogoUrl(payload.masjidLogoUrl);
-        if (payload.lokasi !== undefined) setLokasi(payload.lokasi);
+        // Lokasi TIDAK DITARIK dari server karena bergantung pada GPS lokal HP masing-masing pengguna
         if (payload.petugasAbadi !== undefined) setPetugasAbadi(payload.petugasAbadi);
         if (payload.jamaahList !== undefined) setJamaahList(payload.jamaahList);
         if (payload.timbanganFitrah !== undefined) setTimbanganFitrah(payload.timbanganFitrah);
@@ -315,14 +310,14 @@ export default function App() {
         if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
         
         setSyncStatus("Tersinkronisasi");
-        addNotification("Data ditarik & diperbarui dari Google Sheets!", "success");
+        addNotification("Data berhasil ditarik & diperbarui dari Server Pusat (Google Sheets)!", "success");
       } else {
         setSyncStatus("Tersinkronisasi Lokal");
       }
     } catch (err) {
       console.warn("Fetch Error:", err.message || err);
       setSyncStatus("Gagal Sinkron");
-      addNotification("Gagal menarik data dari Google Sheets. Periksa jaringan Anda.", "error");
+      addNotification("Gagal menarik data. Periksa koneksi internet Anda.", "error");
     } finally {
       setIsSyncing(false);
       setIsDataFetched(true); 
@@ -331,20 +326,20 @@ export default function App() {
 
   useEffect(() => {
     if (isLoggedIn) {
-      if (googleSheetsUrl) {
+      if (GOOGLE_SHEETS_SCRIPT_URL) {
         handleFetchFromGoogleSheets();
       } else {
         setIsDataFetched(true);
       }
     }
-  }, [isLoggedIn, googleSheetsUrl]);
+  }, [isLoggedIn]);
 
   // Efek AUTO-SAVE (Sistem akan mengunggah otomatis ke Google Sheets setiap kali ada data yang berubah)
   useEffect(() => {
-    if (!isLoggedIn || !googleSheetsUrl || !isDataFetched) return;
+    if (!isLoggedIn || !GOOGLE_SHEETS_SCRIPT_URL || !isDataFetched) return;
 
     const payload = {
-      masjidName, masjidLogoUrl, lokasi, petugasAbadi, jamaahList,
+      masjidName, masjidLogoUrl, petugasAbadi, jamaahList, // Note: lokasi is purposely excluded
       timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
       timbanganQurbanSapi, timbanganQurbanKambing, userDatabase
     };
@@ -353,7 +348,7 @@ export default function App() {
     
     const timeoutId = setTimeout(async () => {
       try {
-        await fetch(googleSheetsUrl, {
+        await fetch(GOOGLE_SHEETS_SCRIPT_URL, {
           method: "POST",
           mode: "no-cors", 
           headers: {
@@ -370,14 +365,14 @@ export default function App() {
 
     return () => clearTimeout(timeoutId);
   }, [
-    masjidName, masjidLogoUrl, lokasi, petugasAbadi, jamaahList, 
+    masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
     timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, 
     timbanganQurbanSapi, timbanganQurbanKambing, userDatabase, 
-    isLoggedIn, googleSheetsUrl, isDataFetched
+    isLoggedIn, isDataFetched
   ]);
 
   // =========================================================
-  // 2. CORE UTILITY FUNCTIONS
+  // 2. CORE UTILITY FUNCTIONS & EVENT HANDLERS
   // =========================================================
   const addNotification = (message, type = "success") => {
     const id = Date.now();
@@ -488,7 +483,7 @@ export default function App() {
   const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanKambingValue / totalPenerimaKK).toFixed(2) : 0;
 
   // =========================================================
-  // 3. EVENT HANDLERS
+  // 3. ACTION EVENT HANDLERS
   // =========================================================
   const handleSaveAlokasiFitrah = () => {
     setAlokasiFitrah(tempAlokasiFitrah);
@@ -606,7 +601,7 @@ export default function App() {
       return;
     }
 
-    addNotification("Sedang menghubungkan ke satelit GPS gawai Anda...", "info");
+    addNotification("Mencari titik GPS... Harap izinkan akses Lokasi pada pop-up Browser/HP Anda.", "info");
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const lat = position.coords.latitude;
@@ -616,13 +611,13 @@ export default function App() {
           latitude: lat,
           longitude: lon
         }));
-        addNotification(`Satelit terkunci! Koordinat GPS berhasil diambil: ${lat.toFixed(5)}, ${lon.toFixed(5)}`, "success");
+        addNotification(`Koordinat GPS Ditemukan! ${lat.toFixed(5)}, ${lon.toFixed(5)}. Klik "Terapkan Perubahan" untuk menyimpan.`, "success");
       },
       (error) => {
         console.warn("GPS Error:", error.message || error);
-        addNotification("Gagal mendeteksi koordinat. Pastikan izin berbagi lokasi HP Anda aktif.", "error");
+        addNotification("Gagal mengambil GPS. Pastikan GPS/Location di HP Anda MENYALA dan diizinkan untuk web ini.", "error");
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
 
@@ -907,61 +902,6 @@ export default function App() {
           </tr>
         `;
       }).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Tidak ada jemaah penerima Zakat Zuru' pada wilayah terpilih ini.</td></tr>`;
-    }
-
-    else if (reportType === "qurban") {
-      docTitle = `Daftar Penerima & Tanda Terima Distribusi Daging Qurban`;
-      textTheme = "text-rose-800";
-      
-      const qurbanList = filteredWarga.filter(warga => {
-        if (warga.qurban && warga.qurban.startsWith("Sahibul Qurban")) return false;
-        if (qurbanHanyaMustahik) {
-          const isMustahikFitrah = warga.fitrah !== "Muzakki";
-          const isMustahikZuru = warga.zuru !== "Bukan Mustahik";
-          return isMustahikFitrah || isMustahikZuru;
-        }
-        return true;
-      });
-
-      summaryHTML = `
-        <div style="margin-bottom: 20px; padding: 15px; background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px;">
-          <h3 style="margin-top: 0; color: #9f1239; font-size: 14px; text-transform: uppercase;">Ringkasan Data Penyaluran Daging Qurban</h3>
-          <table style="width: 100%; font-size: 12px; border: none;">
-            <tr>
-              <td style="width: 25%; padding: 5px 0;"><strong>Daging Sapi Terkumpul:</strong><br/><span style="font-size: 16px;">${totalTimbanganQurbanSapiValue.toFixed(1)} Kg</span></td>
-              <td style="width: 25%; padding: 5px 0;"><strong>Daging Kambing Terkumpul:</strong><br/><span style="font-size: 16px;">${totalTimbanganQurbanKambingValue.toFixed(1)} Kg</span></td>
-              <td style="width: 25%; padding: 5px 0;"><strong>Warga Penerima:</strong><br/><span style="font-size: 16px;">${qurbanList.length} KK</span></td>
-              <td style="width: 25%; padding: 5px 0;"><strong>Porsi Jatah per KK:</strong><br/>Sapi: ${jatahDagingSapiPerKK} Kg/KK<br/>Kambing: ${jatahDagingKambingPerKK} Kg/KK</td>
-            </tr>
-          </table>
-        </div>
-      `;
-
-      tableHeaderHTML = `
-        <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
-          <th class="p-2.5 border border-slate-300 w-1/12 text-center">No</th>
-          <th class="p-2.5 border border-slate-300 w-3/12">Nama Kepala Keluarga</th>
-          <th class="p-2.5 border border-slate-300 w-2/12 text-center">RT / RW</th>
-          <th class="p-2.5 border border-slate-300 text-slate-500">Alamat</th>
-          <th class="p-2.5 border border-slate-300 w-1.5/12 text-right">Daging Sapi</th>
-          <th class="p-2.5 border border-slate-300 w-1.5/12 text-right">Daging Kambing</th>
-          <th class="p-2.5 border border-slate-300 w-3/12 text-center">Tanda Tangan / Paraf</th>
-        </tr>
-      `;
-
-      tableRowsHTML = qurbanList.length > 0 ? qurbanList.map((j, i) => `
-        <tr class="border-b border-slate-200">
-          <td class="p-2.5 border border-slate-300 text-center font-mono">${i + 1}</td>
-          <td class="p-2.5 border border-slate-300 font-bold text-slate-900">${j.nama}</td>
-          <td class="p-2.5 border border-slate-300 text-center font-bold">RT ${j.rt} / RW ${j.rw}</td>
-          <td class="p-2.5 border border-slate-300 text-slate-500 text-[10px]">${j.alamat}</td>
-          <td class="p-2.5 border border-slate-300 text-right font-mono font-bold text-rose-700">${jatahDagingSapiPerKK} Kg</td>
-          <td class="p-2.5 border border-slate-300 text-right font-mono font-bold text-amber-700">${jatahDagingKambingPerKK} Kg</td>
-          <td class="p-2.5 border border-slate-300 text-left font-mono text-[9px] text-slate-300 relative h-12">
-            <span class="absolute bottom-1 left-2">${i + 1}.</span>
-          </td>
-        </tr>
-      `).join('') : `<tr><td colspan="7" class="p-8 text-center text-slate-400 italic">Tidak ada warga penerima daging qurban pada wilayah terpilih ini.</td></tr>`;
     }
 
     else if (reportType === "pekurban") {
@@ -2112,7 +2052,7 @@ export default function App() {
                   <div className="overflow-x-auto w-full border border-slate-200/60 rounded-xl">
                     <table className="w-full text-left text-xs border-collapse min-w-[400px]">
                       <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px] sm:text-[11px]">
+                        <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px] sm:text-[11px]">
                           <th className="p-3">Kriteria Penerima Zuru'</th>
                           <th className="p-3 text-center">Jumlah Jiwa</th>
                           <th className="p-3 text-center">Jatah Masing-masing</th>
@@ -2157,7 +2097,7 @@ export default function App() {
                     <option value="Semua">Semua Wilayah Warga (RT/RW)</option>
                     {WILAYAH_OPTIONS.map((wil) => ( <option key={`${wil.rt}_${wil.rw}`} value={`${wil.rt}_${wil.rw}`}>{wil.label}</option> ))}
                   </select>
-                  <button onClick={handlePrintQurbanRT} className="w-full sm:w-auto bg-slate-800 hover:bg-slate-950 text-white text-xs font-bold px-5 py-3 sm:py-2.5 rounded-xl flex justify-center items-center gap-2 transition-all shadow-sm shrink-0">
+                  <button onClick={handlePrintQurbanRT} className="w-full sm:w-auto bg-slate-800 hover:bg-slate-955 text-white text-xs font-bold px-5 py-3 sm:py-2.5 rounded-xl flex justify-center items-center gap-2 transition-all shadow-sm shrink-0">
                     <Printer size={15} /> Cetak Lembar Distribusi
                   </button>
                 </div>
@@ -2277,51 +2217,14 @@ export default function App() {
           {activeTab === "rbac" && (
             <div className="space-y-4 sm:space-y-6 animate-fadeIn">
               
-              {/* === PANEL SINKRONISASI GOOGLE SHEETS CLOUD DI TAB RBAC === */}
               {currentRole === "Admin" && (
-                <div className="bg-white border-2 border-emerald-100 p-6 rounded-3xl shadow-sm space-y-4">
-                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2">
-                      <Download className="text-emerald-600 w-5 h-5 animate-pulse" />
-                      <div>
-                        <h3 className="font-black text-slate-900 text-sm">Pengaturan URL Google Sheets Cloud</h3>
-                        <p className="text-xs text-slate-500">Koneksikan sistem ini ke Google Sheets pribadi untuk penyimpanan awan otomatis (Auto-Save).</p>
-                      </div>
+                <div className="bg-white border border-slate-200 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <Settings className="text-emerald-600 w-5 h-5 sm:w-6 sm:h-6 animate-spin-slow" />
+                    <div>
+                      <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">Pengaturan Identitas & Logo Masjid</h3>
+                      <p className="text-[10px] sm:text-xs text-slate-500">Tentukan nama lembaga dan tempel tautan (*link*) gambar logo Anda di sini.</p>
                     </div>
-                  </div>
-
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/50 space-y-3">
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-black text-slate-600">Google Apps Script Web App URL:</label>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <input 
-                          type="text" 
-                          placeholder="Tempel URL (berakhiran /exec) di sini..." 
-                          value={tempGoogleSheetsUrl} 
-                          onChange={(e) => setTempGoogleSheetsUrl(e.target.value)} 
-                          className="flex-1 text-xs border border-slate-300 bg-white p-3.5 sm:p-3 rounded-xl outline-none font-mono text-slate-800 focus:ring-2 focus:ring-emerald-500/20" 
-                        />
-                        <button 
-                          onClick={() => {
-                            setGoogleSheetsUrl(tempGoogleSheetsUrl);
-                            addNotification("URL Google Sheets berhasil disimpan! Sinkronisasi otomatis (Auto-Save) kini aktif.", "success");
-                          }}
-                          className="w-full sm:w-auto px-4 py-3 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shrink-0"
-                        >
-                          Simpan URL
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-slate-500 font-medium leading-relaxed bg-white border border-slate-200 p-2.5 rounded-lg shadow-sm">Sistem kini akan otomatis menyimpan perubahan ke Google Sheets saat Anda mengedit data. Jika butuh menarik data terbaru dari server, gunakan tombol <strong>Refresh Data Server</strong> di menu Dashboard Utama.</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {currentRole === "Admin" && (
-                <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-xs space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                    <Settings className="text-emerald-600 w-5 h-5 animate-spin-slow" />
-                    <h3 className="font-extrabold text-slate-900 text-sm">Pengaturan Identitas & Logo Masjid</h3>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 bg-slate-50 p-4 sm:p-5 rounded-xl border border-slate-200/60">
