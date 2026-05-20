@@ -10,8 +10,8 @@ import {
 // ====================================================================
 // CONFIG CONFIGURATION GOOGLE SHEETS API (GRATIS)
 // ====================================================================
-// Tempelkan URL Google Apps Script Anda di sini secara permanen.
-// Contoh: const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby.../exec";
+// Anda dapat langsung menempelkan URL Apps Script di bawah ini secara permanen
+// Contoh: const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycb.../exec";
 const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlT-MtuAXW_wl-KnFnqUkhX4fPf6YIyXNMPTE4Syi66_uDhxGiKVVK9_imo25DpRCm/exec"; 
 
 // === SEED DATA LOKASI AWAL ===
@@ -85,33 +85,26 @@ function KubahMasjidIcon({ className }) {
   );
 }
 
-// Menangani sinkronisasi tipe data lama yang tidak menggunakan JSON.stringify agar tidak error
 const getLocalStorageData = (key, fallbackValue) => {
   try {
     const saved = localStorage.getItem(key);
     if (saved === null || saved === "undefined") return fallbackValue;
-    
-    try {
-      return JSON.parse(saved);
-    } catch (e) {
-      if (typeof fallbackValue === 'string') {
-        return saved;
-      }
+    try { return JSON.parse(saved); } catch (e) {
+      if (typeof fallbackValue === 'string') return saved;
       return fallbackValue;
     }
-  } catch (error) { 
-    console.warn("Info Storage: Konversi lokal tipe lama dilewati untuk key " + key); 
-  }
+  } catch (error) { console.warn("Info Storage: Konversi lokal tipe lama dilewati untuk key " + key); }
   return fallbackValue;
 };
 
-const getJadwalSholat = (kab, lat, lon) => {
+// Fallback Kalkulator Manual (Digunakan saat HP offline / API gagal dijangkau)
+const getMockJadwal = (kab, lat, lon) => {
   let offset = 0;
   if (lat && lon) {
     const coordHash = Math.abs(Math.round((parseFloat(lat) + parseFloat(lon)) * 100));
     offset = coordHash % 15;
   } else {
-    const hash = kab.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hash = (kab || "").split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     offset = hash % 15;
   }
   return {
@@ -246,10 +239,17 @@ export default function App() {
     nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima"
   });
 
+  const [googleSheetsUrl, setGoogleSheetsUrl] = useState(() => getLocalStorageData("googleSheetsUrl", GOOGLE_SHEETS_SCRIPT_URL));
+  const [tempGoogleSheetsUrl, setTempGoogleSheetsUrl] = useState(googleSheetsUrl);
   const [syncStatus, setSyncStatus] = useState("Tersinkronisasi Lokal");
   const [isSyncing, setIsSyncing] = useState(false);
-  
   const [isDataFetched, setIsDataFetched] = useState(false);
+
+  // Jadwal Sholat Terhubung API
+  const [jadwalSholat, setJadwalSholat] = useState(() => {
+    const saved = getLocalStorageData("jadwalSholatAktif", null);
+    return saved || getMockJadwal(lokasi.kabupaten, lokasi.latitude, lokasi.longitude);
+  });
 
   // =========================================================
   // EFFECTS FOR STORAGE
@@ -267,6 +267,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem("alokasiZuru", JSON.stringify(alokasiZuru)); }, [alokasiZuru]);
   useEffect(() => { localStorage.setItem("timbanganQurbanSapi", JSON.stringify(timbanganQurbanSapi)); }, [timbanganQurbanSapi]);
   useEffect(() => { localStorage.setItem("timbanganQurbanKambing", JSON.stringify(timbanganQurbanKambing)); }, [timbanganQurbanKambing]);
+  useEffect(() => { localStorage.setItem("googleSheetsUrl", JSON.stringify(googleSheetsUrl)); }, [googleSheetsUrl]);
 
   useEffect(() => { setTempMasjidName(masjidName); }, [masjidName]);
   useEffect(() => { setTempMasjidLogoUrl(masjidLogoUrl); }, [masjidLogoUrl]);
@@ -279,11 +280,58 @@ export default function App() {
   }, []);
 
   // ====================================================================
+  // API ALADHAN: MENARIK JADWAL SHOLAT ASTRONOMI REAL (METODE KEMENAG RI)
+  // ====================================================================
+  const currentDay = currentTime.getDate();
+  
+  useEffect(() => {
+    const fetchJadwalRealTime = async () => {
+      if (!lokasi.latitude || !lokasi.longitude) return;
+      
+      const todayStr = new Date().toLocaleDateString('id-ID');
+      const cacheKey = `jadwal_${lokasi.latitude}_${lokasi.longitude}_${todayStr}`;
+      const cached = localStorage.getItem(cacheKey);
+      
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        setJadwalSholat(parsed);
+        localStorage.setItem("jadwalSholatAktif", JSON.stringify(parsed));
+        return;
+      }
+
+      try {
+        // Metode 20 adalah profil resmi dari Kementerian Agama Republik Indonesia
+        const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lokasi.latitude}&longitude=${lokasi.longitude}&method=20`);
+        const result = await res.json();
+        
+        if (result && result.code === 200) {
+          const t = result.data.timings;
+          const realJadwal = {
+            Subuh: t.Fajr,
+            Terbit: t.Sunrise,
+            Dzuhur: t.Dhuhr,
+            Ashar: t.Asr,
+            Maghrib: t.Maghrib,
+            Isya: t.Isha
+          };
+          setJadwalSholat(realJadwal);
+          localStorage.setItem(cacheKey, JSON.stringify(realJadwal));
+          localStorage.setItem("jadwalSholatAktif", JSON.stringify(realJadwal));
+        }
+      } catch (err) {
+        console.warn("Gagal fetch jadwal sholat Kemenag. Menampilkan estimasi dari cache lokal.", err);
+      }
+    };
+
+    fetchJadwalRealTime();
+  }, [lokasi.latitude, lokasi.longitude, currentDay]);
+
+  // ====================================================================
   // GOOGLE SHEETS AUTO-SYNC CONTROLLER (BACKGROUND SYNC)
   // ====================================================================
   
   const handleFetchFromGoogleSheets = async () => {
-    if (!GOOGLE_SHEETS_SCRIPT_URL) {
+    if (!googleSheetsUrl) {
       setIsDataFetched(true);
       addNotification("URL Google Sheets belum dikonfigurasi pada kode sumber aplikasi!", "error");
       return;
@@ -292,7 +340,7 @@ export default function App() {
     setIsSyncing(true);
     setSyncStatus("Mengunduh Server...");
     try {
-      const response = await fetch(`${GOOGLE_SHEETS_SCRIPT_URL}?action=getData`);
+      const response = await fetch(`${googleSheetsUrl}?action=getData`);
       const resData = await response.json();
       if (resData && resData.status === "success" && Object.keys(resData.data).length > 0) {
         const payload = resData.data;
@@ -310,14 +358,14 @@ export default function App() {
         if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
         
         setSyncStatus("Tersinkronisasi");
-        addNotification("Data berhasil ditarik & diperbarui dari Server Pusat!", "success");
+        addNotification("Data berhasil ditarik & diperbarui dari Server Pusat (Google Sheets)!", "success");
       } else {
         setSyncStatus("Tersinkronisasi Lokal");
       }
     } catch (err) {
       console.warn("Fetch Error:", err.message || err);
       setSyncStatus("Gagal Sinkron");
-      addNotification("Gagal menarik data. Periksa koneksi internet Anda.", "error");
+      addNotification("Gagal menarik data dari Google Sheets. Periksa jaringan Anda.", "error");
     } finally {
       setIsSyncing(false);
       setIsDataFetched(true); 
@@ -326,17 +374,17 @@ export default function App() {
 
   useEffect(() => {
     if (isLoggedIn) {
-      if (GOOGLE_SHEETS_SCRIPT_URL) {
+      if (googleSheetsUrl) {
         handleFetchFromGoogleSheets();
       } else {
         setIsDataFetched(true);
       }
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, googleSheetsUrl]);
 
   // Efek AUTO-SAVE (Sistem akan mengunggah otomatis ke Google Sheets setiap kali ada data yang berubah)
   useEffect(() => {
-    if (!isLoggedIn || !GOOGLE_SHEETS_SCRIPT_URL || !isDataFetched) return;
+    if (!isLoggedIn || !googleSheetsUrl || !isDataFetched) return;
 
     const payload = {
       masjidName, masjidLogoUrl, petugasAbadi, jamaahList, // Note: lokasi is purposely excluded
@@ -348,7 +396,7 @@ export default function App() {
     
     const timeoutId = setTimeout(async () => {
       try {
-        await fetch(GOOGLE_SHEETS_SCRIPT_URL, {
+        await fetch(googleSheetsUrl, {
           method: "POST",
           mode: "no-cors", 
           headers: {
@@ -368,11 +416,11 @@ export default function App() {
     masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
     timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, 
     timbanganQurbanSapi, timbanganQurbanKambing, userDatabase, 
-    isLoggedIn, isDataFetched
+    isLoggedIn, googleSheetsUrl, isDataFetched
   ]);
 
   // =========================================================
-  // 2. CORE UTILITY FUNCTIONS & EVENT HANDLERS
+  // 2. CORE UTILITY FUNCTIONS
   // =========================================================
   const addNotification = (message, type = "success") => {
     const id = Date.now();
@@ -418,10 +466,8 @@ export default function App() {
     return <KubahMasjidIcon className={fallbackClassName} />;
   };
 
-  const jadwalSholat = getJadwalSholat(lokasi.kabupaten, lokasi.latitude, lokasi.longitude);
-  
   const getNextSholat = () => {
-    const nowStr = new Date().toTimeString().split(' ')[0];
+    const nowStr = currentTime.toTimeString().split(' ')[0].substring(0, 5); // Format "HH:MM"
     const sholatTimes = Object.entries(jadwalSholat).filter(([k]) => k !== 'Terbit');
     
     for (let [name, time] of sholatTimes) {
@@ -433,7 +479,7 @@ export default function App() {
   };
 
   const nextSholat = getNextSholat();
-  const upcomingFridaysList = getUpcomingFridays(new Date(), petugasAbadi, 5);
+  const upcomingFridaysList = getUpcomingFridays(currentTime, petugasAbadi, 5);
 
   const totalTimbanganFitrahValue = timbanganFitrah.reduce((a, b) => a + b, 0);
   const rincianKebutuhanFitrahData = Object.entries(alokasiFitrah).map(([kategori, jatah]) => {
@@ -460,6 +506,7 @@ export default function App() {
 
   const getWargaPenerimaQurban = () => {
     return jamaahList.filter(warga => {
+      // === PENYARINGAN UTAMA: SAHIBUL QURBAN TIDAK MASUK DAFTAR PENERIMA ===
       if (warga.qurban && warga.qurban.startsWith("Sahibul Qurban")) {
         return false;
       }
@@ -483,7 +530,7 @@ export default function App() {
   const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanKambingValue / totalPenerimaKK).toFixed(2) : 0;
 
   // =========================================================
-  // 3. ACTION EVENT HANDLERS
+  // 3. EVENT HANDLERS
   // =========================================================
   const handleSaveAlokasiFitrah = () => {
     setAlokasiFitrah(tempAlokasiFitrah);
@@ -904,6 +951,61 @@ export default function App() {
       }).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Tidak ada jemaah penerima Zakat Zuru' pada wilayah terpilih ini.</td></tr>`;
     }
 
+    else if (reportType === "qurban") {
+      docTitle = `Daftar Penerima & Tanda Terima Distribusi Daging Qurban`;
+      textTheme = "text-rose-800";
+      
+      const qurbanList = filteredWarga.filter(warga => {
+        if (warga.qurban && warga.qurban.startsWith("Sahibul Qurban")) return false;
+        if (qurbanHanyaMustahik) {
+          const isMustahikFitrah = warga.fitrah !== "Muzakki";
+          const isMustahikZuru = warga.zuru !== "Bukan Mustahik";
+          return isMustahikFitrah || isMustahikZuru;
+        }
+        return true;
+      });
+
+      summaryHTML = `
+        <div style="margin-bottom: 20px; padding: 15px; background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px;">
+          <h3 style="margin-top: 0; color: #9f1239; font-size: 14px; text-transform: uppercase;">Ringkasan Data Penyaluran Daging Qurban</h3>
+          <table style="width: 100%; font-size: 12px; border: none;">
+            <tr>
+              <td style="width: 25%; padding: 5px 0;"><strong>Daging Sapi Terkumpul:</strong><br/><span style="font-size: 16px;">${totalTimbanganQurbanSapiValue.toFixed(1)} Kg</span></td>
+              <td style="width: 25%; padding: 5px 0;"><strong>Daging Kambing Terkumpul:</strong><br/><span style="font-size: 16px;">${totalTimbanganQurbanKambingValue.toFixed(1)} Kg</span></td>
+              <td style="width: 25%; padding: 5px 0;"><strong>Warga Penerima:</strong><br/><span style="font-size: 16px;">${qurbanList.length} KK</span></td>
+              <td style="width: 25%; padding: 5px 0;"><strong>Porsi Jatah per KK:</strong><br/>Sapi: ${jatahDagingSapiPerKK} Kg/KK<br/>Kambing: ${jatahDagingKambingPerKK} Kg/KK</td>
+            </tr>
+          </table>
+        </div>
+      `;
+
+      tableHeaderHTML = `
+        <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
+          <th class="p-2.5 border border-slate-300 w-1/12 text-center">No</th>
+          <th class="p-2.5 border border-slate-300 w-3/12">Nama Kepala Keluarga</th>
+          <th class="p-2.5 border border-slate-300 w-2/12 text-center">RT / RW</th>
+          <th class="p-2.5 border border-slate-300 text-slate-500">Alamat</th>
+          <th class="p-2.5 border border-slate-300 w-1.5/12 text-right">Daging Sapi</th>
+          <th class="p-2.5 border border-slate-300 w-1.5/12 text-right">Daging Kambing</th>
+          <th class="p-2.5 border border-slate-300 w-3/12 text-center">Tanda Tangan / Paraf</th>
+        </tr>
+      `;
+
+      tableRowsHTML = qurbanList.length > 0 ? qurbanList.map((j, i) => `
+        <tr class="border-b border-slate-200">
+          <td class="p-2.5 border border-slate-300 text-center font-mono">${i + 1}</td>
+          <td class="p-2.5 border border-slate-300 font-bold text-slate-900">${j.nama}</td>
+          <td class="p-2.5 border border-slate-300 text-center font-bold">RT ${j.rt} / RW ${j.rw}</td>
+          <td class="p-2.5 border border-slate-300 text-slate-500 text-[10px]">${j.alamat}</td>
+          <td class="p-2.5 border border-slate-300 text-right font-mono font-bold text-rose-700">${jatahDagingSapiPerKK} Kg</td>
+          <td class="p-2.5 border border-slate-300 text-right font-mono font-bold text-amber-700">${jatahDagingKambingPerKK} Kg</td>
+          <td class="p-2.5 border border-slate-300 text-left font-mono text-[9px] text-slate-300 relative h-12">
+            <span class="absolute bottom-1 left-2">${i + 1}.</span>
+          </td>
+        </tr>
+      `).join('') : `<tr><td colspan="7" class="p-8 text-center text-slate-400 italic">Tidak ada warga penerima daging qurban pada wilayah terpilih ini.</td></tr>`;
+    }
+
     else if (reportType === "pekurban") {
       docTitle = `Daftar Nama Pekurban (Sahibul Qurban)`;
       textTheme = "text-rose-800";
@@ -1147,7 +1249,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">{masjidName}</h1>
-              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Pengelolaan Zakat dan Qurban</p>
+              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Gerbang Pengelolaan Masjid & Zakat</p>
             </div>
           </div>
 
@@ -1326,7 +1428,7 @@ export default function App() {
                       <Database size={18} className={isSyncing ? "animate-pulse" : ""} />
                    </div>
                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server (Google Sheets)</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                          <div className={`w-2 h-2 rounded-full shrink-0 ${syncStatus === 'Tersinkronisasi' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                          <p className="text-xs sm:text-sm font-black text-slate-800 truncate">{syncStatus}</p>
@@ -1414,7 +1516,7 @@ export default function App() {
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center pb-2 border-b border-slate-100 gap-2">
                     <h3 className="font-bold text-slate-955 flex items-center gap-2"><Compass className="text-emerald-600 w-5 h-5 shrink-0" /> Jadwal Sholat Hari Ini</h3>
-                    <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase tracking-wider self-start sm:self-auto">Akurasi GPS Aktif</span>
+                    <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase tracking-wider self-start sm:self-auto">Akurasi API Kemenag RI</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     {Object.entries(jadwalSholat).map(([sholatName, time]) => {
@@ -2052,7 +2154,7 @@ export default function App() {
                   <div className="overflow-x-auto w-full border border-slate-200/60 rounded-xl">
                     <table className="w-full text-left text-xs border-collapse min-w-[400px]">
                       <thead>
-                        <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px] sm:text-[11px]">
+                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px] sm:text-[11px]">
                           <th className="p-3">Kriteria Penerima Zuru'</th>
                           <th className="p-3 text-center">Jumlah Jiwa</th>
                           <th className="p-3 text-center">Jatah Masing-masing</th>
@@ -2398,7 +2500,7 @@ export default function App() {
 
       {/* === FOOTER === */}
       <footer className="bg-white border-t border-slate-200 px-4 sm:px-6 py-4 text-center text-[10px] sm:text-xs text-slate-400 font-semibold mt-auto">
-        &copy; {new Date().getFullYear()} {masjidName}. Aplikasi dibuat oleh Misbahul Munir.
+        &copy; {new Date().getFullYear()} {masjidName}. Dirancang khusus untuk pengelolaan zakat yang akuntabel, modern, dan transparan.
       </footer>
 
     </div>
