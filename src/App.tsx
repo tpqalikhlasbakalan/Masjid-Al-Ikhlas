@@ -230,6 +230,9 @@ export default function App() {
   const [tempGoogleSheetsUrl, setTempGoogleSheetsUrl] = useState(googleSheetsUrl);
   const [syncStatus, setSyncStatus] = useState("Tersinkronisasi Lokal");
   const [isSyncing, setIsSyncing] = useState(false);
+  
+  // Penjaga (Guard) untuk mencegah auto-save menimpa cloud dengan data lokal saat sedang memuat
+  const [isDataFetched, setIsDataFetched] = useState(false);
 
   // =========================================================
   // EFFECTS FOR STORAGE
@@ -265,9 +268,11 @@ export default function App() {
   
   const handleFetchFromGoogleSheets = async () => {
     if (!googleSheetsUrl) {
+      setIsDataFetched(true);
       addNotification("URL Google Sheets belum dikonfigurasi pada baris kode program!", "error");
       return;
     }
+    setIsDataFetched(false); // Menghentikan sementara Auto-Save agar tidak menimpa data
     setIsSyncing(true);
     setSyncStatus("Mengunduh Server...");
     try {
@@ -275,18 +280,18 @@ export default function App() {
       const resData = await response.json();
       if (resData && resData.status === "success" && Object.keys(resData.data).length > 0) {
         const payload = resData.data;
-        if (payload.masjidName) setMasjidName(payload.masjidName);
-        if (payload.masjidLogoUrl) setMasjidLogoUrl(payload.masjidLogoUrl);
-        if (payload.lokasi) setLokasi(payload.lokasi);
-        if (payload.petugasAbadi) setPetugasAbadi(payload.petugasAbadi);
-        if (payload.jamaahList) setJamaahList(payload.jamaahList);
-        if (payload.timbanganFitrah) setTimbanganFitrah(payload.timbanganFitrah);
-        if (payload.alokasiFitrah) setAlokasiFitrah(payload.alokasiFitrah);
-        if (payload.timbanganZuru) setTimbanganZuru(payload.timbanganZuru);
-        if (payload.alokasiZuru) setAlokasiZuru(payload.alokasiZuru);
-        if (payload.timbanganQurbanSapi) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
-        if (payload.timbanganQurbanKambing) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
-        if (payload.userDatabase) setUserDatabase(payload.userDatabase);
+        if (payload.masjidName !== undefined) setMasjidName(payload.masjidName);
+        if (payload.masjidLogoUrl !== undefined) setMasjidLogoUrl(payload.masjidLogoUrl);
+        if (payload.lokasi !== undefined) setLokasi(payload.lokasi);
+        if (payload.petugasAbadi !== undefined) setPetugasAbadi(payload.petugasAbadi);
+        if (payload.jamaahList !== undefined) setJamaahList(payload.jamaahList);
+        if (payload.timbanganFitrah !== undefined) setTimbanganFitrah(payload.timbanganFitrah);
+        if (payload.alokasiFitrah !== undefined) setAlokasiFitrah(payload.alokasiFitrah);
+        if (payload.timbanganZuru !== undefined) setTimbanganZuru(payload.timbanganZuru);
+        if (payload.alokasiZuru !== undefined) setAlokasiZuru(payload.alokasiZuru);
+        if (payload.timbanganQurbanSapi !== undefined) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
+        if (payload.timbanganQurbanKambing !== undefined) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
+        if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
         
         setSyncStatus("Tersinkronisasi");
         addNotification("Data ditarik & diperbarui dari Google Sheets!", "success");
@@ -299,18 +304,24 @@ export default function App() {
       addNotification("Gagal menarik data dari Google Sheets. Periksa jaringan Anda.", "error");
     } finally {
       setIsSyncing(false);
+      setIsDataFetched(true); // Membuka kembali pintu untuk Auto-Save setelah data selesai diunduh
     }
   };
 
   useEffect(() => {
-    if (isLoggedIn && googleSheetsUrl) {
-      handleFetchFromGoogleSheets();
+    if (isLoggedIn) {
+      if (googleSheetsUrl) {
+        handleFetchFromGoogleSheets();
+      } else {
+        setIsDataFetched(true);
+      }
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, googleSheetsUrl]);
 
   // Efek AUTO-SAVE (Sistem akan mengunggah otomatis ke Google Sheets setiap kali ada data yang berubah)
   useEffect(() => {
-    if (!isLoggedIn || !googleSheetsUrl) return;
+    // Blokir save otomatis jika URL belum ada ATAU jika data awal belum selesai diunduh
+    if (!isLoggedIn || !googleSheetsUrl || !isDataFetched) return;
 
     const payload = {
       masjidName, masjidLogoUrl, lokasi, petugasAbadi, jamaahList,
@@ -342,7 +353,7 @@ export default function App() {
     masjidName, masjidLogoUrl, lokasi, petugasAbadi, jamaahList, 
     timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, 
     timbanganQurbanSapi, timbanganQurbanKambing, userDatabase, 
-    isLoggedIn, googleSheetsUrl
+    isLoggedIn, googleSheetsUrl, isDataFetched
   ]);
 
   // =========================================================
@@ -434,7 +445,6 @@ export default function App() {
 
   const getWargaPenerimaQurban = () => {
     return jamaahList.filter(warga => {
-      // === PENYARINGAN UTAMA: SAHIBUL QURBAN TIDAK MASUK DAFTAR PENERIMA ===
       if (warga.qurban && warga.qurban.startsWith("Sahibul Qurban")) {
         return false;
       }
@@ -948,7 +958,7 @@ export default function App() {
                 ${masjidLogoUrl ? `<img src="${masjidLogoUrl}" class="w-full h-full object-contain" />` : `<svg class="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M12 2v3M12 5a7 7 0 0 0-7 7v10h14V12a7 7 0 0 0-7-7ZM9 17h6v5H9z"/></svg>`}
               </div>
               <div>
-                <h1 class="text-2xl font-black uppercase text-slate-900 leading-none">${masjidName}</h1>
+                <h1 class="text-2xl font-black text-slate-900 leading-none">${masjidName}</h1>
                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1.5">Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}, Provinsi ${lokasi.provinsi}</p>
               </div>
             </div>
@@ -1023,7 +1033,7 @@ export default function App() {
                 ${masjidLogoUrl ? `<img src="${masjidLogoUrl}" class="w-full h-full object-contain" />` : `<svg class="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M12 2v3M12 5a7 7 0 0 0-7 7v10h14V12a7 7 0 0 0-7-7ZM9 17h6v5H9z"/></svg>`}
               </div>
               <div>
-                <h1 class="text-2xl font-black uppercase text-slate-900 leading-tight">${masjidName}</h1>
+                <h1 class="text-2xl font-black text-slate-900 leading-tight">${masjidName}</h1>
                 <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}, Provinsi ${lokasi.provinsi}</p>
               </div>
             </div>
@@ -1249,7 +1259,7 @@ export default function App() {
                   <div className="w-8 h-8 text-emerald-600">
                     {renderMasjidLogo("w-8 h-8 object-contain rounded", "w-7 h-7")}
                   </div>
-                  <span className="text-sm font-black text-slate-800 uppercase tracking-wide truncate">{masjidName}</span>
+                  <span className="text-sm font-black text-slate-800 tracking-wide truncate">{masjidName}</span>
                 </div>
                 <button onClick={() => setIsMenuOpen(false)} className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-xl transition-all">
                   <X size={18} />
@@ -1912,7 +1922,7 @@ export default function App() {
                           <th className="p-3 text-right">Total Kebutuhan</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                      <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                         {rincianKebutuhanFitrahData.map((item) => (
                           <tr key={item.kategori}>
                             <td className="p-3 text-slate-900 font-bold">Mustahik {item.kategori}</td>
@@ -1974,7 +1984,7 @@ export default function App() {
                         <div className="flex items-center gap-2">
                           <span className="text-slate-900 font-bold font-mono text-sm sm:text-xs">{berat} Kg</span>
                           {canEditZuru && (
-                            <button onClick={() => deleteTimbangan('zuru', idx)} className="text-rose-500 p-1.5 hover:bg-rose-50 rounded-lg"><Trash2 size={14} /></button>
+                            <button onClick={() => deleteTimbangan('zuru', idx)} className="text-rose-600 hover:bg-rose-50 p-1 rounded-lg"><Trash2 size={14} /></button>
                           )}
                         </div>
                       </div>
@@ -2091,9 +2101,9 @@ export default function App() {
                       <input type="number" step="0.1" placeholder="Berat Daging Sapi (kg)" value={tempBeratQurbanSapi} onChange={(e) => setTempBeratQurbanSapi(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTimbangan('qurbanSapi')} className="flex-1 text-sm sm:text-xs border border-slate-300 p-3 sm:p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-2 focus:ring-rose-500/20" />
                       <button onClick={() => addTimbangan('qurbanSapi')} className="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white px-5 py-3 sm:py-2.5 rounded-xl font-bold text-xs transition-all shrink-0">Tambah</button>
                     </div>
-                  ) : <p className="text-[10px] text-rose-600 bg-rose-50 border border-rose-100 p-2.5 rounded-lg font-bold">Akses ditolak. Panitia Qurban yang berhak menambah.</p>}
+                  ) : <p className="text-[10px] text-[#f43f5e] bg-[#fff5f5] border border-[#ffe4e6] p-2 rounded-lg font-bold">Hanya Panitia yang memiliki hak menambahkan timbangan Sapi.</p>}
 
-                  <div className="space-y-1.5 max-h-40 sm:max-h-48 overflow-y-auto pr-1">
+                  <div className="space-y-1.5 max-h-40 sm:max-h-48 overflow-y-auto pr-1 font-semibold text-slate-700">
                     {timbanganQurbanSapi.map((berat, index) => (
                       <div key={index} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 p-2.5 sm:p-3 rounded-xl text-xs font-semibold">
                         <span className="text-slate-500">Timbangan Sapi #{index + 1}</span>
@@ -2123,16 +2133,13 @@ export default function App() {
                       <input type="number" step="0.1" placeholder="Berat Daging Kambing (kg)" value={tempBeratQurbanKambing} onChange={(e) => setTempBeratQurbanKambing(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTimbangan('qurbanKambing')} className="flex-1 text-sm sm:text-xs border border-slate-300 p-3 sm:p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-2 focus:ring-amber-500/20" />
                       <button onClick={() => addTimbangan('qurbanKambing')} className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white px-5 py-3 sm:py-2.5 rounded-xl font-bold text-xs transition-all shrink-0">Tambah</button>
                     </div>
-                  ) : <p className="text-[10px] text-[#f43f5e] bg-[#fff5f5] border border-[#ffe4e6] p-2 rounded-lg font-bold">Akses ditolak. Panitia Qurban yang berhak menambah.</p>}
+                  ) : <p className="text-[10px] text-[#f43f5e] bg-[#fff5f5] border border-[#ffe4e6] p-2 rounded-lg font-bold">Hanya Panitia yang memiliki hak menambahkan timbangan Kambing.</p>}
 
-                  <div className="space-y-1.5 max-h-40 sm:max-h-48 overflow-y-auto pr-1">
+                  <div className="space-y-1.5 max-h-40 sm:max-h-48 overflow-y-auto pr-1 font-semibold text-slate-700">
                     {timbanganQurbanKambing.map((berat, index) => (
                       <div key={index} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 p-2.5 sm:p-3 rounded-xl text-xs font-semibold">
-                        <span className="text-slate-500">Timbangan Kambing #{index + 1}</span>
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-slate-900 font-extrabold font-mono text-sm sm:text-xs">{berat} Kg</span>
-                          {canEditQurban && ( <button onClick={() => deleteTimbangan('qurbanKambing', index)} className="text-rose-500 p-1.5 hover:bg-rose-50 rounded-lg"><Trash2 size={14} /></button> )}
-                        </div>
+                        <span className="text-slate-955 font-extrabold">{berat} Kg</span>
+                        {canEditQurban && ( <button onClick={() => deleteTimbangan('qurbanKambing', index)} className="text-rose-500 p-1.5 hover:bg-rose-50 rounded-lg"><Trash2 size={14} /></button> )}
                       </div>
                     ))}
                   </div>
