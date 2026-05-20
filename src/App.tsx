@@ -899,7 +899,7 @@ export default function App() {
             </td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Tidak ada jemaah penerima Zakat Fitrah pada wilayah terpilih ini.</td></tr>`;
+      }).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Tidak ada jama'ah penerima Zakat Fitrah pada wilayah terpilih ini.</td></tr>`;
     }
 
     else if (reportType === "zuru") {
@@ -948,7 +948,7 @@ export default function App() {
             </td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Tidak ada jemaah penerima Zakat Zuru' pada wilayah terpilih ini.</td></tr>`;
+      }).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Tidak ada jama'ah penerima Zakat Zuru' pada wilayah terpilih ini.</td></tr>`;
     }
 
     else if (reportType === "qurban") {
@@ -1249,7 +1249,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">{masjidName}</h1>
-              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Gerbang Pengelolaan Masjid & Zakat</p>
+              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Manajemen Pengelola Zakat & Qurban</p>
             </div>
           </div>
 
@@ -1428,7 +1428,7 @@ export default function App() {
                       <Database size={18} className={isSyncing ? "animate-pulse" : ""} />
                    </div>
                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server (Google Sheets)</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                          <div className={`w-2 h-2 rounded-full shrink-0 ${syncStatus === 'Tersinkronisasi' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                          <p className="text-xs sm:text-sm font-black text-slate-800 truncate">{syncStatus}</p>
@@ -1704,8 +1704,8 @@ export default function App() {
               
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <h2 className="text-lg sm:text-xl font-bold text-slate-955">Database Jemaah & Warga</h2>
-                  <p className="text-[11px] sm:text-xs text-slate-500">Kelola dan cetak seluruh laporan data jemaah, qurban, dan pembagian zakat di sini.</p>
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-955">Database jama'ah & Warga</h2>
+                  <p className="text-[11px] sm:text-xs text-slate-500">Kelola dan cetak seluruh laporan data jama'ah, qurban, dan pembagian zakat di sini.</p>
                 </div>
                 {canEditJamaah && (
                   <button onClick={() => { setEditingJamaah(null); setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima" }); setShowJamaahModal(true); }} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-3 sm:py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow shadow-emerald-600/10 hover:scale-102">
@@ -1719,7 +1719,7 @@ export default function App() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 border-b border-slate-200/60 pb-3">
                   <Printer className="text-slate-600 w-5 h-5 shrink-0 hidden sm:block" />
                   <div className="flex-1 w-full">
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wide mb-1.5">Wilayah Cetak Laporan PDF:</label>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wide mb-1.5">Cetak Laporan:</label>
                     <select 
                       value={selectedPrintWilayah} 
                       onChange={(e) => setSelectedPrintWilayah(e.target.value)} 
@@ -2500,7 +2500,7 @@ export default function App() {
 
       {/* === FOOTER === */}
       <footer className="bg-white border-t border-slate-200 px-4 sm:px-6 py-4 text-center text-[10px] sm:text-xs text-slate-400 font-semibold mt-auto">
-        &copy; {new Date().getFullYear()} {masjidName}. Dirancang khusus untuk pengelolaan zakat yang akuntabel, modern, dan transparan.
+        &copy; {new Date().getFullYear()} {masjidName}. Aplikasi dibuat oleh Misbahul Munir.
       </footer>
 
     </div>
