@@ -310,7 +310,7 @@ export default function App() {
         if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
         
         setSyncStatus("Tersinkronisasi");
-        addNotification("Data berhasil ditarik & diperbarui dari Server Pusat (Google Sheets)!", "success");
+        addNotification("Data berhasil ditarik & diperbarui dari Server Pusat!", "success");
       } else {
         setSyncStatus("Tersinkronisasi Lokal");
       }
@@ -1147,7 +1147,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">{masjidName}</h1>
-              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Gerbang Pengelolaan Masjid & Zakat</p>
+              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Pengelolaan Zakat dan Qurban</p>
             </div>
           </div>
 
@@ -1326,7 +1326,7 @@ export default function App() {
                       <Database size={18} className={isSyncing ? "animate-pulse" : ""} />
                    </div>
                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server (Google Sheets)</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                          <div className={`w-2 h-2 rounded-full shrink-0 ${syncStatus === 'Tersinkronisasi' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                          <p className="text-xs sm:text-sm font-black text-slate-800 truncate">{syncStatus}</p>
@@ -2398,7 +2398,7 @@ export default function App() {
 
       {/* === FOOTER === */}
       <footer className="bg-white border-t border-slate-200 px-4 sm:px-6 py-4 text-center text-[10px] sm:text-xs text-slate-400 font-semibold mt-auto">
-        &copy; {new Date().getFullYear()} {masjidName}. Dirancang khusus untuk pengelolaan zakat yang akuntabel, modern, dan transparan.
+        &copy; {new Date().getFullYear()} {masjidName}. Aplikasi dibuat oleh Misbahul Munir.
       </footer>
 
     </div>
