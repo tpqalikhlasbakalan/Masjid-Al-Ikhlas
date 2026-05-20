@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Compass, Users, BookOpen, Gift, Heart, UserCheck, 
   Settings, Trash2, Plus, Edit2, Check, X, AlertTriangle, 
-  Clock, MapPin, Printer, UsersRound, Calendar, Coins,
+  MapPin, Printer, UsersRound, Calendar, Coins,
   LogOut, Lock, KeyRound, User, Eye, EyeOff, UserPlus, Image, FileText,
   Phone, Send, MessageSquare, BellRing, Upload, Download, Smartphone, Menu, RefreshCw, Database
 } from 'lucide-react';
@@ -19,7 +19,9 @@ const INITIAL_LOKASI = {
   provinsi: "Jawa Timur",
   kabupaten: "Lamongan",
   kecamatan: "Tikung",
-  desa: "Bakalan"
+  desa: "Bakalan",
+  latitude: -7.1126, // Koordinat default Lamongan
+  longitude: 112.4150
 };
 
 // Daftar Kombinasi RT & RW Terpadu
@@ -68,6 +70,7 @@ const INITIAL_PETUGAS_ABADI = {
 const PASARAN_LIST = ["Legi", "Pahing", "Pon", "Wage", "Kliwon"];
 
 // === HELPER FUNCTIONS ===
+
 function KubahMasjidIcon({ className }) {
   return (
     <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -82,17 +85,35 @@ function KubahMasjidIcon({ className }) {
   );
 }
 
+// Menangani sinkronisasi tipe data lama yang tidak menggunakan JSON.stringify agar tidak error
 const getLocalStorageData = (key, fallbackValue) => {
   try {
     const saved = localStorage.getItem(key);
-    if (saved) return JSON.parse(saved);
-  } catch (error) { console.error("Gagal membaca LocalStorage: " + key, error); }
+    if (saved === null || saved === "undefined") return fallbackValue;
+    
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      if (typeof fallbackValue === 'string') {
+        return saved;
+      }
+      return fallbackValue;
+    }
+  } catch (error) { 
+    console.warn("Info Storage: Konversi lokal tipe lama dilewati untuk key " + key); 
+  }
   return fallbackValue;
 };
 
-const getJadwalSholat = (kab) => {
-  const hash = kab.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const offset = hash % 15;
+const getJadwalSholat = (kab, lat, lon) => {
+  let offset = 0;
+  if (lat && lon) {
+    const coordHash = Math.abs(Math.round((parseFloat(lat) + parseFloat(lon)) * 100));
+    offset = coordHash % 15;
+  } else {
+    const hash = kab.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    offset = hash % 15;
+  }
   return {
     Subuh: `04:${(15 + offset).toString().padStart(2, '0')}`,
     Terbit: `05:${(30 + offset).toString().padStart(2, '0')}`,
@@ -269,10 +290,10 @@ export default function App() {
   const handleFetchFromGoogleSheets = async () => {
     if (!googleSheetsUrl) {
       setIsDataFetched(true);
-      addNotification("URL Google Sheets belum dikonfigurasi pada baris kode program!", "error");
+      addNotification("URL Google Sheets belum dikonfigurasi!", "error");
       return;
     }
-    setIsDataFetched(false); // Menghentikan sementara Auto-Save agar tidak menimpa data
+    setIsDataFetched(false); 
     setIsSyncing(true);
     setSyncStatus("Mengunduh Server...");
     try {
@@ -299,12 +320,12 @@ export default function App() {
         setSyncStatus("Tersinkronisasi Lokal");
       }
     } catch (err) {
-      console.error(err);
+      console.warn("Fetch Error:", err.message || err);
       setSyncStatus("Gagal Sinkron");
       addNotification("Gagal menarik data dari Google Sheets. Periksa jaringan Anda.", "error");
     } finally {
       setIsSyncing(false);
-      setIsDataFetched(true); // Membuka kembali pintu untuk Auto-Save setelah data selesai diunduh
+      setIsDataFetched(true); 
     }
   };
 
@@ -320,7 +341,6 @@ export default function App() {
 
   // Efek AUTO-SAVE (Sistem akan mengunggah otomatis ke Google Sheets setiap kali ada data yang berubah)
   useEffect(() => {
-    // Blokir save otomatis jika URL belum ada ATAU jika data awal belum selesai diunduh
     if (!isLoggedIn || !googleSheetsUrl || !isDataFetched) return;
 
     const payload = {
@@ -343,7 +363,7 @@ export default function App() {
         });
         setSyncStatus("Tersinkronisasi");
       } catch (err) {
-        console.error(err);
+        console.warn("Auto-Save Error:", err.message || err);
         setSyncStatus("Gagal Menyimpan");
       }
     }, 3000); 
@@ -403,10 +423,10 @@ export default function App() {
     return <KubahMasjidIcon className={fallbackClassName} />;
   };
 
-  const jadwalSholat = getJadwalSholat(lokasi.kabupaten);
+  const jadwalSholat = getJadwalSholat(lokasi.kabupaten, lokasi.latitude, lokasi.longitude);
   
   const getNextSholat = () => {
-    const nowStr = currentTime.toTimeString().split(' ')[0];
+    const nowStr = new Date().toTimeString().split(' ')[0];
     const sholatTimes = Object.entries(jadwalSholat).filter(([k]) => k !== 'Terbit');
     
     for (let [name, time] of sholatTimes) {
@@ -418,7 +438,7 @@ export default function App() {
   };
 
   const nextSholat = getNextSholat();
-  const upcomingFridaysList = getUpcomingFridays(currentTime, petugasAbadi, 5);
+  const upcomingFridaysList = getUpcomingFridays(new Date(), petugasAbadi, 5);
 
   const totalTimbanganFitrahValue = timbanganFitrah.reduce((a, b) => a + b, 0);
   const rincianKebutuhanFitrahData = Object.entries(alokasiFitrah).map(([kategori, jatah]) => {
@@ -578,6 +598,32 @@ export default function App() {
       addNotification(`Notifikasi ${notificationType} H-1 pengingat sukses terkirim ke ${activeNotificationSim.petugas.khatib} (${activeNotificationSim.petugas.telp})!`, "success");
       setActiveNotificationSim(null);
     }, 1500);
+  };
+
+  const handleGetGPSLocation = () => {
+    if (!navigator.geolocation) {
+      addNotification("Browser atau gawai Anda tidak mendukung fitur penunjuk GPS.", "error");
+      return;
+    }
+
+    addNotification("Sedang menghubungkan ke satelit GPS gawai Anda...", "info");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        setTempLokasi(prev => ({
+          ...prev,
+          latitude: lat,
+          longitude: lon
+        }));
+        addNotification(`Satelit terkunci! Koordinat GPS berhasil diambil: ${lat.toFixed(5)}, ${lon.toFixed(5)}`, "success");
+      },
+      (error) => {
+        console.warn("GPS Error:", error.message || error);
+        addNotification("Gagal mendeteksi koordinat. Pastikan izin berbagi lokasi HP Anda aktif.", "error");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   const handleLogin = (e) => {
@@ -866,6 +912,31 @@ export default function App() {
     else if (reportType === "qurban") {
       docTitle = `Daftar Penerima & Tanda Terima Distribusi Daging Qurban`;
       textTheme = "text-rose-800";
+      
+      const qurbanList = filteredWarga.filter(warga => {
+        if (warga.qurban && warga.qurban.startsWith("Sahibul Qurban")) return false;
+        if (qurbanHanyaMustahik) {
+          const isMustahikFitrah = warga.fitrah !== "Muzakki";
+          const isMustahikZuru = warga.zuru !== "Bukan Mustahik";
+          return isMustahikFitrah || isMustahikZuru;
+        }
+        return true;
+      });
+
+      summaryHTML = `
+        <div style="margin-bottom: 20px; padding: 15px; background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px;">
+          <h3 style="margin-top: 0; color: #9f1239; font-size: 14px; text-transform: uppercase;">Ringkasan Data Penyaluran Daging Qurban</h3>
+          <table style="width: 100%; font-size: 12px; border: none;">
+            <tr>
+              <td style="width: 25%; padding: 5px 0;"><strong>Daging Sapi Terkumpul:</strong><br/><span style="font-size: 16px;">${totalTimbanganQurbanSapiValue.toFixed(1)} Kg</span></td>
+              <td style="width: 25%; padding: 5px 0;"><strong>Daging Kambing Terkumpul:</strong><br/><span style="font-size: 16px;">${totalTimbanganQurbanKambingValue.toFixed(1)} Kg</span></td>
+              <td style="width: 25%; padding: 5px 0;"><strong>Warga Penerima:</strong><br/><span style="font-size: 16px;">${qurbanList.length} KK</span></td>
+              <td style="width: 25%; padding: 5px 0;"><strong>Porsi Jatah per KK:</strong><br/>Sapi: ${jatahDagingSapiPerKK} Kg/KK<br/>Kambing: ${jatahDagingKambingPerKK} Kg/KK</td>
+            </tr>
+          </table>
+        </div>
+      `;
+
       tableHeaderHTML = `
         <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
           <th class="p-2.5 border border-slate-300 w-1/12 text-center">No</th>
@@ -878,29 +949,14 @@ export default function App() {
         </tr>
       `;
 
-      const qurbanList = filteredWarga.filter(warga => {
-        if (warga.qurban && warga.qurban.startsWith("Sahibul Qurban")) return false;
-
-        if (qurbanHanyaMustahik) {
-          const isMustahikFitrah = warga.fitrah !== "Muzakki";
-          const isMustahikZuru = warga.zuru !== "Bukan Mustahik";
-          return isMustahikFitrah || isMustahikZuru;
-        }
-        return true;
-      });
-
-      const localTotalPenerima = qurbanList.length;
-      const localJatahSapi = localTotalPenerima > 0 ? (totalTimbanganQurbanSapiValue / localTotalPenerima).toFixed(2) : 0;
-      const localJatahKambing = localTotalPenerima > 0 ? (totalTimbanganQurbanKambingValue / localTotalPenerima).toFixed(2) : 0;
-
       tableRowsHTML = qurbanList.length > 0 ? qurbanList.map((j, i) => `
         <tr class="border-b border-slate-200">
           <td class="p-2.5 border border-slate-300 text-center font-mono">${i + 1}</td>
           <td class="p-2.5 border border-slate-300 font-bold text-slate-900">${j.nama}</td>
           <td class="p-2.5 border border-slate-300 text-center font-bold">RT ${j.rt} / RW ${j.rw}</td>
           <td class="p-2.5 border border-slate-300 text-slate-500 text-[10px]">${j.alamat}</td>
-          <td class="p-2.5 border border-slate-300 text-right font-mono font-bold text-rose-700">${localJatahSapi} Kg</td>
-          <td class="p-2.5 border border-slate-300 text-right font-mono font-bold text-amber-700">${localJatahKambing} Kg</td>
+          <td class="p-2.5 border border-slate-300 text-right font-mono font-bold text-rose-700">${jatahDagingSapiPerKK} Kg</td>
+          <td class="p-2.5 border border-slate-300 text-right font-mono font-bold text-amber-700">${jatahDagingKambingPerKK} Kg</td>
           <td class="p-2.5 border border-slate-300 text-left font-mono text-[9px] text-slate-300 relative h-12">
             <span class="absolute bottom-1 left-2">${i + 1}.</span>
           </td>
@@ -1230,8 +1286,8 @@ export default function App() {
               {renderMasjidLogo("w-full h-full object-contain rounded-lg", "w-8 h-8 sm:w-10 sm:h-10")}
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-slate-900 tracking-tight leading-none">{masjidName}</h1>
-              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-wider">Aplikasi Masjid Terpadu</p>
+              <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-none">{masjidName}</h1>
+              <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase mt-1 sm:mt-1.5 tracking-wider">Aplikasi Masjid Terpadu</p>
             </div>
           </div>
         </div>
@@ -1354,6 +1410,9 @@ export default function App() {
                     <span className="text-[10px] sm:text-xs uppercase tracking-wider font-extrabold text-emerald-200">Lokasi Penentuan Jadwal Sholat</span>
                   </div>
                   <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">Desa {lokasi.desa || ''}, {lokasi.kecamatan}, <br className="block sm:hidden"/> {lokasi.kabupaten}, {lokasi.provinsi}</h2>
+                  {lokasi.latitude && lokasi.longitude && (
+                    <p className="text-[10px] text-emerald-200 font-mono mt-1">Koordinat Aktif: {parseFloat(lokasi.latitude).toFixed(5)}, {parseFloat(lokasi.longitude).toFixed(5)}</p>
+                  )}
                 </div>
                 {hasAccess("rbac") && ( 
                   <button onClick={() => { setTempLokasi(lokasi); setIsSettingLokasi(true); }} className="w-full sm:w-auto justify-center bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/20 px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2">
@@ -1364,8 +1423,17 @@ export default function App() {
 
               {isSettingLokasi && (
                 <div className="bg-white border border-emerald-100 rounded-2xl p-5 shadow-lg space-y-4 animate-fadeIn">
-                  <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2 text-emerald-700"><MapPin size={16} /> Konfigurasi Geografis Masjid</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                    <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2 text-emerald-700"><MapPin size={16} /> Konfigurasi Geografis Masjid</h3>
+                    <button 
+                      type="button" 
+                      onClick={handleGetGPSLocation}
+                      className="w-full sm:w-auto px-4 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl text-xs font-bold transition-all flex justify-center items-center gap-2"
+                    >
+                      <Smartphone size={14} /> Ambil GPS HP Otomatis
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs text-slate-500 font-bold mb-1">Desa / Kelurahan</label>
                       <input type="text" value={tempLokasi.desa || ""} onChange={(e) => setTempLokasi({...tempLokasi, desa: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold focus:ring-2 focus:ring-emerald-500/20" />
@@ -1382,13 +1450,21 @@ export default function App() {
                       <label className="block text-xs text-slate-500 font-bold mb-1">Provinsi</label>
                       <input type="text" value={tempLokasi.provinsi} onChange={(e) => setTempLokasi({...tempLokasi, provinsi: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold focus:ring-2 focus:ring-emerald-500/20" />
                     </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 font-bold mb-1">Latitude (Koordinat Lintang)</label>
+                      <input type="number" step="0.000001" value={tempLokasi.latitude || ""} onChange={(e) => setTempLokasi({...tempLokasi, latitude: parseFloat(e.target.value) || 0})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold focus:ring-2 focus:ring-emerald-500/20 font-mono" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 font-bold mb-1">Longitude (Koordinat Bujur)</label>
+                      <input type="number" step="0.000001" value={tempLokasi.longitude || ""} onChange={(e) => setTempLokasi({...tempLokasi, longitude: parseFloat(e.target.value) || 0})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold focus:ring-2 focus:ring-emerald-500/20 font-mono" />
+                    </div>
                   </div>
                   <div className="flex flex-col sm:flex-row justify-end gap-2.5 pt-2">
                     <button onClick={() => setIsSettingLokasi(false)} className="w-full sm:w-auto px-4 py-2.5 border border-slate-200 text-slate-500 hover:bg-slate-50 text-xs font-bold rounded-xl transition-all">Batal</button>
                     <button onClick={() => { 
                       setLokasi(tempLokasi); 
                       setIsSettingLokasi(false); 
-                      addNotification("Lokasi masjid berhasil dikonfigurasi ulang secara presisi!"); 
+                      addNotification("Lokasi dan koordinat GPS masjid berhasil disave sebagai acuan sholat!"); 
                     }} className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow shadow-emerald-600/10">Terapkan Perubahan</button>
                   </div>
                 </div>
@@ -1397,8 +1473,8 @@ export default function App() {
               <div className="grid grid-cols-1 gap-4 sm:gap-6">
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center pb-2 border-b border-slate-100 gap-2">
-                    <h3 className="font-bold text-slate-955 flex items-center gap-2"><Clock className="text-emerald-600 w-5 h-5 shrink-0" /> Jadwal Sholat Hari Ini</h3>
-                    <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase tracking-wider self-start sm:self-auto">Metode Kemenag RI</span>
+                    <h3 className="font-bold text-slate-955 flex items-center gap-2"><Compass className="text-emerald-600 w-5 h-5 shrink-0" /> Jadwal Sholat Hari Ini</h3>
+                    <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase tracking-wider self-start sm:self-auto">Akurasi GPS Aktif</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     {Object.entries(jadwalSholat).map(([sholatName, time]) => {
@@ -1804,7 +1880,7 @@ export default function App() {
                               <option value="Sahibul Qurban - Sapi">Sahibul Qurban Sapi (Pekurban)</option>
                               <option value="Sahibul Qurban - Kambing">Sahibul Qurban Kambing (Pekurban)</option>
                             </select>
-                            <p className="text-[9px] sm:text-[10px] text-slate-500 mt-1.5 font-medium leading-relaxed">Sahibul Qurban (Pekurban) akan dipisahkan dan otomatis dikeluarkan dari pembagian daging jemaah umum.</p>
+                            <p className="text-[9px] sm:text-[10px] text-slate-500 mt-1.5 font-medium leading-relaxed">Sahibul Qurban (Pekurban) akan dipisahkan dan otomatis dikeluarkan dari kalkulator pembagian daging qurban dan cetak PDF tanda terima kupon.</p>
                           </div>
 
                         </div>
@@ -1858,7 +1934,7 @@ export default function App() {
 
                   <div className="space-y-2 max-h-48 sm:max-h-56 overflow-y-auto pr-1">
                     {timbanganFitrah.map((berat, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-xs p-3 sm:p-2.5 bg-slate-50 border border-slate-200/50 rounded-xl font-semibold">
+                      <div key={idx} className="flex justify-between items-center text-xs p-3 sm:p-2.5 bg-slate-50 border border-slate-200/50 rounded-xl text-sm font-semibold">
                         <span className="text-slate-500">Timbangan #{idx + 1}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-slate-900 font-bold font-mono text-sm sm:text-xs">{berat} Kg</span>
@@ -1881,7 +1957,7 @@ export default function App() {
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-100 pb-2.5 gap-3">
                     <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5"><UsersRound size={16} className="text-emerald-600 shrink-0" /> 2. Rencana Penyaluran (Zakat Fitrah)</h3>
                     <div className={`px-3 py-1.5 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs w-full sm:w-auto ${statusFitrahValue >= 0 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-rose-100 text-rose-800 border border-rose-200'}`}>
-                      {statusFitrahValue >= 0 ? `Surplus Beras: +${statusFitrahValue.toFixed(1)} Kg` : `Defisit / Kurang: ${statusFitrahValue.toFixed(1)} Kg`}
+                      {statusFitrahValue >= 0 ? `Surplus Beras: +${statusFitrahValue.toFixed(1)} Kg` : `Defisit / Kurang: ${Math.abs(statusFitrahValue).toFixed(1)} Kg`}
                     </div>
                   </div>
 
@@ -1974,7 +2050,7 @@ export default function App() {
                       <button onClick={() => addTimbangan('zuru')} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-3 sm:py-2 rounded-xl text-xs font-bold transition-all shrink-0">Tambah</button>
                     </div>
                   ) : (
-                    <p className="text-[10px] text-rose-600 bg-rose-50 border border-rose-100 p-2.5 rounded-lg font-bold">Peran Anda tidak diizinkan mengubah timbangan zakat zuru'.</p>
+                    <p className="text-[11px] text-rose-600 bg-rose-50 border border-rose-100 p-2.5 rounded-lg font-bold">Peran Anda tidak diizinkan mengubah timbangan zakat zuru'.</p>
                   )}
 
                   <div className="space-y-2 max-h-48 sm:max-h-56 overflow-y-auto pr-1">
@@ -1984,7 +2060,7 @@ export default function App() {
                         <div className="flex items-center gap-2">
                           <span className="text-slate-900 font-bold font-mono text-sm sm:text-xs">{berat} Kg</span>
                           {canEditZuru && (
-                            <button onClick={() => deleteTimbangan('zuru', idx)} className="text-rose-600 hover:bg-rose-50 p-1 rounded-lg"><Trash2 size={14} /></button>
+                            <button onClick={() => deleteTimbangan('zuru', idx)} className="text-rose-600 hover:bg-rose-50 p-1.5 hover:bg-rose-50 rounded-lg"><Trash2 size={14} /></button>
                           )}
                         </div>
                       </div>
@@ -2002,7 +2078,7 @@ export default function App() {
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-100 pb-2.5 gap-3">
                     <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5"><UsersRound size={16} className="text-teal-600 shrink-0" /> 2. Rencana Penyaluran (Hasil Pertanian)</h3>
                     <div className={`px-3 py-1.5 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs w-full sm:w-auto ${statusZuruValue >= 0 ? 'bg-teal-100 text-teal-800 border border-teal-200' : 'bg-rose-100 text-rose-800 border border-rose-200'}`}>
-                      {statusZuruValue >= 0 ? `Panen Surplus: +${statusZuruValue.toFixed(1)} Kg` : `Defisit / Kurang: ${statusZuruValue.toFixed(1)} Kg`}
+                      {statusZuruValue >= 0 ? `Panen Surplus: +${statusZuruValue.toFixed(1)} Kg` : `Defisit / Kurang: ${Math.abs(statusZuruValue).toFixed(1)} Kg`}
                     </div>
                   </div>
 
@@ -2053,8 +2129,8 @@ export default function App() {
                           </tr>
                         ))}
                         <tr className="bg-teal-50/50 text-slate-900 border-t-2 border-teal-100">
-                          <td className="p-3 font-black uppercase text-[10px] sm:text-xs text-teal-900" colSpan="3">Total Estimasi Kebutuhan Penyaluran:</td>
-                          <td className="p-3 text-right text-teal-700 font-black text-base sm:text-lg">{totalButuruValue.toFixed(1)} Kg</td>
+                          <td className="p-3 font-black uppercase text-[10px] sm:text-xs text-teal-900" colSpan="3">Total Estimasi Kebutuhan Penyaluran Zuru:</td>
+                          <td className="p-3 text-right text-teal-800 font-black text-base sm:text-lg">{totalButuruValue.toFixed(1)} Kg</td>
                         </tr>
                       </tbody>
                     </table>
@@ -2106,7 +2182,7 @@ export default function App() {
                   <div className="space-y-1.5 max-h-40 sm:max-h-48 overflow-y-auto pr-1 font-semibold text-slate-700">
                     {timbanganQurbanSapi.map((berat, index) => (
                       <div key={index} className="flex justify-between items-center bg-slate-50 border border-slate-200/50 p-2.5 sm:p-3 rounded-xl text-xs font-semibold">
-                        <span className="text-slate-500">Timbangan Sapi #{index + 1}</span>
+                        <span className="text-slate-400">Timbangan Sapi #{index + 1}</span>
                         <div className="flex items-center gap-2.5">
                           <span className="text-slate-900 font-extrabold font-mono text-sm sm:text-xs">{berat} Kg</span>
                           {canEditQurban && ( <button onClick={() => deleteTimbangan('qurbanSapi', index)} className="text-rose-500 p-1.5 hover:bg-rose-50 rounded-lg"><Trash2 size={14} /></button> )}
@@ -2114,7 +2190,7 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-                  <div className="bg-rose-50/50 border border-rose-200 p-4 rounded-xl flex justify-between items-center shadow-inner">
+                  <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl flex justify-between items-center shadow-inner">
                     <span className="text-[11px] text-rose-800 font-extrabold uppercase tracking-wide">Total Bersih Daging Sapi</span>
                     <span className="text-xl sm:text-2xl font-black text-rose-700 font-mono">{totalTimbanganQurbanSapiValue.toFixed(1)} <span className="text-sm">Kg</span></span>
                   </div>
@@ -2143,7 +2219,7 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-                  <div className="bg-amber-50/50 border border-amber-200 p-4 rounded-xl flex justify-between items-center shadow-inner">
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex justify-between items-center shadow-inner">
                     <span className="text-[11px] text-amber-800 font-extrabold uppercase tracking-wide">Total Daging Kambing</span>
                     <span className="text-xl sm:text-2xl font-black text-amber-700 font-mono">{totalTimbanganQurbanKambingValue.toFixed(1)} <span className="text-sm">Kg</span></span>
                   </div>
@@ -2201,14 +2277,51 @@ export default function App() {
           {activeTab === "rbac" && (
             <div className="space-y-4 sm:space-y-6 animate-fadeIn">
               
+              {/* === PANEL SINKRONISASI GOOGLE SHEETS CLOUD DI TAB RBAC === */}
               {currentRole === "Admin" && (
-                <div className="bg-white border border-slate-200 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-xs space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                    <Settings className="text-emerald-600 w-5 h-5 sm:w-6 sm:h-6 animate-spin-slow" />
-                    <div>
-                      <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">Pengaturan Identitas & Logo Masjid</h3>
-                      <p className="text-[10px] sm:text-xs text-slate-500">Tentukan nama lembaga dan tempel tautan (*link*) gambar logo Anda di sini.</p>
+                <div className="bg-white border-2 border-emerald-100 p-6 rounded-3xl shadow-sm space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Download className="text-emerald-600 w-5 h-5 animate-pulse" />
+                      <div>
+                        <h3 className="font-black text-slate-900 text-sm">Pengaturan URL Google Sheets Cloud</h3>
+                        <p className="text-xs text-slate-500">Koneksikan sistem ini ke Google Sheets pribadi untuk penyimpanan awan otomatis (Auto-Save).</p>
+                      </div>
                     </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/50 space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-black text-slate-600">Google Apps Script Web App URL:</label>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="Tempel URL (berakhiran /exec) di sini..." 
+                          value={tempGoogleSheetsUrl} 
+                          onChange={(e) => setTempGoogleSheetsUrl(e.target.value)} 
+                          className="flex-1 text-xs border border-slate-300 bg-white p-3.5 sm:p-3 rounded-xl outline-none font-mono text-slate-800 focus:ring-2 focus:ring-emerald-500/20" 
+                        />
+                        <button 
+                          onClick={() => {
+                            setGoogleSheetsUrl(tempGoogleSheetsUrl);
+                            addNotification("URL Google Sheets berhasil disimpan! Sinkronisasi otomatis (Auto-Save) kini aktif.", "success");
+                          }}
+                          className="w-full sm:w-auto px-4 py-3 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shrink-0"
+                        >
+                          Simpan URL
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-medium leading-relaxed bg-white border border-slate-200 p-2.5 rounded-lg shadow-sm">Sistem kini akan otomatis menyimpan perubahan ke Google Sheets saat Anda mengedit data. Jika butuh menarik data terbaru dari server, gunakan tombol <strong>Refresh Data Server</strong> di menu Dashboard Utama.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {currentRole === "Admin" && (
+                <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                    <Settings className="text-emerald-600 w-5 h-5 animate-spin-slow" />
+                    <h3 className="font-extrabold text-slate-900 text-sm">Pengaturan Identitas & Logo Masjid</h3>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 bg-slate-50 p-4 sm:p-5 rounded-xl border border-slate-200/60">
@@ -2319,7 +2432,7 @@ export default function App() {
                       </div>
                       <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t border-slate-100">
                         <button type="button" onClick={() => setEditingAccountPassword(null)} className="w-full sm:w-auto px-4 py-3 sm:py-2 border border-slate-300 text-slate-600 text-[11px] font-bold rounded-xl hover:bg-slate-50">Batal</button>
-                        <button type="submit" className="w-full sm:w-auto px-4 py-3 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-xl shadow-sm">Simpan Password</button>
+                        <button type="submit" className="w-full sm:w-auto px-4 py-3 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg shadow-sm">Simpan Password</button>
                       </div>
                     </form>
                   </div>
