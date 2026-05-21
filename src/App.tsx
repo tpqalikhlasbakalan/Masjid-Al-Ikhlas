@@ -4,14 +4,12 @@ import {
   Settings, Trash2, Plus, Edit2, Check, X, AlertTriangle, 
   MapPin, Printer, UsersRound, Calendar, Coins,
   LogOut, Lock, KeyRound, User, Eye, EyeOff, UserPlus, Image, FileText,
-  Phone, Send, MessageSquare, BellRing, Upload, Download, Smartphone, Menu, RefreshCw, Database
+  Phone, Send, MessageSquare, BellRing, Upload, Download, Smartphone, Menu, RefreshCw, Database, Share2
 } from 'lucide-react';
 
 // ====================================================================
 // CONFIG CONFIGURATION GOOGLE SHEETS API (GRATIS)
 // ====================================================================
-// Anda dapat langsung menempelkan URL Apps Script di bawah ini secara permanen
-// Contoh: const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycb.../exec";
 const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlT-MtuAXW_wl-KnFnqUkhX4fPf6YIyXNMPTE4Syi66_uDhxGiKVVK9_imo25DpRCm/exec"; 
 
 // === SEED DATA LOKASI AWAL ===
@@ -20,11 +18,10 @@ const INITIAL_LOKASI = {
   kabupaten: "Lamongan",
   kecamatan: "Tikung",
   desa: "Bakalan",
-  latitude: -7.1126, // Koordinat default Lamongan
+  latitude: -7.1126, 
   longitude: 112.4150
 };
 
-// Daftar Kombinasi RT & RW Terpadu
 const WILAYAH_OPTIONS = [
   { rt: "01", rw: "01", label: "RT 01 / RW 01" },
   { rt: "02", rw: "01", label: "RT 02 / RW 01" },
@@ -34,11 +31,12 @@ const WILAYAH_OPTIONS = [
   { rt: "03", rw: "02", label: "RT 03 / RW 02" }
 ];
 
-// Batas Akses default per Peran (Role)
+// === PENAMBAHAN ROLE BARU: PETUGAS ===
 const INITIAL_ROLES = {
   Admin: { label: "Super Admin", access: ["dashboard", "petugas", "jamaah", "fitrah", "zuru", "qurban", "rbac"] },
   Takmir: { label: "Takmir Masjid", access: ["dashboard", "petugas", "jamaah", "qurban"] },
   Amil: { label: "Amil Zakat", access: ["dashboard", "jamaah", "fitrah", "zuru", "qurban"] },
+  Petugas: { label: "Petugas Jumat", access: ["dashboard", "petugas"] }, // Role Baru
   Jamaah: { label: "Jama'ah / Warga", access: ["dashboard", "petugas", "fitrah", "zuru", "qurban"] }
 };
 
@@ -46,6 +44,7 @@ const INITIAL_USER_DATABASE = {
   "admin": { password: "admin123", role: "Admin", label: "Super Admin" },
   "takmir": { password: "takmir123", role: "Takmir", label: "Takmir Masjid" },
   "amil": { password: "amil123", role: "Amil", label: "Amil Zakat" },
+  "petugas1": { password: "petugas123", role: "Petugas", label: "KH. Syukron Ma'mun" }, // Akun Demo Petugas
   "jamaah": { password: "jamaah123", role: "Jamaah", label: "Jama'ah / Warga" }
 };
 
@@ -70,7 +69,6 @@ const INITIAL_PETUGAS_ABADI = {
 const PASARAN_LIST = ["Legi", "Pahing", "Pon", "Wage", "Kliwon"];
 
 // === HELPER FUNCTIONS ===
-
 function KubahMasjidIcon({ className }) {
   return (
     <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -97,7 +95,6 @@ const getLocalStorageData = (key, fallbackValue) => {
   return fallbackValue;
 };
 
-// Fallback Kalkulator Manual (Digunakan saat HP offline / API gagal dijangkau)
 const getMockJadwal = (kab, lat, lon) => {
   let offset = 0;
   if (lat && lon) {
@@ -157,9 +154,6 @@ const getJumlahJiwaPerKategoriZuru = (jamaahList, kategori) => {
 };
 
 export default function App() {
-  // =========================================================
-  // 1. STATE MANAGEMENT DENGAN STRATEGI PENYIMPANAN DOUBLE-BACKUP
-  // =========================================================
   const [masjidName, setMasjidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Ikhlas Bakalan"));
   const [masjidLogoUrl, setMasjidLogoUrl] = useState(() => getLocalStorageData("masjidLogoUrl", ""));
 
@@ -203,25 +197,18 @@ export default function App() {
   const [notificationType, setNotificationType] = useState("WA"); 
   const [simulatedMessageText, setSimulatedMessageText] = useState("");
   const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const [showAndroidCode, setShowAndroidCode] = useState(false);
 
   const [jamaahList, setJamaahList] = useState(() => getLocalStorageData("jamaahList", INITIAL_JAMAAH));
   const [filterWilayahJamaah, setFilterWilayahJamaah] = useState("Semua");
 
   const [timbanganFitrah, setTimbanganFitrah] = useState(() => getLocalStorageData("timbanganFitrah", [25, 50, 15, 30]));
   const [tempBeratFitrah, setTempBeratFitrah] = useState("");
-  
-  const [alokasiFitrah, setAlokasiFitrah] = useState(() => getLocalStorageData("alokasiFitrah", {
-    "Berat": 5.0, "Sedang": 3.0, "Ringan": 1.5, "Muzakki": 0.0
-  }));
+  const [alokasiFitrah, setAlokasiFitrah] = useState(() => getLocalStorageData("alokasiFitrah", { "Berat": 5.0, "Sedang": 3.0, "Ringan": 1.5, "Muzakki": 0.0 }));
   const [tempAlokasiFitrah, setTempAlokasiFitrah] = useState(alokasiFitrah);
 
   const [timbanganZuru, setTimbanganZuru] = useState(() => getLocalStorageData("timbanganZuru", [120, 250, 80]));
   const [tempBeratZuru, setTempBeratZuru] = useState("");
-  
-  const [alokasiZuru, setAlokasiZuru] = useState(() => getLocalStorageData("alokasiZuru", {
-    "Berat": 15.0, "Sedang": 10.0, "Ringan": 5.0, "Bukan Mustahik": 0.0
-  }));
+  const [alokasiZuru, setAlokasiZuru] = useState(() => getLocalStorageData("alokasiZuru", { "Berat": 15.0, "Sedang": 10.0, "Ringan": 5.0, "Bukan Mustahik": 0.0 }));
   const [tempAlokasiZuru, setTempAlokasiZuru] = useState(alokasiZuru);
 
   const [timbanganQurbanSapi, setTimbanganQurbanSapi] = useState(() => getLocalStorageData("timbanganQurbanSapi", [85.5, 120.0, 95.0, 65.5]));
@@ -240,7 +227,6 @@ export default function App() {
   });
 
   const [googleSheetsUrl, setGoogleSheetsUrl] = useState(() => getLocalStorageData("googleSheetsUrl", GOOGLE_SHEETS_SCRIPT_URL));
-  const [tempGoogleSheetsUrl, setTempGoogleSheetsUrl] = useState(googleSheetsUrl);
   const [syncStatus, setSyncStatus] = useState("Tersinkronisasi Lokal");
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDataFetched, setIsDataFetched] = useState(false);
@@ -252,13 +238,13 @@ export default function App() {
   });
 
   // =========================================================
-  // EFFECTS FOR STORAGE
+  // EFFECTS FOR STORAGE & PERMISSIONS
   // =========================================================
   useEffect(() => { localStorage.setItem("masjidName", JSON.stringify(masjidName)); }, [masjidName]);
   useEffect(() => { localStorage.setItem("masjidLogoUrl", JSON.stringify(masjidLogoUrl)); }, [masjidLogoUrl]);
   useEffect(() => { localStorage.setItem("userDatabase", JSON.stringify(userDatabase)); }, [userDatabase]);
   useEffect(() => { localStorage.setItem("rolesConfig", JSON.stringify(rolesConfig)); }, [rolesConfig]);
-  useEffect(() => { localStorage.setItem("lokasi", JSON.stringify(lokasi)); }, [lokasi]); // Lokasi hanya disimpan LOKAL, tidak disinkronisasi ke Google Sheets
+  useEffect(() => { localStorage.setItem("lokasi", JSON.stringify(lokasi)); }, [lokasi]); 
   useEffect(() => { localStorage.setItem("petugasAbadi", JSON.stringify(petugasAbadi)); }, [petugasAbadi]);
   useEffect(() => { localStorage.setItem("jamaahList", JSON.stringify(jamaahList)); }, [jamaahList]);
   useEffect(() => { localStorage.setItem("timbanganFitrah", JSON.stringify(timbanganFitrah)); }, [timbanganFitrah]);
@@ -267,10 +253,16 @@ export default function App() {
   useEffect(() => { localStorage.setItem("alokasiZuru", JSON.stringify(alokasiZuru)); }, [alokasiZuru]);
   useEffect(() => { localStorage.setItem("timbanganQurbanSapi", JSON.stringify(timbanganQurbanSapi)); }, [timbanganQurbanSapi]);
   useEffect(() => { localStorage.setItem("timbanganQurbanKambing", JSON.stringify(timbanganQurbanKambing)); }, [timbanganQurbanKambing]);
-  useEffect(() => { localStorage.setItem("googleSheetsUrl", JSON.stringify(googleSheetsUrl)); }, [googleSheetsUrl]);
 
   useEffect(() => { setTempMasjidName(masjidName); }, [masjidName]);
   useEffect(() => { setTempMasjidLogoUrl(masjidLogoUrl); }, [masjidLogoUrl]);
+
+  // Request Notification Permission pada load awal (Untuk Web Notification)
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+      Notification.requestPermission();
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -279,8 +271,40 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // Logika Notifikasi Pengingat Latar Belakang (Jalan Jika Web Minimzed/Terbuka)
+  useEffect(() => {
+    if (!isLoggedIn || !currentUserLabel) return;
+    
+    // Cek jika hari ini Kamis (4)
+    const today = new Date();
+    if (today.getDay() === 4) {
+      // Ambil pasaran besok
+      const besok = new Date(today);
+      besok.setDate(besok.getDate() + 1);
+      const pasaranBesok = getPasaranJawa(besok);
+      const petugasBesok = petugasAbadi[pasaranBesok];
+
+      if (petugasBesok) {
+        // Jika user yang login adalah salah satu petugas besok, beri notifikasi browser
+        const isPetugas = [petugasBesok.khatib, petugasBesok.imam, petugasBesok.muadzin, petugasBesok.bilal].includes(currentUserLabel);
+        
+        // Cek cache agar tidak spam notif setiap detik
+        const notifCacheKey = `notif_${pasaranBesok}_${today.toLocaleDateString('id-ID')}`;
+        const hasNotified = localStorage.getItem(notifCacheKey);
+
+        if (isPetugas && !hasNotified && "Notification" in window && Notification.permission === "granted") {
+          new Notification("Pengingat Tugas Jumat", {
+            body: `Assalamualaikum ${currentUserLabel}, mengingatkan besok Anda bertugas untuk Sholat Jumat ${pasaranBesok}.`,
+            icon: masjidLogoUrl || undefined
+          });
+          localStorage.setItem(notifCacheKey, "true");
+        }
+      }
+    }
+  }, [currentTime, isLoggedIn, currentUserLabel, petugasAbadi, masjidLogoUrl]);
+
   // ====================================================================
-  // API ALADHAN: MENARIK JADWAL SHOLAT ASTRONOMI REAL (METODE KEMENAG RI)
+  // API ALADHAN: MENARIK JADWAL SHOLAT ASTRONOMI REAL
   // ====================================================================
   const currentDay = currentTime.getDate();
   
@@ -300,7 +324,6 @@ export default function App() {
       }
 
       try {
-        // Metode 20 adalah profil resmi dari Kementerian Agama Republik Indonesia
         const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lokasi.latitude}&longitude=${lokasi.longitude}&method=20`);
         const result = await res.json();
         
@@ -327,13 +350,11 @@ export default function App() {
   }, [lokasi.latitude, lokasi.longitude, currentDay]);
 
   // ====================================================================
-  // GOOGLE SHEETS AUTO-SYNC CONTROLLER (BACKGROUND SYNC)
+  // GOOGLE SHEETS AUTO-SYNC CONTROLLER
   // ====================================================================
-  
   const handleFetchFromGoogleSheets = async () => {
     if (!googleSheetsUrl) {
       setIsDataFetched(true);
-      addNotification("URL Google Sheets belum dikonfigurasi pada kode sumber aplikasi!", "error");
       return;
     }
     setIsDataFetched(false); 
@@ -346,7 +367,6 @@ export default function App() {
         const payload = resData.data;
         if (payload.masjidName !== undefined) setMasjidName(payload.masjidName);
         if (payload.masjidLogoUrl !== undefined) setMasjidLogoUrl(payload.masjidLogoUrl);
-        // Lokasi TIDAK DITARIK dari server karena bergantung pada GPS lokal HP masing-masing pengguna
         if (payload.petugasAbadi !== undefined) setPetugasAbadi(payload.petugasAbadi);
         if (payload.jamaahList !== undefined) setJamaahList(payload.jamaahList);
         if (payload.timbanganFitrah !== undefined) setTimbanganFitrah(payload.timbanganFitrah);
@@ -382,12 +402,11 @@ export default function App() {
     }
   }, [isLoggedIn, googleSheetsUrl]);
 
-  // Efek AUTO-SAVE (Sistem akan mengunggah otomatis ke Google Sheets setiap kali ada data yang berubah)
   useEffect(() => {
     if (!isLoggedIn || !googleSheetsUrl || !isDataFetched) return;
 
     const payload = {
-      masjidName, masjidLogoUrl, petugasAbadi, jamaahList, // Note: lokasi is purposely excluded
+      masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
       timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
       timbanganQurbanSapi, timbanganQurbanKambing, userDatabase
     };
@@ -399,9 +418,7 @@ export default function App() {
         await fetch(googleSheetsUrl, {
           method: "POST",
           mode: "no-cors", 
-          headers: {
-            "Content-Type": "text/plain"
-          },
+          headers: { "Content-Type": "text/plain" },
           body: JSON.stringify(payload)
         });
         setSyncStatus("Tersinkronisasi");
@@ -467,7 +484,7 @@ export default function App() {
   };
 
   const getNextSholat = () => {
-    const nowStr = currentTime.toTimeString().split(' ')[0].substring(0, 5); // Format "HH:MM"
+    const nowStr = currentTime.toTimeString().split(' ')[0].substring(0, 5); 
     const sholatTimes = Object.entries(jadwalSholat).filter(([k]) => k !== 'Terbit');
     
     for (let [name, time] of sholatTimes) {
@@ -506,10 +523,7 @@ export default function App() {
 
   const getWargaPenerimaQurban = () => {
     return jamaahList.filter(warga => {
-      // === PENYARINGAN UTAMA: SAHIBUL QURBAN TIDAK MASUK DAFTAR PENERIMA ===
-      if (warga.qurban && warga.qurban.startsWith("Sahibul Qurban")) {
-        return false;
-      }
+      if (warga.qurban && warga.qurban.startsWith("Sahibul Qurban")) return false;
       if (filterWilayahQurban !== "Semua") {
         const [filterRt, filterRw] = filterWilayahQurban.split('_');
         if (warga.rt !== filterRt || warga.rw !== filterRw) return false;
@@ -808,6 +822,12 @@ export default function App() {
     setNewPasswordValue("");
   };
 
+  // Helper WA Formatter
+  const createWAShareLink = (title, rtTitle, summaryText) => {
+    const message = `*${masjidName}*\n\n📝 *${title}*\nWilayah: ${rtTitle}\nTanggal: ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}\n\n${summaryText}\n\n_Catatan: Dokumen fisik tersedia di pengurus._`;
+    return `https://wa.me/?text=${encodeURIComponent(message)}`;
+  };
+
   const handlePrintSelectedReport = (reportType) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -829,10 +849,13 @@ export default function App() {
     let tableHeaderHTML = "";
     let tableRowsHTML = "";
     let summaryHTML = "";
+    let waSummaryText = "";
 
     if (reportType === "jamaah") {
       docTitle = `Laporan Database Jamaah & Anggota Keluarga`;
       textTheme = "text-slate-800";
+      waSummaryText = `Total Warga Terdaftar: ${filteredWarga.length} KK.`;
+      
       tableHeaderHTML = `
         <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
           <th class="p-2.5 border border-slate-300 w-1/12 text-center">No</th>
@@ -859,6 +882,8 @@ export default function App() {
       
       const mustahikList = filteredWarga.filter(j => j.fitrah !== "Muzakki");
       const totalJiwaMustahik = mustahikList.reduce((acc, curr) => acc + curr.anggota, 0);
+
+      waSummaryText = `✔️ Total Beras Terkumpul: ${totalTimbanganFitrahValue.toFixed(1)} Kg\n✔️ Penerima di wilayah ini: ${mustahikList.length} KK (${totalJiwaMustahik} Jiwa)\n\nSilakan datang ke masjid untuk pengambilan.`;
 
       summaryHTML = `
         <div style="margin-bottom: 20px; padding: 15px; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px;">
@@ -899,7 +924,7 @@ export default function App() {
             </td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Tidak ada jama'ah penerima Zakat Fitrah pada wilayah terpilih ini.</td></tr>`;
+      }).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Tidak ada jemaah penerima Zakat Fitrah pada wilayah terpilih ini.</td></tr>`;
     }
 
     else if (reportType === "zuru") {
@@ -908,6 +933,8 @@ export default function App() {
       
       const mustahikList = filteredWarga.filter(j => j.zuru !== "Bukan Mustahik");
       const totalJiwaMustahik = mustahikList.reduce((acc, curr) => acc + curr.anggota, 0);
+
+      waSummaryText = `✔️ Total Panen Terkumpul: ${totalTimbanganZuruValue.toFixed(1)} Kg\n✔️ Penerima di wilayah ini: ${mustahikList.length} KK (${totalJiwaMustahik} Jiwa)\n\nSilakan datang ke masjid untuk pengambilan jatah Zakat Zuru'.`;
 
       summaryHTML = `
         <div style="margin-bottom: 20px; padding: 15px; background-color: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 8px;">
@@ -948,7 +975,7 @@ export default function App() {
             </td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Tidak ada jama'ah penerima Zakat Zuru' pada wilayah terpilih ini.</td></tr>`;
+      }).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Tidak ada jemaah penerima Zakat Zuru' pada wilayah terpilih ini.</td></tr>`;
     }
 
     else if (reportType === "qurban") {
@@ -964,6 +991,8 @@ export default function App() {
         }
         return true;
       });
+
+      waSummaryText = `🥩 Info Pembagian Qurban 🥩\n\n✔️ Total Sapi: ${totalTimbanganQurbanSapiValue.toFixed(1)} Kg\n✔️ Kambing: ${totalTimbanganQurbanKambingValue.toFixed(1)} Kg\n✔️ Penerima (${rtTitle}): ${qurbanList.length} KK\n\nJatah per KK:\n- Sapi: ${jatahDagingSapiPerKK} Kg\n- Kambing: ${jatahDagingKambingPerKK} Kg`;
 
       summaryHTML = `
         <div style="margin-bottom: 20px; padding: 15px; background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px;">
@@ -1009,6 +1038,8 @@ export default function App() {
     else if (reportType === "pekurban") {
       docTitle = `Daftar Nama Pekurban (Sahibul Qurban)`;
       textTheme = "text-rose-800";
+      waSummaryText = `Terima kasih kepada para jamaah Sahibul Qurban wilayah ${rtTitle}. Semoga amal ibadah qurban diterima Allah SWT. Amin.`;
+      
       tableHeaderHTML = `
         <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
           <th class="p-2.5 border border-slate-300 w-1/12 text-center">No</th>
@@ -1037,6 +1068,8 @@ export default function App() {
       }).join('') : `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Tidak ada data pekurban (Sahibul Qurban) pada wilayah terpilih ini.</td></tr>`;
     }
 
+    const waLink = createWAShareLink(docTitle, rtTitle, waSummaryText);
+
     const html = `
       <html>
         <head>
@@ -1045,11 +1078,25 @@ export default function App() {
           <style>
             @media print {
               body { -webkit-print-color-adjust: exact; margin: 1.2cm; }
-              .no-print { display: none; }
+              .no-print { display: none !important; }
             }
           </style>
         </head>
         <body class="p-8 bg-white text-slate-800">
+          
+          <!-- UI Control untuk Bagikan WA / Print PDF -->
+          <div class="no-print" style="margin-bottom: 30px; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <p style="font-size: 13px; color: #64748b; font-weight: bold; margin: 0;">Opsi Laporan:</p>
+            <div style="display: flex; gap: 10px;">
+              <a href="${waLink}" target="_blank" style="background: #25D366; color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> Bagikan ke WhatsApp
+              </a>
+              <button onclick="window.print()" style="background: #0f172a; color: white; padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Cetak / Simpan PDF
+              </button>
+            </div>
+          </div>
+
           <div class="flex items-center justify-between border-b-4 border-slate-900 pb-4 mb-6">
             <div class="flex items-center gap-4">
               <div class="w-16 h-16 text-emerald-700 flex items-center justify-center border border-slate-200 rounded-xl overflow-hidden p-1">
@@ -1094,9 +1141,6 @@ export default function App() {
             </div>
           </div>
           
-          <script>
-            window.onload = function() { window.print(); window.close(); }
-          </script>
         </body>
       </html>
     `;
@@ -1121,10 +1165,21 @@ export default function App() {
               body { -webkit-print-color-adjust: exact; margin: 1cm; }
               .page-break { page-break-after: always; }
               .avoid-break { page-break-inside: avoid; }
+              .no-print { display: none !important; }
             }
           </style>
         </head>
         <body class="p-8 bg-white text-slate-800">
+          
+          <div class="no-print" style="margin-bottom: 30px; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <p style="font-size: 13px; color: #64748b; font-weight: bold; margin: 0;">Opsi Laporan:</p>
+            <div style="display: flex; gap: 10px;">
+              <button onclick="window.print()" style="background: #0f172a; color: white; padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Cetak / Simpan PDF
+              </button>
+            </div>
+          </div>
+          
           <div class="flex items-center justify-between border-b-4 border-rose-800 pb-4 mb-6">
             <div class="flex items-center gap-4">
               <div class="w-16 h-16 text-rose-700 flex items-center justify-center border border-slate-200 rounded-xl overflow-hidden p-1">
@@ -1249,7 +1304,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">{masjidName}</h1>
-              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Manajemen Pengelola Zakat & Qurban</p>
+              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Gerbang Pengelolaan Masjid & Zakat</p>
             </div>
           </div>
 
@@ -1310,8 +1365,8 @@ export default function App() {
   // MAIN DASHBOARD INTERFACE (AUTHORIZED USER ONLY)
   // =========================================================
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col antialiased">
-      
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col antialiased relative">
+
       {/* === HEADER UTAMA === */}
       <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex items-center justify-between shadow-xs sticky top-0 z-40">
         <div className="flex items-center gap-3 sm:gap-4">
@@ -1337,11 +1392,11 @@ export default function App() {
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 pl-3 pr-2 py-1.5 rounded-2xl">
             <div className="text-left hidden sm:block">
-              <span className="text-[9px] text-emerald-600 font-extrabold block leading-none uppercase">Peran</span>
-              <span className="text-xs font-black text-emerald-955">{currentUserLabel}</span>
+              <span className="text-[9px] text-emerald-600 font-extrabold block leading-none uppercase">Peran Saat Ini</span>
+              <span className="text-xs font-black text-emerald-955 truncate max-w-[120px] inline-block">{currentUserLabel}</span>
             </div>
-            <button onClick={handleLogout} className="p-1 hover:bg-rose-50 text-rose-500 rounded-xl transition-all" title="Keluar dari sistem">
-              <LogOut size={16} />
+            <button onClick={handleLogout} className="p-1.5 bg-rose-100 hover:bg-rose-200 text-rose-600 rounded-xl transition-all ml-1" title="Pintu Keluar (Logout)">
+              <LogOut size={14} />
             </button>
           </div>
         </div>
@@ -1421,6 +1476,20 @@ export default function App() {
           {activeTab === "dashboard" && (
             <div className="space-y-4 sm:space-y-6">
               
+              {/* NOTIFIKASI IZIN WEB */}
+              {("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") && (
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fadeIn">
+                  <div className="flex gap-3">
+                    <BellRing className="text-amber-600 mt-0.5 shrink-0" size={18}/>
+                    <div>
+                      <h4 className="font-bold text-amber-900 text-xs sm:text-sm">Aktifkan Notifikasi Pengingat Tugas</h4>
+                      <p className="text-[10px] sm:text-xs text-amber-700 mt-0.5">Izinkan peramban untuk memberi Anda pop-up notifikasi latar belakang saat Anda dijadwalkan bertugas di hari esok.</p>
+                    </div>
+                  </div>
+                  <button onClick={() => Notification.requestPermission().then(() => addNotification("Izin notifikasi diperbarui."))} className="px-4 py-2 bg-amber-600 text-white text-xs font-bold rounded-xl shadow-sm hover:bg-amber-700 shrink-0">Izinkan Notifikasi</button>
+                </div>
+              )}
+
               {/* STATUS BAR CLOUD SYNC & REFRESH */}
               <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fadeIn">
                 <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -1428,7 +1497,7 @@ export default function App() {
                       <Database size={18} className={isSyncing ? "animate-pulse" : ""} />
                    </div>
                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server (Google Sheets)</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                          <div className={`w-2 h-2 rounded-full shrink-0 ${syncStatus === 'Tersinkronisasi' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                          <p className="text-xs sm:text-sm font-black text-slate-800 truncate">{syncStatus}</p>
@@ -1598,8 +1667,8 @@ export default function App() {
                 <div className="flex items-start gap-3">
                   <BellRing className="text-amber-600 shrink-0 w-5 h-5 mt-0.5" />
                   <div className="text-[11px] sm:text-xs text-amber-800">
-                    <p className="font-bold">Sistem Notifikasi Pengingat Otomatis H-1 (Hari Kamis)</p>
-                    <p className="text-amber-700 mt-0.5">Simulasikan pengiriman pesan pengingat WhatsApp atau SMS Gateway Android ke ponsel petugas langsung dari tombol simulasi di bawah template kartu petugas.</p>
+                    <p className="font-bold">Sistem Notifikasi Pengingat Latar Belakang (Web/Android)</p>
+                    <p className="text-amber-700 mt-0.5">Simulasikan pengiriman pesan pengingat WhatsApp atau SMS Gateway ke ponsel petugas langsung dari tombol simulasi di bawah template kartu petugas. Secara otomatis, sistem juga akan memicu Push Notification web lokal setiap hari Kamis.</p>
                   </div>
                 </div>
               </div>
@@ -1695,6 +1764,93 @@ export default function App() {
                   </div>
                 </div>
               )}
+
+              {/* MODAL SIMULATOR WHATSAPP/SMS NOTIFIKASI H-1 */}
+              {activeNotificationSim && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+                  <div className={`w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-scaleIn transition-all ${
+                    notificationType === "WA" ? "bg-[#eae6df] h-[550px]" : "bg-slate-100 h-[580px] border border-slate-300"
+                  }`}>
+                    
+                    {/* Header Sesuai Platform */}
+                    {notificationType === "WA" ? (
+                      <div className="bg-[#008069] text-white px-4 py-3.5 flex items-center justify-between shadow-md">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-emerald-700 rounded-full flex items-center justify-center font-bold text-sm text-white">WA</div>
+                          <div>
+                            <p className="font-bold text-sm">Masjid Gateway</p>
+                            <p className="text-[10px] text-emerald-100">Online • Kepada: {activeNotificationSim.petugas.khatib}</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setActiveNotificationSim(null)} className="text-white hover:text-slate-200"><X size={20} /></button>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-800 text-white px-5 py-4 flex items-center justify-between shadow-md">
+                        <div className="flex items-center gap-3">
+                          <Smartphone className="text-blue-400 w-5 h-5" />
+                          <div>
+                            <p className="font-bold text-sm">SMS Messenger (Android)</p>
+                            <p className="text-[10px] text-slate-300">Penerima: {activeNotificationSim.petugas.khatib} ({activeNotificationSim.petugas.telp})</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setActiveNotificationSim(null)} className="text-white hover:text-slate-200"><X size={20} /></button>
+                      </div>
+                    )}
+
+                    {/* Chat / Message Area */}
+                    <div className="flex-1 p-4 overflow-y-auto flex flex-col justify-end space-y-4" style={notificationType === "WA" ? { 
+                      backgroundImage: "url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')", 
+                      backgroundSize: "contain" 
+                    } : { backgroundColor: "#f3f4f6" }}>
+                      
+                      <div className="flex flex-col space-y-4">
+                        <div className="bg-slate-200/80 text-slate-600 px-3 py-1 rounded-lg text-[9px] font-bold text-center self-center uppercase shadow-xs">
+                          Hari Kamis (H-1) • Pengingat Sholat Jumat
+                        </div>
+
+                        {/* Tampilan Sesuai Platform */}
+                        {notificationType === "WA" ? (
+                          <div className="bg-[#d9fdd3] text-slate-800 p-3.5 rounded-2xl rounded-tr-none shadow-sm max-w-[85%] self-end relative border border-[#c1ebd0]">
+                            <p className="text-xs whitespace-pre-line leading-relaxed">{simulatedMessageText}</p>
+                            <span className="text-[8px] text-slate-400 text-right block mt-2 font-mono">14:00 ✓✓</span>
+                          </div>
+                        ) : (
+                          <div className="bg-blue-600 text-white p-3.5 rounded-2xl rounded-tr-none shadow-sm max-w-[85%] self-end relative">
+                            <p className="text-xs whitespace-pre-line leading-relaxed">{simulatedMessageText}</p>
+                            <span className="text-[8px] text-blue-200 text-right block mt-2 font-mono">Sent via Android Gateway</span>
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+
+                    {/* Input Footer */}
+                    <div className="bg-[#f0f2f5] p-3 flex gap-2 items-center border-t border-slate-200">
+                      <input 
+                        type="text" 
+                        value={simulatedMessageText}
+                        onChange={(e) => setSimulatedMessageText(e.target.value)}
+                        className="flex-1 bg-white border border-slate-200 px-4 py-2.5 rounded-full text-xs outline-none focus:ring-1 focus:ring-emerald-500 font-semibold text-slate-800"
+                      />
+                      <button 
+                        onClick={handleSendSimMessage}
+                        disabled={isSendingMessage}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:bg-slate-400 shrink-0 shadow ${
+                          notificationType === "WA" ? "bg-[#00a884] hover:bg-[#008f6f]" : "bg-blue-600 hover:bg-blue-700"
+                        } text-white`}
+                      >
+                        {isSendingMessage ? (
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Send size={15} className="ml-0.5" />
+                        )}
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
 
@@ -1704,8 +1860,8 @@ export default function App() {
               
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <h2 className="text-lg sm:text-xl font-bold text-slate-955">Database jama'ah & Warga</h2>
-                  <p className="text-[11px] sm:text-xs text-slate-500">Kelola dan cetak seluruh laporan data jama'ah, qurban, dan pembagian zakat di sini.</p>
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-955">Database Jemaah & Warga</h2>
+                  <p className="text-[11px] sm:text-xs text-slate-500">Kelola dan cetak seluruh laporan data jemaah, qurban, dan pembagian zakat di sini.</p>
                 </div>
                 {canEditJamaah && (
                   <button onClick={() => { setEditingJamaah(null); setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima" }); setShowJamaahModal(true); }} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-3 sm:py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow shadow-emerald-600/10 hover:scale-102">
@@ -1719,7 +1875,7 @@ export default function App() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 border-b border-slate-200/60 pb-3">
                   <Printer className="text-slate-600 w-5 h-5 shrink-0 hidden sm:block" />
                   <div className="flex-1 w-full">
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wide mb-1.5">Cetak Laporan:</label>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wide mb-1.5">Wilayah Cetak Laporan PDF:</label>
                     <select 
                       value={selectedPrintWilayah} 
                       onChange={(e) => setSelectedPrintWilayah(e.target.value)} 
@@ -2391,6 +2547,7 @@ export default function App() {
                           <option value="Admin">Super Admin</option>
                           <option value="Takmir">Takmir Masjid</option>
                           <option value="Amil">Amil Zakat</option>
+                          <option value="Petugas">Petugas Jumat</option>
                           <option value="Jamaah">Jama'ah / Warga</option>
                         </select>
                         <button type="submit" className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-3 sm:py-2.5 rounded-xl text-xs flex items-center justify-center transition-all">Tambah</button>
@@ -2403,7 +2560,7 @@ export default function App() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                       {Object.keys(userDatabase).map((usernameKey) => {
                         const userObj = userDatabase[usernameKey];
-                        const isDefault = ["admin", "takmir", "amil", "jamaah"].includes(usernameKey);
+                        const isDefault = ["admin", "takmir", "amil", "jamaah", "petugas1"].includes(usernameKey);
                         return (
                           <div key={usernameKey} className="bg-slate-50 border border-slate-200/80 p-3.5 sm:p-3 rounded-xl flex justify-between items-center shadow-sm">
                             <div className="flex-1 min-w-0 pr-2">
@@ -2500,7 +2657,7 @@ export default function App() {
 
       {/* === FOOTER === */}
       <footer className="bg-white border-t border-slate-200 px-4 sm:px-6 py-4 text-center text-[10px] sm:text-xs text-slate-400 font-semibold mt-auto">
-        &copy; {new Date().getFullYear()} {masjidName}. Aplikasi dibuat oleh Misbahul Munir.
+        &copy; {new Date().getFullYear()} {masjidName}. Dirancang khusus untuk pengelolaan zakat yang akuntabel, modern, dan transparan.
       </footer>
 
     </div>
