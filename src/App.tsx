@@ -1085,7 +1085,7 @@ const printWindow = window.open('', '_self');
         </head>
         <body class="p-8 bg-white text-slate-800">
           
-          
+          {/* UI Control untuk Bagikan WA / Print PDF */}
           <div class="no-print" style="margin-bottom: 30px; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
             <p style="font-size: 13px; color: #64748b; font-weight: bold; margin: 0;">Opsi Laporan:</p>
             <div style="display: flex; gap: 10px;">
