@@ -1303,7 +1303,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">{masjidName}</h1>
-              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Manajemen Pengelola Zakat dann Qurban</p>
+              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Manajemen Pengelola Zakat & Qurban</p>
             </div>
           </div>
 
