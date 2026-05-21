@@ -10,7 +10,7 @@ import {
 // ====================================================================
 // CONFIG CONFIGURATION GOOGLE SHEETS API (GRATIS)
 // ====================================================================
-const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlT-MtuAXW_wl-KnFnqUkhX4fPf6YIyXNMPTE4Syi66_uDhxGiKVVK9_imo25DpRCm/exec"; 
+const GOOGLE_SHEETS_SCRIPT_URL = ""; 
 
 // === SEED DATA LOKASI AWAL ===
 const INITIAL_LOKASI = {
@@ -824,13 +824,12 @@ export default function App() {
 
   // Helper WA Formatter
   const createWAShareLink = (title, rtTitle, summaryText) => {
-    const message = `*${masjidName}*\n\n📝 *${title}*\nWilayah: ${rtTitle}\nTanggal: ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}\n\n${summaryText}\n\n_Catatan: Dokumen fisik tersedia di pengurus._`;
+    const message = `*${masjidName}*\n\n📝 *${title}*\nWilayah: ${rtTitle}\nTanggal: ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}\n\n${summaryText}\n\n_Catatan: Dokumen cetak (PDF) tersedia di pengurus._`;
     return `https://wa.me/?text=${encodeURIComponent(message)}`;
   };
 
   const handlePrintSelectedReport = (reportType) => {
-    // Mengubah '_blank' (jendela baru) menjadi '_self' (halaman yang sama)
-const printWindow = window.open('', '_self');
+    const printWindow = window.open('', '_blank');
     if (!printWindow) {
       addNotification("Gagal membuka jendela cetak! Periksa pengaturan pemblokir pop-up browser Anda.", "error");
       return;
@@ -1070,77 +1069,112 @@ const printWindow = window.open('', '_self');
     }
 
     const waLink = createWAShareLink(docTitle, rtTitle, waSummaryText);
+    const pdfFilename = `${docTitle.replace(/\s+/g, '_')}_${rtTitle.replace(/\s+|\//g, '')}.pdf`;
 
     const html = `
+      <!DOCTYPE html>
       <html>
         <head>
           <title>${docTitle} - ${masjidName}</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-          <style>
-            @media print {
-              body { -webkit-print-color-adjust: exact; margin: 1.2cm; }
-              .no-print { display: none !important; }
-            }
-          </style>
+          <!-- Modul Otomatis Pembuat PDF -->
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
         </head>
-        <body class="p-8 bg-white text-slate-800">
+        <body class="bg-slate-100 font-sans" style="margin: 0; padding: 0;">
           
-          {/* UI Control untuk Bagikan WA / Print PDF */}
-          <div class="no-print" style="margin-bottom: 30px; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
-            <p style="font-size: 13px; color: #64748b; font-weight: bold; margin: 0;">Opsi Laporan:</p>
+          <!-- UI Control untuk Bagikan WA / Unduh PDF -->
+          <div id="control-panel" style="margin: 15px auto; max-width: 800px; padding: 15px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+            <p style="font-size: 13px; color: #64748b; font-weight: bold; margin: 0;">Dokumen Laporan PDF:</p>
             <div style="display: flex; gap: 10px;">
-              <a href="${waLink}" target="_blank" rel="noopener noreferrer" style="background: #25D366; color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 6px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> Bagikan ke WhatsApp
+              <a href="${waLink}" target="_blank" style="background: #25D366; color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> 
+                <span class="hidden sm:inline">Bagikan WA</span>
               </a>
-              <button onclick="try { if (window.opener) { window.opener.focus(); setTimeout(function() { window.print(); }, 300); } else { window.print(); } } catch(e) { window.print(); }" style="background: #0f172a; color: white; padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Cetak / Simpan PDF
+              <button id="btn-download" onclick="downloadPDF()" style="background: #0f172a; color: white; padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> 
+                <span>Unduh Ulang PDF</span>
               </button>
             </div>
           </div>
-          <div class="flex items-center justify-between border-b-4 border-slate-900 pb-4 mb-6">
-            <div class="flex items-center gap-4">
-              <div class="w-16 h-16 text-emerald-700 flex items-center justify-center border border-slate-200 rounded-xl overflow-hidden p-1">
-                ${masjidLogoUrl ? `<img src="${masjidLogoUrl}" class="w-full h-full object-contain" />` : `<svg class="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M12 2v3M12 5a7 7 0 0 0-7 7v10h14V12a7 7 0 0 0-7-7ZM9 17h6v5H9z"/></svg>`}
-              </div>
-              <div>
-                <h1 class="text-2xl font-black text-slate-900 leading-none">${masjidName}</h1>
-                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1.5">Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}, Provinsi ${lokasi.provinsi}</p>
-              </div>
-            </div>
-            <div class="text-right text-xs text-slate-400 font-semibold font-mono">
-              <p>Tanggal Dokumen:</p>
-              <p class="text-slate-900 font-bold">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
-            </div>
-          </div>
 
-          <div class="text-center mb-6 space-y-1">
-            <h2 class="text-base font-black uppercase ${textTheme} tracking-wide">${docTitle}</h2>
-            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Wilayah Pengurusan: ${rtTitle}</p>
+          <!-- Area yang akan diubah menjadi PDF -->
+          <div id="print-area" style="max-width: 800px; margin: 0 auto; background: white; padding: 40px; box-sizing: border-box; min-height: 100vh;">
+            <div class="flex items-center justify-between border-b-4 border-slate-900 pb-4 mb-6">
+              <div class="flex items-center gap-4">
+                <div class="w-16 h-16 text-emerald-700 flex items-center justify-center border border-slate-200 rounded-xl overflow-hidden p-1">
+                  ${masjidLogoUrl ? `<img src="${masjidLogoUrl}" class="w-full h-full object-contain" crossorigin="anonymous" />` : `<svg class="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M12 2v3M12 5a7 7 0 0 0-7 7v10h14V12a7 7 0 0 0-7-7ZM9 17h6v5H9z"/></svg>`}
+                </div>
+                <div>
+                  <h1 class="text-2xl font-black text-slate-900 leading-none">${masjidName}</h1>
+                  <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1.5">Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}, Provinsi ${lokasi.provinsi}</p>
+                </div>
+              </div>
+              <div class="text-right text-xs text-slate-400 font-semibold font-mono">
+                <p>Tanggal Dokumen:</p>
+                <p class="text-slate-900 font-bold">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+              </div>
+            </div>
+
+            <div class="text-center mb-6 space-y-1">
+              <h2 class="text-base font-black uppercase ${textTheme} tracking-wide">${docTitle}</h2>
+              <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Wilayah Pengurusan: ${rtTitle}</p>
+            </div>
+            
+            ${summaryHTML}
+            
+            <table class="w-full text-left text-xs border border-collapse border-slate-300">
+              <thead>
+                ${tableHeaderHTML}
+              </thead>
+              <tbody>
+                ${tableRowsHTML}
+              </tbody>
+            </table>
+            
+            <div class="mt-12 flex justify-between text-xs font-semibold">
+              <div>
+                <p>Menyetujui & Mengesahkan,</p>
+                <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center">Ketua Takmir Masjid</p>
+              </div>
+              <div class="text-right">
+                <p>Lamongan, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+                <p>Penanggung Jawab Laporan,</p>
+                <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center mx-auto">Kepala Pengurus RT</p>
+              </div>
+            </div>
           </div>
           
-          ${summaryHTML}
-          
-          <table class="w-full text-left text-xs border border-collapse border-slate-300">
-            <thead>
-              ${tableHeaderHTML}
-            </thead>
-            <tbody>
-              ${tableRowsHTML}
-            </tbody>
-          </table>
-          
-          <div class="mt-12 flex justify-between text-xs font-semibold">
-            <div>
-              <p>Menyetujui & Mengesahkan,</p>
-              <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center">Ketua Takmir Masjid</p>
-            </div>
-            <div class="text-right">
-              <p>Lamongan, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
-              <p>Penanggung Jawab Laporan,</p>
-              <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center mx-auto">Kepala Pengurus RT</p>
-            </div>
-          </div>
-          
+          <script>
+            function downloadPDF() {
+              const element = document.getElementById('print-area');
+              const btn = document.getElementById('btn-download');
+              const originalText = btn.innerHTML;
+              
+              btn.innerHTML = 'Memproses PDF...';
+              btn.style.opacity = '0.7';
+              btn.disabled = true;
+
+              const opt = {
+                margin:       0.3,
+                filename:     '${pdfFilename}',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+              };
+              
+              html2pdf().set(opt).from(element).save().then(() => {
+                btn.innerHTML = originalText;
+                btn.style.opacity = '1';
+                btn.disabled = false;
+              });
+            }
+
+            // Memicu unduhan otomatis 1 detik setelah halaman dimuat
+            window.onload = function() {
+              setTimeout(downloadPDF, 1000);
+            }
+          </script>
         </body>
       </html>
     `;
@@ -1155,120 +1189,173 @@ const printWindow = window.open('', '_self');
       return;
     }
 
+    let filteredWarga = jamaahList;
+    let rtTitle = "Semua RT & RW";
+
+    if (selectedPrintWilayah !== "Semua") {
+      const [filterRt, filterRw] = selectedPrintWilayah.split('_');
+      filteredWarga = jamaahList.filter(j => j.rt === filterRt && j.rw === filterRw);
+      rtTitle = `RT ${filterRt} / RW ${filterRw}`;
+    }
+
+    const qurbanList = filteredWarga.filter(warga => {
+      if (warga.qurban && warga.qurban.startsWith("Sahibul Qurban")) return false;
+      if (qurbanHanyaMustahik) {
+        const isMustahikFitrah = warga.fitrah !== "Muzakki";
+        const isMustahikZuru = warga.zuru !== "Bukan Mustahik";
+        return isMustahikFitrah || isMustahikZuru;
+      }
+      return true;
+    });
+
+    const localTotalPenerima = qurbanList.length;
+    const localJatahSapi = localTotalPenerima > 0 ? (totalTimbanganQurbanSapiValue / localTotalPenerima).toFixed(2) : 0;
+    const localJatahKambing = localTotalPenerima > 0 ? (totalTimbanganQurbanKambingValue / localTotalPenerima).toFixed(2) : 0;
+    const docTitle = "Daftar Penerima & Distribusi Daging Qurban";
+    const pdfFilename = `Kupon_Qurban_${rtTitle.replace(/\s+|\//g, '')}.pdf`;
+
+    const waSummaryText = `🥩 Info Pembagian Qurban 🥩\n\nWilayah: ${rtTitle}\n✔️ Penerima: ${localTotalPenerima} KK\n\nJatah per KK:\n- Sapi: ${localJatahSapi} Kg\n- Kambing: ${localJatahKambing} Kg\n\n_Dimohon perwakilan RT untuk mengoordinasikan pengambilan._`;
+    const waLink = createWAShareLink(docTitle, rtTitle, waSummaryText);
+
     const html = `
+      <!DOCTYPE html>
       <html>
         <head>
           <title>Daftar Distribusi Daging Qurban per Wilayah - ${masjidName}</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-          <style>
-            @media print {
-              body { -webkit-print-color-adjust: exact; margin: 1cm; }
-              .page-break { page-break-after: always; }
-              .avoid-break { page-break-inside: avoid; }
-              .no-print { display: none !important; }
-            }
-          </style>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
         </head>
-        <body class="p-8 bg-white text-slate-800">
+        <body class="bg-slate-100 font-sans" style="margin: 0; padding: 0;">
           
-          <div class="no-print" style="margin-bottom: 30px; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
-            <p style="font-size: 13px; color: #64748b; font-weight: bold; margin: 0;">Opsi Laporan:</p>
+          <div id="control-panel" style="margin: 15px auto; max-width: 800px; padding: 15px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+            <p style="font-size: 13px; color: #64748b; font-weight: bold; margin: 0;">Opsi Laporan Qurban:</p>
             <div style="display: flex; gap: 10px;">
-              <button onclick="window.print()" style="background: #0f172a; color: white; padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Cetak / Simpan PDF
+              <a href="${waLink}" target="_blank" style="background: #25D366; color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> Bagikan WA
+              </a>
+              <button id="btn-download" onclick="downloadPDF()" style="background: #0f172a; color: white; padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Unduh Ulang PDF
               </button>
             </div>
           </div>
           
-          <div class="flex items-center justify-between border-b-4 border-rose-800 pb-4 mb-6">
-            <div class="flex items-center gap-4">
-              <div class="w-16 h-16 text-rose-700 flex items-center justify-center border border-slate-200 rounded-xl overflow-hidden p-1">
-                ${masjidLogoUrl ? `<img src="${masjidLogoUrl}" class="w-full h-full object-contain" />` : `<svg class="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M12 2v3M12 5a7 7 0 0 0-7 7v10h14V12a7 7 0 0 0-7-7ZM9 17h6v5H9z"/></svg>`}
-              </div>
-              <div>
-                <h1 class="text-2xl font-black text-slate-900 leading-tight">${masjidName}</h1>
-                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}, Provinsi ${lokasi.provinsi}</p>
-              </div>
-            </div>
-            <div class="text-right text-xs text-slate-400 font-semibold font-mono">
-              <p>Tanggal Cetak:</p>
-              <p class="text-slate-955 font-bold">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
-            </div>
-          </div>
-
-          <div class="text-center mb-8">
-            <h2 class="text-lg font-bold uppercase text-rose-800 tracking-wide">Daftar Penerima & Tanda Terima Distribusi Hewan Qurban per RT / RW</h2>
-            <div style="margin-top: 15px; padding: 15px; background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; text-align: left;">
-              <table style="width: 100%; font-size: 12px; border: none;">
-                <tr>
-                  <td style="width: 25%; padding: 5px 0;"><strong>Total Sapi:</strong><br/><span style="font-size: 16px; color: #be123c;">${totalTimbanganQurbanSapiValue.toFixed(1)} Kg</span></td>
-                  <td style="width: 25%; padding: 5px 0;"><strong>Total Kambing:</strong><br/><span style="font-size: 16px; color: #b45309;">${totalTimbanganQurbanKambingValue.toFixed(1)} Kg</span></td>
-                  <td style="width: 25%; padding: 5px 0;"><strong>Total Warga Penerima:</strong><br/><span style="font-size: 16px; color: #0f172a;">${totalPenerimaKK} KK</span></td>
-                  <td style="width: 25%; padding: 5px 0;"><strong>Jatah Dibagikan Per KK:</strong><br/>Sapi: ${jatahDagingSapiPerKK} Kg/KK<br/>Kambing: ${jatahDagingKambingPerKK} Kg/KK</td>
-                </tr>
-              </table>
-            </div>
-          </div>
-          
-          ${WILAYAH_OPTIONS.map((wilayah) => {
-            const list = wargaPenerimaQurban.filter(w => w.rt === wilayah.rt && w.rw === wilayah.rw);
-            return `
-              <div class="mb-10 avoid-break">
-                <div class="bg-rose-50 border border-rose-200 px-4 py-2.5 rounded-xl mb-3 flex justify-between items-center">
-                  <h3 class="text-sm font-black text-rose-800 uppercase tracking-wide">${wilayah.label}</h3>
-                  <span class="text-xs font-bold bg-white text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-lg">Kapasitas: ${list.length} KK Penerima</span>
+          <div id="print-area" style="max-width: 800px; margin: 0 auto; background: white; padding: 40px; box-sizing: border-box; min-height: 100vh;">
+            <div class="flex items-center justify-between border-b-4 border-rose-800 pb-4 mb-6">
+              <div class="flex items-center gap-4">
+                <div class="w-16 h-16 text-rose-700 flex items-center justify-center border border-slate-200 rounded-xl overflow-hidden p-1">
+                  ${masjidLogoUrl ? `<img src="${masjidLogoUrl}" class="w-full h-full object-contain" crossorigin="anonymous" />` : `<svg class="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M12 2v3M12 5a7 7 0 0 0-7 7v10h14V12a7 7 0 0 0-7-7ZM9 17h6v5H9z"/></svg>`}
                 </div>
-                
-                <table class="w-full text-left text-xs border border-collapse border-slate-300">
-                  <thead>
-                    <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
-                      <th class="p-2 border border-slate-300 w-1/12 text-center">No</th>
-                      <th class="p-2 border border-slate-300 w-3/12">Nama Kepala Keluarga</th>
-                      <th class="p-2 border border-slate-300 font-bold text-center">RT / RW</th>
-                      <th class="p-2 border border-slate-300 text-slate-500">Alamat</th>
-                      <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Sapi</th>
-                      <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Kambing</th>
-                      <th class="p-2 border border-slate-300 w-2/12 text-center">Tanda Tangan</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${list.length > 0 ? list.map((w, index) => `
-                      <tr class="border-b border-slate-200">
-                        <td class="p-2 border border-slate-300 text-center font-mono">${index + 1}</td>
-                        <td class="p-2 border border-slate-300 font-bold text-slate-900">${w.nama}</td>
-                        <td class="p-2 border border-slate-300 font-bold text-center">RT ${w.rt} / RW ${w.rw}</td>
-                        <td class="p-2 border border-slate-300 text-slate-500 text-[10px]">${w.alamat}</td>
-                        <td class="p-2 border border-slate-300 text-right font-mono font-bold text-rose-700">${jatahDagingSapiPerKK} Kg</td>
-                        <td class="p-2 border border-slate-300 text-right font-mono font-bold text-amber-700">${jatahDagingKambingPerKK} Kg</td>
-                        <td class="p-2 border border-slate-300 h-10 text-center text-slate-300 font-mono text-[9px] relative">
-                          <span class="absolute bottom-1 left-2">${index + 1}.</span>
-                        </td>
-                      </tr>
-                    `).join('') : `
-                      <tr>
-                        <td colspan="7" class="p-4 text-center text-slate-400 italic">Tidak ada warga penerima di wilayah ini.</td>
-                      </tr>
-                    `}
-                  </tbody>
+                <div>
+                  <h1 class="text-2xl font-black text-slate-900 leading-tight">${masjidName}</h1>
+                  <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}, Provinsi ${lokasi.provinsi}</p>
+                </div>
+              </div>
+              <div class="text-right text-xs text-slate-400 font-semibold font-mono">
+                <p>Tanggal Cetak:</p>
+                <p class="text-slate-955 font-bold">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+              </div>
+            </div>
+
+            <div class="text-center mb-8">
+              <h2 class="text-lg font-bold uppercase text-rose-800 tracking-wide">${docTitle}</h2>
+              <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Wilayah Pengurusan: ${rtTitle}</p>
+              <div style="margin-top: 15px; padding: 15px; background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; text-align: left;">
+                <table style="width: 100%; font-size: 12px; border: none;">
+                  <tr>
+                    <td style="width: 25%; padding: 5px 0;"><strong>Total Sapi:</strong><br/><span style="font-size: 16px; color: #be123c;">${totalTimbanganQurbanSapiValue.toFixed(1)} Kg</span></td>
+                    <td style="width: 25%; padding: 5px 0;"><strong>Total Kambing:</strong><br/><span style="font-size: 16px; color: #b45309;">${totalTimbanganQurbanKambingValue.toFixed(1)} Kg</span></td>
+                    <td style="width: 25%; padding: 5px 0;"><strong>Warga Terpilih:</strong><br/><span style="font-size: 16px; color: #0f172a;">${localTotalPenerima} KK</span></td>
+                    <td style="width: 25%; padding: 5px 0;"><strong>Jatah Dibagikan Per KK:</strong><br/>Sapi: ${localJatahSapi} Kg/KK<br/>Kambing: ${localJatahKambing} Kg/KK</td>
+                  </tr>
                 </table>
               </div>
-            `;
-          }).join('')}
-
-          <div class="mt-12 flex justify-between text-xs font-semibold avoid-break">
-            <div>
-              <p>Mengetahui,</p>
-              <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center">Takmir Masjid Al-Ikhlas</p>
             </div>
-            <div class="text-right">
-              <p>Lamongan, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
-              <p>Dilaporkan oleh,</p>
-              <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center mx-auto">Ketua Panitia Qurban</p>
+            
+            ${WILAYAH_OPTIONS.filter(wil => selectedPrintWilayah === "Semua" || selectedPrintWilayah === `${wil.rt}_${wil.rw}`).map((wilayah) => {
+              const list = qurbanList.filter(w => w.rt === wilayah.rt && w.rw === wilayah.rw);
+              if(list.length === 0) return '';
+              return `
+                <div class="mb-10 avoid-break">
+                  <div class="bg-rose-50 border border-rose-200 px-4 py-2.5 rounded-xl mb-3 flex justify-between items-center">
+                    <h3 class="text-sm font-black text-rose-800 uppercase tracking-wide">${wilayah.label}</h3>
+                    <span class="text-xs font-bold bg-white text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-lg">Kapasitas: ${list.length} KK Penerima</span>
+                  </div>
+                  
+                  <table class="w-full text-left text-xs border border-collapse border-slate-300">
+                    <thead>
+                      <tr class="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
+                        <th class="p-2 border border-slate-300 w-1/12 text-center">No</th>
+                        <th class="p-2 border border-slate-300 w-3/12">Nama Kepala Keluarga</th>
+                        <th class="p-2 border border-slate-300 font-bold text-center">RT / RW</th>
+                        <th class="p-2 border border-slate-300 text-slate-500">Alamat</th>
+                        <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Sapi</th>
+                        <th class="p-2 border border-slate-300 w-1.5/12 text-right">Jatah Kambing</th>
+                        <th class="p-2 border border-slate-300 w-2/12 text-center">Tanda Tangan</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${list.map((w, index) => `
+                        <tr class="border-b border-slate-200">
+                          <td class="p-2 border border-slate-300 text-center font-mono">${index + 1}</td>
+                          <td class="p-2 border border-slate-300 font-bold text-slate-900">${w.nama}</td>
+                          <td class="p-2 border border-slate-300 font-bold text-center">RT ${w.rt} / RW ${w.rw}</td>
+                          <td class="p-2 border border-slate-300 text-slate-500 text-[10px]">${w.alamat}</td>
+                          <td class="p-2 border border-slate-300 text-right font-mono font-bold text-rose-700">${localJatahSapi} Kg</td>
+                          <td class="p-2 border border-slate-300 text-right font-mono font-bold text-amber-700">${localJatahKambing} Kg</td>
+                          <td class="p-2 border border-slate-300 h-10 text-center text-slate-300 font-mono text-[9px] relative">
+                            <span class="absolute bottom-1 left-2">${index + 1}.</span>
+                          </td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              `;
+            }).join('')}
+
+            <div class="mt-12 flex justify-between text-xs font-semibold avoid-break">
+              <div>
+                <p>Mengetahui,</p>
+                <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center">Takmir Masjid Al-Ikhlas</p>
+              </div>
+              <div class="text-right">
+                <p>Lamongan, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+                <p>Dilaporkan oleh,</p>
+                <p class="mt-16 border-t border-slate-800 pt-1 w-48 font-bold text-slate-900 text-center mx-auto">Ketua Panitia Qurban</p>
+              </div>
             </div>
           </div>
 
           <script>
-            window.onload = function() { window.print(); window.close(); }
+            function downloadPDF() {
+              const element = document.getElementById('print-area');
+              const btn = document.getElementById('btn-download');
+              const originalText = btn.innerHTML;
+              
+              btn.innerHTML = 'Memproses PDF...';
+              btn.style.opacity = '0.7';
+              btn.disabled = true;
+
+              const opt = {
+                margin:       0.3,
+                filename:     '${pdfFilename}',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+              };
+              
+              html2pdf().set(opt).from(element).save().then(() => {
+                btn.innerHTML = originalText;
+                btn.style.opacity = '1';
+                btn.disabled = false;
+              });
+            }
+
+            // Memicu unduhan otomatis 1 detik setelah halaman dimuat
+            window.onload = function() {
+              setTimeout(downloadPDF, 1000);
+            }
           </script>
         </body>
       </html>
@@ -1304,7 +1391,7 @@ const printWindow = window.open('', '_self');
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">{masjidName}</h1>
-              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Manajemen Pengelola Zakat & Qurban</p>
+              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Manajemen Zakat & Qurban</p>
             </div>
           </div>
 
@@ -2657,7 +2744,7 @@ const printWindow = window.open('', '_self');
 
       {/* === FOOTER === */}
       <footer className="bg-white border-t border-slate-200 px-4 sm:px-6 py-4 text-center text-[10px] sm:text-xs text-slate-400 font-semibold mt-auto">
-        &copy; {new Date().getFullYear()} {masjidName}. Aplikasi ini dikembangkan oleh Misbahul Munir.
+        &copy; {new Date().getFullYear()} {masjidName}. dikembangkan oleh Misbahul Munir.
       </footer>
 
     </div>
