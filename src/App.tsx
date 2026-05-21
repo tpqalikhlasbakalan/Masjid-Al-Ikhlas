@@ -10,7 +10,7 @@ import {
 // ====================================================================
 // CONFIG CONFIGURATION GOOGLE SHEETS API (GRATIS)
 // ====================================================================
-const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlT-MtuAXW_wl-KnFnqUkhX4fPf6YIyXNMPTE4Syi66_uDhxGiKVVK9_imo25DpRCm/exec"; 
+const GOOGLE_SHEETS_SCRIPT_URL = ""; 
 
 // === SEED DATA LOKASI AWAL ===
 const INITIAL_LOKASI = {
@@ -226,7 +226,7 @@ export default function App() {
     nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima"
   });
 
-  // MENGHAPUS STATE LOKAL GOOGLE SHEETS UNTUK MEMAKSA PENGGUNAAN VARIABEL GLOBAL
+  const [googleSheetsUrl, setGoogleSheetsUrl] = useState(() => getLocalStorageData("googleSheetsUrl", GOOGLE_SHEETS_SCRIPT_URL));
   const [syncStatus, setSyncStatus] = useState("Tersinkronisasi Lokal");
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDataFetched, setIsDataFetched] = useState(false);
@@ -337,16 +337,15 @@ export default function App() {
   // GOOGLE SHEETS AUTO-SYNC CONTROLLER
   // ====================================================================
   const handleFetchFromGoogleSheets = async () => {
-    if (!GOOGLE_SHEETS_SCRIPT_URL) {
+    if (!googleSheetsUrl) {
       setIsDataFetched(true);
-      addNotification("URL Server (Google Sheets) belum diatur di dalam kode app.jsx!", "error");
       return;
     }
     setIsDataFetched(false); 
     setIsSyncing(true);
     setSyncStatus("Mengunduh Server...");
     try {
-      const response = await fetch(`${GOOGLE_SHEETS_SCRIPT_URL}?action=getData`);
+      const response = await fetch(`${googleSheetsUrl}?action=getData`);
       const resData = await response.json();
       if (resData && resData.status === "success" && Object.keys(resData.data).length > 0) {
         const payload = resData.data;
@@ -379,16 +378,16 @@ export default function App() {
 
   useEffect(() => {
     if (isLoggedIn) {
-      if (GOOGLE_SHEETS_SCRIPT_URL) {
+      if (googleSheetsUrl) {
         handleFetchFromGoogleSheets();
       } else {
         setIsDataFetched(true);
       }
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, googleSheetsUrl]);
 
   useEffect(() => {
-    if (!isLoggedIn || !GOOGLE_SHEETS_SCRIPT_URL || !isDataFetched) return;
+    if (!isLoggedIn || !googleSheetsUrl || !isDataFetched) return;
 
     const payload = {
       masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
@@ -400,7 +399,7 @@ export default function App() {
     
     const timeoutId = setTimeout(async () => {
       try {
-        await fetch(GOOGLE_SHEETS_SCRIPT_URL, {
+        await fetch(googleSheetsUrl, {
           method: "POST",
           mode: "no-cors", 
           headers: { "Content-Type": "text/plain" },
@@ -418,7 +417,7 @@ export default function App() {
     masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
     timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, 
     timbanganQurbanSapi, timbanganQurbanKambing, userDatabase, 
-    isLoggedIn, isDataFetched
+    isLoggedIn, googleSheetsUrl, isDataFetched
   ]);
 
   // =========================================================
@@ -814,7 +813,7 @@ export default function App() {
   };
 
   // =========================================================
-  // SISTEM CETAK LAPORAN & PEMBUATAN PDF (A4 LAYOUT)
+  // SISTEM CETAK LAPORAN & PEMBUATAN PDF (F4 LAYOUT & RESPONSIVE)
   // =========================================================
   const generateHTMLTemplate = (docTitle, rtTitle, summaryHTML, tableHeaderHTML, tableRowsHTML, waLink, pdfFilename) => {
     return `
@@ -824,6 +823,7 @@ export default function App() {
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>${docTitle} - ${masjidName}</title>
+          <!-- Menggunakan html2pdf untuk konversi PDF Web ke Gambar -->
           <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
@@ -831,24 +831,26 @@ export default function App() {
               font-family: 'Inter', sans-serif; 
               background-color: #f1f5f9; 
               margin: 0; 
-              padding: 20px; 
+              padding: 10px; 
               display: flex; 
               flex-direction: column; 
               align-items: center; 
             }
-            .a4-container {
-              width: 210mm;
-              min-height: 297mm;
+            .print-container {
+              width: 100%;
+              max-width: 215mm; /* Setara dengan lebar kertas F4/Folio */
+              min-height: auto;
               background: white;
-              padding: 20mm;
+              padding: 20px;
               margin-top: 15px;
-              box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+              box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
               border-radius: 8px;
               box-sizing: border-box;
-              position: relative;
+              overflow-x: auto;
             }
             .control-panel {
-              width: 210mm;
+              width: 100%;
+              max-width: 215mm;
               background: white;
               padding: 15px 20px;
               border-radius: 8px;
@@ -857,64 +859,84 @@ export default function App() {
               justify-content: space-between;
               align-items: center;
               box-sizing: border-box;
+              flex-wrap: wrap;
+              gap: 10px;
+            }
+            .btn-group {
+              display: flex; 
+              gap: 8px; 
+              flex-wrap: wrap;
             }
             .btn {
               padding: 10px 16px;
               border-radius: 6px;
-              font-size: 13px;
+              font-size: 12px;
               font-weight: 600;
               cursor: pointer;
               text-decoration: none;
               display: inline-flex;
               align-items: center;
+              justify-content: center;
               gap: 8px;
               border: none;
             }
             .btn-wa { background: #25D366; color: white; }
-            .btn-pdf { background: #0f172a; color: white; }
+            .btn-pdf-native { background: #0f172a; color: white; }
+            .btn-pdf-web { background: #3b82f6; color: white; }
             
             /* TATA LETAK ISI KERTAS */
-            .kop-surat { display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid #0f172a; padding-bottom: 15px; margin-bottom: 25px; }
-            .kop-surat .logo { width: 64px; height: 64px; object-fit: contain; }
-            .kop-surat h1 { margin: 0; font-size: 24px; font-weight: 800; text-transform: uppercase; color: #0f172a; }
-            .kop-surat p { margin: 5px 0 0; font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
-            .tanggal { text-align: right; font-size: 11px; color: #64748b; font-weight: bold; }
+            .kop-surat { display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid #0f172a; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;}
+            .kop-surat .logo { width: 60px; height: 60px; object-fit: contain; }
+            .kop-surat h1 { margin: 0; font-size: 18px; font-weight: 800; text-transform: uppercase; color: #0f172a; }
+            .kop-surat p { margin: 5px 0 0; font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+            .tanggal { text-align: right; font-size: 10px; color: #64748b; font-weight: bold; }
             
             .judul-dokumen { text-align: center; margin-bottom: 25px; }
-            .judul-dokumen h2 { margin: 0; font-size: 16px; font-weight: 800; text-transform: uppercase; color: #0f172a; }
-            .judul-dokumen p { margin: 5px 0 0; font-size: 11px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+            .judul-dokumen h2 { margin: 0; font-size: 14px; font-weight: 800; text-transform: uppercase; color: #0f172a; }
+            .judul-dokumen p { margin: 5px 0 0; font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; }
             
-            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
-            th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 10px; min-width: 600px;}
+            th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
             th { background-color: #f8fafc; font-weight: bold; text-transform: uppercase; color: #475569; }
             td { color: #334155; }
             .text-center { text-align: center; }
             .text-right { text-align: right; }
             .font-bold { font-weight: bold; }
-            .signature-area { margin-top: 50px; display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; }
-            .signature-box { text-align: center; width: 200px; }
-            .signature-line { margin-top: 70px; border-top: 1px solid #0f172a; padding-top: 5px; font-weight: bold; color: #0f172a; }
+            .signature-area { margin-top: 40px; display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; flex-wrap: wrap; gap: 20px;}
+            .signature-box { text-align: center; width: 180px; }
+            .signature-line { margin-top: 60px; border-top: 1px solid #0f172a; padding-top: 5px; font-weight: bold; color: #0f172a; }
 
-            /* MEDIA PRINT (Saat mencetak beneran) */
+            /* MEDIA PRINT: Pengaturan Kertas Fisik (F4 / Folio: 215mm x 330mm) */
             @media print {
               body { padding: 0; background: white; display: block; }
               .control-panel { display: none !important; }
-              .a4-container { width: 100%; min-height: auto; padding: 0; margin: 0; box-shadow: none; border-radius: 0; }
-              @page { size: A4 portrait; margin: 15mm; }
+              .print-container { max-width: none; width: 100%; box-shadow: none; padding: 0; margin: 0; border-radius: 0; overflow-x: visible; }
+              @page { size: 215mm 330mm; margin: 15mm; } 
             }
           </style>
         </head>
         <body>
           
+          <!-- Panel Kontrol Aksi (Tidak Ikut Tercetak) -->
           <div class="control-panel">
-            <p style="margin: 0; font-size: 13px; color: #64748b; font-weight: bold;">Opsi Laporan:</p>
-            <div style="display: flex; gap: 10px;">
-              <a href="${waLink}" target="_blank" class="btn btn-wa">Bagikan ke WhatsApp</a>
-              <button id="btn-download" onclick="downloadPDF()" class="btn btn-pdf">🖨️ Cetak / Simpan PDF (A4)</button>
+            <p style="margin: 0; font-size: 12px; color: #64748b; font-weight: bold;">Opsi Laporan:</p>
+            <div class="btn-group">
+              <a href="${waLink}" target="_blank" class="btn btn-wa">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> 
+                <span>WA</span>
+              </a>
+              <button id="btn-print" onclick="window.print()" class="btn btn-pdf-native">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> 
+                <span>Cetak / Simpan PDF (HP/APK)</span>
+              </button>
+              <button id="btn-download" onclick="downloadPDFWeb()" class="btn btn-pdf-web">
+                <span>⬇️ Unduh PDF (PC/Web)</span>
+              </button>
             </div>
           </div>
 
-          <div id="print-area" class="a4-container">
+          <!-- Area yang akan diubah menjadi PDF atau di-Print -->
+          <div id="print-area" class="print-container">
             <div class="kop-surat">
               <div style="display: flex; align-items: center; gap: 15px;">
                 ${masjidLogoUrl ? `<img src="${masjidLogoUrl}" class="logo" crossorigin="anonymous" />` : `<div style="width: 50px; height: 50px; background: #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #64748b;">LOGO</div>`}
@@ -923,9 +945,9 @@ export default function App() {
                   <p>Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}, Provinsi ${lokasi.provinsi}</p>
                 </div>
               </div>
-              <div class="tanggal">
+              <div class="tanggal text-right">
                 Tanggal Dokumen:<br/>
-                <span style="color: #0f172a; font-size: 12px;">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</span>
+                <span style="color: #0f172a; font-size: 11px;">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</span>
               </div>
             </div>
 
@@ -936,14 +958,16 @@ export default function App() {
             
             ${summaryHTML}
             
-            <table>
-              <thead>
-                ${tableHeaderHTML}
-              </thead>
-              <tbody>
-                ${tableRowsHTML}
-              </tbody>
-            </table>
+            <div style="width: 100%; overflow-x: auto;">
+              <table>
+                <thead>
+                  ${tableHeaderHTML}
+                </thead>
+                <tbody>
+                  ${tableRowsHTML}
+                </tbody>
+              </table>
+            </div>
             
             <div class="signature-area">
               <div class="signature-box">
@@ -953,45 +977,68 @@ export default function App() {
               <div class="signature-box text-right">
                 <p>Lamongan, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
                 <p>Penanggung Jawab Laporan,</p>
-                <div class="signature-line" style="margin-top: 50px;">Kepala Pengurus RT</div>
+                <div class="signature-line">Kepala Pengurus RT</div>
               </div>
             </div>
           </div>
           
           <script>
-            function downloadPDF() {
+            // Fungsi Unduh Otomatis via JS (Bagus untuk Desktop/Web)
+            function downloadPDFWeb() {
+              const element = document.getElementById('print-area');
               const btn = document.getElementById('btn-download');
               const originalText = btn.innerHTML;
-              btn.innerHTML = 'Membuka Mode Cetak PDF...';
-              btn.style.opacity = '0.7';
               
+              btn.innerHTML = 'Memproses PDF...';
+              btn.style.opacity = '0.7';
+              btn.disabled = true;
+
               if (typeof html2pdf === 'undefined') {
-                 // Jika library gagal dimuat, fallback ke Print Native (Lebih Bagus untuk A4)
+                 // Jika library gagal dimuat karena jaringan, panggil fungsi native print
                  window.print();
                  btn.innerHTML = originalText;
                  btn.style.opacity = '1';
+                 btn.disabled = false;
                  return;
               }
 
-              // Opsi untuk PDF otomatis
-              const element = document.getElementById('print-area');
+              // Konfigurasi Kertas F4 (215mm x 330mm)
               const opt = {
-                margin:       [10, 10, 10, 10], // Margin dalam mm
+                margin:       10, // margin 10mm
                 filename:     '${pdfFilename}',
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true, allowTaint: true },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                jsPDF:        { unit: 'mm', format: [215, 330], orientation: 'portrait' }
               };
               
               html2pdf().set(opt).from(element).save().then(() => {
                 btn.innerHTML = originalText;
                 btn.style.opacity = '1';
+                btn.disabled = false;
               }).catch(err => {
-                console.error("Gagal buat PDF, fallback ke print window", err);
+                console.error("Gagal buat PDF otomatis:", err);
                 window.print();
                 btn.innerHTML = originalText;
                 btn.style.opacity = '1';
+                btn.disabled = false;
               });
+            }
+
+            // Fungsi Auto-Eksekusi Saat Halaman Selesai Dimuat
+            window.onload = function() {
+              // Cek jika pengguna menggunakan HP Android/iOS (termasuk APK Webview)
+              const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+              
+              setTimeout(() => {
+                if (isMobile) {
+                    // Pada APK/Mobile, fungsi cetak bawaan sistem jauh lebih dapat diandalkan
+                    // karena mengizinkan penyimpanan file PDF lokal tanpa masalah izin Blob URL
+                    window.print();
+                } else {
+                    // Pada Laptop/PC Desktop web, jalankan skrip unduh otomatis
+                    downloadPDFWeb();
+                }
+              }, 1200);
             }
           </script>
         </body>
@@ -1268,7 +1315,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">{masjidName}</h1>
-              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Gerbang Pengelolaan Masjid & Zakat</p>
+              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Manajemen Pengelola Zakat & Qurban</p>
             </div>
           </div>
 
@@ -1465,7 +1512,7 @@ export default function App() {
                       <Database size={18} className={isSyncing ? "animate-pulse" : ""} />
                    </div>
                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server (Google Sheets)</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                          <div className={`w-2 h-2 rounded-full shrink-0 ${syncStatus === 'Tersinkronisasi' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                          <p className="text-xs sm:text-sm font-black text-slate-800 truncate">{syncStatus}</p>
@@ -2625,7 +2672,7 @@ export default function App() {
 
       {/* === FOOTER === */}
       <footer className="bg-white border-t border-slate-200 px-4 sm:px-6 py-4 text-center text-[10px] sm:text-xs text-slate-400 font-semibold mt-auto">
-        &copy; {new Date().getFullYear()} {masjidName}. Dirancang khusus untuk pengelolaan zakat yang akuntabel, modern, dan transparan.
+        &copy; {new Date().getFullYear()} {masjidName}. Dikembangkan oleh Misbahul Munir.
       </footer>
 
     </div>
