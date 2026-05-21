@@ -10,7 +10,7 @@ import {
 // ====================================================================
 // CONFIG CONFIGURATION GOOGLE SHEETS API (GRATIS)
 // ====================================================================
-const GOOGLE_SHEETS_SCRIPT_URL = ""; 
+const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlT-MtuAXW_wl-KnFnqUkhX4fPf6YIyXNMPTE4Syi66_uDhxGiKVVK9_imo25DpRCm/exec"; 
 
 // === SEED DATA LOKASI AWAL ===
 const INITIAL_LOKASI = {
