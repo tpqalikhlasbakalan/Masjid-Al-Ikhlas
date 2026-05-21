@@ -829,7 +829,8 @@ export default function App() {
   };
 
   const handlePrintSelectedReport = (reportType) => {
-    const printWindow = window.open('', '_blank');
+    // Mengubah '_blank' (jendela baru) menjadi '_self' (halaman yang sama)
+const printWindow = window.open('', '_self');
     if (!printWindow) {
       addNotification("Gagal membuka jendela cetak! Periksa pengaturan pemblokir pop-up browser Anda.", "error");
       return;
