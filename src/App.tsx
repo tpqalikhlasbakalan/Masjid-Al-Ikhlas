@@ -231,11 +231,25 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDataFetched, setIsDataFetched] = useState(false);
 
+  // === STATE UNTUK PRINT OVERLAY (MEMBUAT PREVIEW LOKAL TANPA POPUP WINDOW.OPEN) ===
+  const [printIframeData, setPrintIframeData] = useState(null);
+
   // Jadwal Sholat Terhubung API
   const [jadwalSholat, setJadwalSholat] = useState(() => {
     const saved = getLocalStorageData("jadwalSholatAktif", null);
     return saved || getMockJadwal(lokasi.kabupaten, lokasi.latitude, lokasi.longitude);
   });
+
+  // Listener untuk pesan dari Iframe Cetak (Menutup Overlay)
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data === 'CLOSE_PRINT_FRAME') {
+        setPrintIframeData(null);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   // =========================================================
   // EFFECTS FOR STORAGE & PERMISSIONS
@@ -838,19 +852,19 @@ export default function App() {
             }
             .print-container {
               width: 100%;
-              max-width: 215mm; /* Setara dengan lebar kertas F4/Folio */
+              max-width: 1000px;
               min-height: auto;
               background: white;
               padding: 20px;
-              margin-top: 15px;
+              margin-top: 10px;
               box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
               border-radius: 8px;
               box-sizing: border-box;
-              overflow-x: auto;
+              overflow-x: hidden;
             }
             .control-panel {
               width: 100%;
-              max-width: 215mm;
+              max-width: 1000px;
               background: white;
               padding: 15px 20px;
               border-radius: 8px;
@@ -870,7 +884,7 @@ export default function App() {
             .btn {
               padding: 10px 16px;
               border-radius: 6px;
-              font-size: 12px;
+              font-size: 13px;
               font-weight: 600;
               cursor: pointer;
               text-decoration: none;
@@ -880,6 +894,7 @@ export default function App() {
               gap: 8px;
               border: none;
             }
+            .btn-close { background: #ef4444; color: white; }
             .btn-wa { background: #25D366; color: white; }
             .btn-pdf-native { background: #0f172a; color: white; }
             .btn-pdf-web { background: #3b82f6; color: white; }
@@ -895,6 +910,7 @@ export default function App() {
             .judul-dokumen h2 { margin: 0; font-size: 14px; font-weight: 800; text-transform: uppercase; color: #0f172a; }
             .judul-dokumen p { margin: 5px 0 0; font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; }
             
+            .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
             table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 10px; min-width: 600px;}
             th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
             th { background-color: #f8fafc; font-weight: bold; text-transform: uppercase; color: #475569; }
@@ -908,9 +924,11 @@ export default function App() {
 
             /* MEDIA PRINT: Pengaturan Kertas Fisik (F4 / Folio: 215mm x 330mm) */
             @media print {
-              body { padding: 0; background: white; display: block; }
+              body { padding: 0; background: white; margin: 0; display: block; }
               .control-panel { display: none !important; }
-              .print-container { max-width: none; width: 100%; box-shadow: none; padding: 0; margin: 0; border-radius: 0; overflow-x: visible; }
+              .print-container { max-width: none; width: 100%; box-shadow: none; padding: 0; margin: 0; border-radius: 0; overflow-x: visible !important; }
+              .table-responsive { overflow-x: visible !important; }
+              table { min-width: auto; width: 100%; }
               @page { size: 215mm 330mm; margin: 15mm; } 
             }
           </style>
@@ -919,7 +937,10 @@ export default function App() {
           
           <!-- Panel Kontrol Aksi (Tidak Ikut Tercetak) -->
           <div class="control-panel">
-            <p style="margin: 0; font-size: 12px; color: #64748b; font-weight: bold;">Opsi Laporan:</p>
+            <button onclick="window.parent.postMessage('CLOSE_PRINT_FRAME', '*')" class="btn btn-close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> 
+              Tutup Preview
+            </button>
             <div class="btn-group">
               <a href="${waLink}" target="_blank" class="btn btn-wa">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> 
@@ -927,10 +948,10 @@ export default function App() {
               </a>
               <button id="btn-print" onclick="window.print()" class="btn btn-pdf-native">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> 
-                <span>Cetak / Simpan PDF (HP/APK)</span>
+                <span>Cetak PDF Luring (F4)</span>
               </button>
               <button id="btn-download" onclick="downloadPDFWeb()" class="btn btn-pdf-web">
-                <span>⬇️ Unduh PDF (PC/Web)</span>
+                <span>⬇️ Unduh Gambar PDF</span>
               </button>
             </div>
           </div>
@@ -958,7 +979,7 @@ export default function App() {
             
             ${summaryHTML}
             
-            <div style="width: 100%; overflow-x: auto;">
+            <div class="table-responsive">
               <table>
                 <thead>
                   ${tableHeaderHTML}
@@ -1023,23 +1044,6 @@ export default function App() {
                 btn.disabled = false;
               });
             }
-
-            // Fungsi Auto-Eksekusi Saat Halaman Selesai Dimuat
-            window.onload = function() {
-              // Cek jika pengguna menggunakan HP Android/iOS (termasuk APK Webview)
-              const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-              
-              setTimeout(() => {
-                if (isMobile) {
-                    // Pada APK/Mobile, fungsi cetak bawaan sistem jauh lebih dapat diandalkan
-                    // karena mengizinkan penyimpanan file PDF lokal tanpa masalah izin Blob URL
-                    window.print();
-                } else {
-                    // Pada Laptop/PC Desktop web, jalankan skrip unduh otomatis
-                    downloadPDFWeb();
-                }
-              }, 1200);
-            }
           </script>
         </body>
       </html>
@@ -1048,12 +1052,6 @@ export default function App() {
   };
 
   const handlePrintSelectedReport = (reportType) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      addNotification("Gagal membuka jendela cetak! Periksa pengaturan pemblokir pop-up browser Anda.", "error");
-      return;
-    }
-
     let filteredWarga = jamaahList;
     let rtTitle = "Seluruh Wilayah (Semua RT & RW)";
 
@@ -1280,8 +1278,7 @@ export default function App() {
     const pdfFilename = `${docTitle.replace(/\s+/g, '_')}_${rtTitle.replace(/\s+|\//g, '')}.pdf`;
 
     const html = generateHTMLTemplate(docTitle, rtTitle, summaryHTML, tableHeaderHTML, tableRowsHTML, waLink, pdfFilename);
-    printWindow.document.write(html);
-    printWindow.document.close();
+    setPrintIframeData(html);
   };
 
   const handlePrintQurbanRT = () => {
@@ -1315,7 +1312,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">{masjidName}</h1>
-              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Manajemen Pengelola Zakat & Qurban</p>
+              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Gerbang Pengelolaan Masjid & Zakat</p>
             </div>
           </div>
 
@@ -1484,7 +1481,7 @@ export default function App() {
       )}
 
       {/* === CONTENT AREA UTAMA === */}
-      <div className="flex-1 flex flex-col md:flex-row font-sans">
+      <div className="flex-1 flex flex-col md:flex-row font-sans relative">
         <main className="flex-1 p-4 sm:p-6 overflow-y-auto w-full max-w-7xl mx-auto">
           
           {/* TAB 1: DASHBOARD UTAMA */}
@@ -1512,7 +1509,7 @@ export default function App() {
                       <Database size={18} className={isSyncing ? "animate-pulse" : ""} />
                    </div>
                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server (Google Sheets)</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                          <div className={`w-2 h-2 rounded-full shrink-0 ${syncStatus === 'Tersinkronisasi' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                          <p className="text-xs sm:text-sm font-black text-slate-800 truncate">{syncStatus}</p>
@@ -1779,93 +1776,6 @@ export default function App() {
                   </div>
                 </div>
               )}
-
-              {/* MODAL SIMULATOR WHATSAPP/SMS NOTIFIKASI H-1 */}
-              {activeNotificationSim && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-                  <div className={`w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-scaleIn transition-all ${
-                    notificationType === "WA" ? "bg-[#eae6df] h-[550px]" : "bg-slate-100 h-[580px] border border-slate-300"
-                  }`}>
-                    
-                    {/* Header Sesuai Platform */}
-                    {notificationType === "WA" ? (
-                      <div className="bg-[#008069] text-white px-4 py-3.5 flex items-center justify-between shadow-md">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-emerald-700 rounded-full flex items-center justify-center font-bold text-sm text-white">WA</div>
-                          <div>
-                            <p className="font-bold text-sm">Masjid Gateway</p>
-                            <p className="text-[10px] text-emerald-100">Online • Kepada: {activeNotificationSim.petugas.khatib}</p>
-                          </div>
-                        </div>
-                        <button onClick={() => setActiveNotificationSim(null)} className="text-white hover:text-slate-200"><X size={20} /></button>
-                      </div>
-                    ) : (
-                      <div className="bg-slate-800 text-white px-5 py-4 flex items-center justify-between shadow-md">
-                        <div className="flex items-center gap-3">
-                          <Smartphone className="text-blue-400 w-5 h-5" />
-                          <div>
-                            <p className="font-bold text-sm">SMS Messenger (Android)</p>
-                            <p className="text-[10px] text-slate-300">Penerima: {activeNotificationSim.petugas.khatib} ({activeNotificationSim.petugas.telp})</p>
-                          </div>
-                        </div>
-                        <button onClick={() => setActiveNotificationSim(null)} className="text-white hover:text-slate-200"><X size={20} /></button>
-                      </div>
-                    )}
-
-                    {/* Chat / Message Area */}
-                    <div className="flex-1 p-4 overflow-y-auto flex flex-col justify-end space-y-4" style={notificationType === "WA" ? { 
-                      backgroundImage: "url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')", 
-                      backgroundSize: "contain" 
-                    } : { backgroundColor: "#f3f4f6" }}>
-                      
-                      <div className="flex flex-col space-y-4">
-                        <div className="bg-slate-200/80 text-slate-600 px-3 py-1 rounded-lg text-[9px] font-bold text-center self-center uppercase shadow-xs">
-                          Hari Kamis (H-1) • Pengingat Sholat Jumat
-                        </div>
-
-                        {/* Tampilan Sesuai Platform */}
-                        {notificationType === "WA" ? (
-                          <div className="bg-[#d9fdd3] text-slate-800 p-3.5 rounded-2xl rounded-tr-none shadow-sm max-w-[85%] self-end relative border border-[#c1ebd0]">
-                            <p className="text-xs whitespace-pre-line leading-relaxed">{simulatedMessageText}</p>
-                            <span className="text-[8px] text-slate-400 text-right block mt-2 font-mono">14:00 ✓✓</span>
-                          </div>
-                        ) : (
-                          <div className="bg-blue-600 text-white p-3.5 rounded-2xl rounded-tr-none shadow-sm max-w-[85%] self-end relative">
-                            <p className="text-xs whitespace-pre-line leading-relaxed">{simulatedMessageText}</p>
-                            <span className="text-[8px] text-blue-200 text-right block mt-2 font-mono">Sent via Android Gateway</span>
-                          </div>
-                        )}
-                      </div>
-
-                    </div>
-
-                    {/* Input Footer */}
-                    <div className="bg-[#f0f2f5] p-3 flex gap-2 items-center border-t border-slate-200">
-                      <input 
-                        type="text" 
-                        value={simulatedMessageText}
-                        onChange={(e) => setSimulatedMessageText(e.target.value)}
-                        className="flex-1 bg-white border border-slate-200 px-4 py-2.5 rounded-full text-xs outline-none focus:ring-1 focus:ring-emerald-500 font-semibold text-slate-800"
-                      />
-                      <button 
-                        onClick={handleSendSimMessage}
-                        disabled={isSendingMessage}
-                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:bg-slate-400 shrink-0 shadow ${
-                          notificationType === "WA" ? "bg-[#00a884] hover:bg-[#008f6f]" : "bg-blue-600 hover:bg-blue-700"
-                        } text-white`}
-                      >
-                        {isSendingMessage ? (
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Send size={15} className="ml-0.5" />
-                        )}
-                      </button>
-                    </div>
-
-                  </div>
-                </div>
-              )}
-
             </div>
           )}
 
@@ -2670,9 +2580,21 @@ export default function App() {
         </main>
       </div>
 
+      {/* OVERLAY PRINT PREVIEW (MENGGANTIKAN POPUP WINDOW.OPEN) */}
+      {printIframeData && (
+        <div className="fixed inset-0 z-[99999] bg-slate-100 flex flex-col h-screen w-screen overflow-hidden">
+          <iframe 
+            title="Print Preview"
+            srcDoc={printIframeData}
+            className="w-full h-full border-0 bg-transparent flex-1"
+            sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-downloads"
+          />
+        </div>
+      )}
+
       {/* === FOOTER === */}
-      <footer className="bg-white border-t border-slate-200 px-4 sm:px-6 py-4 text-center text-[10px] sm:text-xs text-slate-400 font-semibold mt-auto">
-        &copy; {new Date().getFullYear()} {masjidName}. Dikembangkan oleh Misbahul Munir.
+      <footer className="bg-white border-t border-slate-200 px-4 sm:px-6 py-4 text-center text-[10px] sm:text-xs text-slate-400 font-semibold mt-auto z-10">
+        &copy; {new Date().getFullYear()} {masjidName}. Developed By Misbahul Munir.
       </footer>
 
     </div>
