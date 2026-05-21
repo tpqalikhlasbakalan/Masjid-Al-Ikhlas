@@ -1085,7 +1085,7 @@ export default function App() {
         <body class="p-8 bg-white text-slate-800">
           
           {/* UI Control untuk Bagikan WA / Print PDF */}
-<div className="no-print" style={{ marginBottom: '30px', padding: '15px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: center }}>
+<div className="no-print" style={{ marginBottom: '30px', padding: '15px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
   <p style={{ fontSize: '13px', color: '#64748b', fontWeight: 'bold', margin: 0 }}>Opsi Laporan:</p>
   <div style={{ display: 'flex', gap: '10px' }}>
     <a href={`${waLink}`} target="_blank" rel="noopener noreferrer" style={{ background: '#25D366', color: 'white', padding: '8px 16px', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
