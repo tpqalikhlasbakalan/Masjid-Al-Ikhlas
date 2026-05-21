@@ -1085,26 +1085,17 @@ export default function App() {
         <body class="p-8 bg-white text-slate-800">
           
           {/* UI Control untuk Bagikan WA / Print PDF */}
-<div className="no-print" style={{ marginBottom: '30px', padding: '15px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-  <p style={{ fontSize: '13px', color: '#64748b', fontWeight: 'bold', margin: 0 }}>Opsi Laporan:</p>
-  <div style={{ display: 'flex', gap: '10px' }}>
-    <a href={`${waLink}`} target="_blank" rel="noopener noreferrer" style={{ background: '#25D366', color: 'white', padding: '8px 16px', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> Bagikan ke WhatsApp
-    </a>
-    <button 
-      onClick={() => {
-        if ((window as any).median) {
-          (window as any).median.print.printPage();
-        } else {
-          window.print();
-        }
-      }} 
-      style={{ background: '#0f172a', color: 'white', padding: '8px 16px', borderRadius: '8px', border: 'none', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Cetak / Simpan PDF
-    </button>
-  </div>
-</div>
+          <div class="no-print" style="margin-bottom: 30px; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <p style="font-size: 13px; color: #64748b; font-weight: bold; margin: 0;">Opsi Laporan:</p>
+            <div style="display: flex; gap: 10px;">
+              <a href="${waLink}" target="_blank" rel="noopener noreferrer" style="background: #25D366; color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> Bagikan ke WhatsApp
+              </a>
+              <button onclick="if(window.opener && window.opener.median){window.opener.median.print.printPage();}else if(window.median){window.median.print.printPage();}else{window.print();}" style="background: #0f172a; color: white; padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Cetak / Simpan PDF
+              </button>
+            </div>
+          </div>
           <div class="flex items-center justify-between border-b-4 border-slate-900 pb-4 mb-6">
             <div class="flex items-center gap-4">
               <div class="w-16 h-16 text-emerald-700 flex items-center justify-center border border-slate-200 rounded-xl overflow-hidden p-1">
