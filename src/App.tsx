@@ -1461,7 +1461,7 @@ export default function App() {
               <div className="bg-slate-100 border border-slate-300/80 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div className="text-xs font-semibold text-slate-600">
                   <p className="font-extrabold text-slate-800">🛠️ Mode Uji Pengingat Sholat Jumat (Simulator)</p>
-                  <p className="text-slate-500 text-[10px] sm:text-xs">Aktifkan simulator ini jika Anda ingin menguji alarm H-1 di hari selain Kamis. Pastikan Anda masuk menggunakan akun petugas jumat seperti <strong className="text-slate-800 font-mono">khsyukron</strong>.</p>
+                  <p className="text-slate-500 text-[10px] sm:text-xs">Aktifkan simulator ini jika Anda ingin menguji alarm H-1 di hari selain Kamis. Pastikan Anda masuk menggunakan akun petugas jumat seperti <strong className="text-slate-800 font-mono">Gus Baha'</strong>.</p>
                 </div>
                 <button 
                   onClick={() => {
@@ -2503,11 +2503,11 @@ export default function App() {
                   <form onSubmit={handleCreateAccount} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-slate-50 p-4 rounded-xl border border-slate-200/60">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-500 mb-1.5">Nama Lengkap Petugas *</label>
-                      <input type="text" required placeholder="Cth: KH. Syukron Ma'mun" value={newAccLabel} onChange={(e) => setNewAccLabel(e.target.value)} className="w-full text-xs sm:text-sm border border-slate-300 bg-white p-3 rounded-xl outline-none font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500/20" />
+                      <input type="text" required placeholder="Masukan Nama" value={newAccLabel} onChange={(e) => setNewAccLabel(e.target.value)} className="w-full text-xs sm:text-sm border border-slate-300 bg-white p-3 rounded-xl outline-none font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500/20" />
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-500 mb-1.5">Username Login *</label>
-                      <input type="text" required placeholder="Cth: khsyukron" value={newAccUsername} onChange={(e) => setNewAccUsername(e.target.value)} className="w-full text-xs sm:text-sm border border-slate-300 bg-white p-3 rounded-xl outline-none font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500/20" />
+                      <input type="text" required placeholder="Masukan Username" value={newAccUsername} onChange={(e) => setNewAccUsername(e.target.value)} className="w-full text-xs sm:text-sm border border-slate-300 bg-white p-3 rounded-xl outline-none font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500/20" />
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-500 mb-1.5">Kata Sandi (Password) *</label>
