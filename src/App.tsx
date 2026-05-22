@@ -379,14 +379,14 @@ export default function App() {
         if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
         
         setSyncStatus("Tersinkronisasi");
-        addNotification("Data berhasil diperbarui dari Server Pusat (Google Sheets)!", "success");
+        addNotification("Data berhasil diperbarui dari Server Pusat!", "success");
       } else {
         setSyncStatus("Tersinkronisasi Lokal");
       }
     } catch (err) {
       console.warn("Fetch Error:", err);
       setSyncStatus("Gagal Sinkron");
-      addNotification("Gagal menarik data dari Google Sheets.", "error");
+      addNotification("Gagal menarik data dari Server Pusat!.", "error");
     } finally {
       setIsSyncing(false);
       setIsDataFetched(true); 
