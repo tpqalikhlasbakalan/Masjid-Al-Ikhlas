@@ -979,7 +979,8 @@ export default function App() {
             .judul-dokumen h2 { margin: 0; font-size: 14px; font-weight: 800; text-transform: uppercase; color: #0f172a; }
             .judul-dokumen p { margin: 4px 0 0; font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; }
             
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; }
+            .table-wrapper { width: 100%; overflow-x: auto; margin-top: 10px; -webkit-overflow-scrolling: touch; }
+            table { width: 100%; border-collapse: collapse; font-size: 10px; min-width: 450px; }
             th, td { border: 1px solid #cbd5e1; padding: 5px 8px; text-align: left; }
             th { background-color: #f8fafc; font-weight: bold; text-transform: uppercase; color: #475569; }
             td { color: #0f172a; }
@@ -989,6 +990,49 @@ export default function App() {
             .signature-area { margin-top: 30px; display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; flex-wrap: wrap; gap: 20px; page-break-inside: avoid; }
             .signature-box { text-align: center; width: 160px; }
             .signature-line { margin-top: 50px; border-top: 1px solid #0f172a; padding-top: 4px; font-weight: bold; color: #0f172a; }
+
+            /* MEDIA SCREEN: Responsive Layout on mobile/tablet view screen */
+            @media screen and (max-width: 215mm) {
+              .wrapper {
+                padding: 10px 5px;
+                background-color: #f1f5f9;
+              }
+              .print-container {
+                width: 100%;
+                min-height: auto;
+                padding: 15px;
+                box-shadow: none;
+                border-radius: 8px;
+                border: 1px solid #e2e8f0;
+              }
+              .kop-surat {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                text-align: left;
+              }
+              .kop-surat .tanggal {
+                text-align: left;
+              }
+              .signature-area {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 30px;
+              }
+              .signature-box {
+                width: 100%;
+                text-align: left;
+              }
+              .signature-box.text-right {
+                text-align: left;
+              }
+              table {
+                font-size: 9px;
+              }
+              th, td {
+                padding: 4px 6px;
+              }
+            }
 
             /* MEDIA PRINT: Pengaturan Kertas Fisik (F4 / Folio: 215mm x 330mm) */
             @media print {
@@ -1042,14 +1086,16 @@ export default function App() {
               
               ${summaryHTML}
               
-              <table>
-                <thead>
-                  ${tableHeaderHTML}
-                </thead>
-                <tbody>
-                  ${tableRowsHTML}
-                </tbody>
-              </table>
+              <div class="table-wrapper">
+                <table>
+                  <thead>
+                    ${tableHeaderHTML}
+                  </thead>
+                  <tbody>
+                    ${tableRowsHTML}
+                  </tbody>
+                </table>
+              </div>
               
               <div class="signature-area">
                 <div class="signature-box">
@@ -1128,18 +1174,17 @@ export default function App() {
         </div>
       `;
 
+      // Kolom "Total Jatah" (jumlah kg beras) Dihilangkan dari tabel cetak fitrah sesuai permintaan
       tableHeaderHTML = `
         <tr>
-          <th class="text-center" style="width: 5%;">No</th>
-          <th style="width: 35%;">Nama Kepala Keluarga</th>
+          <th class="text-center" style="width: 8%;">No</th>
+          <th style="width: 42%;">Nama Kepala Keluarga</th>
           <th class="text-center" style="width: 25%;">Kriteria Mustahik</th>
-          <th class="text-right" style="width: 15%;">Total Jatah</th>
-          <th class="text-center" style="width: 20%;">Tanda Terima</th>
+          <th class="text-center" style="width: 25%;">Tanda Terima (Paraf)</th>
         </tr>
       `;
       
       tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => {
-        const jatah = getJatahFitrahTotal(j);
         let kriteria = j.fitrah !== "Muzakki" ? `Mustahik ${j.fitrah}` : "";
         if (j.isGuruNgaji) kriteria += (kriteria ? " + " : "") + "Guru Ngaji";
 
@@ -1148,13 +1193,12 @@ export default function App() {
             <td class="text-center">${i + 1}</td>
             <td class="font-bold">${j.nama}</td>
             <td class="text-center">${kriteria}</td>
-            <td class="text-right font-bold" style="color: #047857;">${jatah.toFixed(1)} Kg</td>
-            <td class="text-left" style="height: 35px; position: relative;">
+            <td class="text-left" style="height: 38px; position: relative;">
               <span style="position: absolute; bottom: 3px; left: 6px; font-size: 8px; color: #94a3b8;">${i + 1}.</span>
             </td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="5" class="text-center" style="padding: 20px; font-style: italic; color: #94a3b8;">Tidak ada jemaah penerima Zakat Fitrah pada wilayah ini.</td></tr>`;
+      }).join('') : `<tr><td colspan="4" class="text-center" style="padding: 20px; font-style: italic; color: #94a3b8;">Tidak ada jemaah penerima Zakat Fitrah pada wilayah ini.</td></tr>`;
     }
 
     else if (reportType === "zuru") {
@@ -1177,18 +1221,17 @@ export default function App() {
         </div>
       `;
 
+      // Kolom "Total Jatah" (jumlah kg hasil panen) Dihilangkan dari tabel cetak zuru' sesuai permintaan
       tableHeaderHTML = `
         <tr>
-          <th class="text-center" style="width: 5%;">No</th>
-          <th style="width: 35%;">Nama Kepala Keluarga</th>
+          <th class="text-center" style="width: 8%;">No</th>
+          <th style="width: 42%;">Nama Kepala Keluarga</th>
           <th class="text-center" style="width: 25%;">Kriteria Mustahik</th>
-          <th class="text-right" style="width: 15%;">Total Jatah</th>
-          <th class="text-center" style="width: 20%;">Tanda Terima</th>
+          <th class="text-center" style="width: 25%;">Tanda Terima (Paraf)</th>
         </tr>
       `;
       
       tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => {
-        const jatah = getJatahZuruTotal(j);
         let kriteria = j.zuru !== "Bukan Mustahik" ? `Mustahik ${j.zuru}` : "";
         if (j.isGuruNgaji) kriteria += (kriteria ? " + " : "") + "Guru Ngaji";
 
@@ -1197,13 +1240,12 @@ export default function App() {
             <td class="text-center">${i + 1}</td>
             <td class="font-bold">${j.nama}</td>
             <td class="text-center">${kriteria}</td>
-            <td class="text-right font-bold" style="color: #0f766e;">${jatah.toFixed(1)} Kg</td>
-            <td class="text-left" style="height: 35px; position: relative;">
+            <td class="text-left" style="height: 38px; position: relative;">
               <span style="position: absolute; bottom: 3px; left: 6px; font-size: 8px; color: #94a3b8;">${i + 1}.</span>
             </td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="5" class="text-center" style="padding: 20px; font-style: italic; color: #94a3b8;">Tidak ada jemaah penerima Zakat Zuru' pada wilayah ini.</td></tr>`;
+      }).join('') : `<tr><td colspan="4" class="text-center" style="padding: 20px; font-style: italic; color: #94a3b8;">Tidak ada jemaah penerima Zakat Zuru' pada wilayah ini.</td></tr>`;
     }
     
     else if (reportType === "terpadu") {
@@ -1222,12 +1264,10 @@ export default function App() {
       tableHeaderHTML = `
         <tr>
           <th class="text-center" style="width: 5%;">No</th>
-          <th style="width: 25%;">Nama Kepala Keluarga</th>
-          <th class="text-center" style="width: 17%;">Kriteria Fitrah</th>
-          <th class="text-right" style="width: 13%;">Jatah Fitrah</th>
-          <th class="text-center" style="width: 17%;">Kriteria Zuru'</th>
-          <th class="text-right" style="width: 13%;">Jatah Zuru'</th>
-          <th class="text-center" style="width: 10%;">Paraf</th>
+          <th style="width: 30%;">Nama Kepala Keluarga</th>
+          <th class="text-center" style="width: 25%;">Kriteria Fitrah</th>
+          <th class="text-center" style="width: 25%;">Kriteria Zuru'</th>
+          <th class="text-center" style="width: 15%;">Paraf</th>
         </tr>
       `;
       
@@ -1246,13 +1286,13 @@ export default function App() {
             <td class="text-center">${i + 1}</td>
             <td class="font-bold">${j.nama}</td>
             <td class="text-center">${kriteriaFitrah}</td>
-            <td class="text-right font-bold text-emerald-700">${jatahFitrah > 0 ? jatahFitrah.toFixed(1) + ' Kg' : '-'}</td>
             <td class="text-center">${kriteriaZuru}</td>
-            <td class="text-right font-bold text-teal-700">${jatahZuru > 0 ? jatahZuru.toFixed(1) + ' Kg' : '-'}</td>
-            <td class="text-left" style="height: 35px;"></td>
+            <td class="text-left" style="height: 38px; position: relative;">
+              <span style="position: absolute; bottom: 3px; left: 6px; font-size: 8px; color: #94a3b8;">${i + 1}.</span>
+            </td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="7" class="text-center" style="padding: 20px; font-style: italic; color: #94a3b8;">Tidak ada penerima zakat terpadu di wilayah ini.</td></tr>`;
+      }).join('') : `<tr><td colspan="5" class="text-center" style="padding: 20px; font-style: italic; color: #94a3b8;">Tidak ada penerima zakat terpadu di wilayah ini.</td></tr>`;
     }
 
     else if (reportType === "qurban") {
@@ -1377,7 +1417,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">{masjidName}</h1>
-              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Manajemen Pengelola Zakat & Qurban</p>
+              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Gerbang Pengelolaan Masjid & Zakat</p>
             </div>
           </div>
 
@@ -1574,7 +1614,7 @@ export default function App() {
                       <Database size={18} className={isSyncing ? "animate-pulse" : ""} />
                    </div>
                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server (Google Sheets)</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                          <div className={`w-2 h-2 rounded-full shrink-0 ${syncStatus === 'Tersinkronisasi' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                          <p className="text-xs sm:text-sm font-black text-slate-800 truncate">{syncStatus}</p>
@@ -2605,7 +2645,7 @@ export default function App() {
                           <button type="button" onClick={() => { setTempMasjidLogoUrl(""); addNotification("Tautan logo dibersihkan."); }} className="w-full sm:w-auto bg-rose-50 text-rose-600 hover:bg-rose-100 px-4 py-3 sm:py-2 rounded-xl border border-rose-200 text-xs font-bold transition-all">Hapus Logo</button>
                         )}
                       </div>
-                      <p className="text-[10px] text-slate-500 font-medium leading-relaxed bg-white border border-slate-200 p-2.5 rounded-lg shadow-sm">Agar data awan Anda tidak kelebihan beban, <strong>unggah berkas gambar lokal dinonaktifkan</strong>. Silakan cari gambar di Google, klik kanan "Copy Image Address", lalu tempel (*paste*) URL tersebut ke kotak di atas.</p>
+                      <p className="text-[10px] text-slate-500 font-medium leading-relaxed bg-white border border-slate-200 p-2.5 rounded-lg shadow-sm">Agar data awan Anda tidak kelebihan beban, <strong>unggah berkas gambar lokal dinonaktifkan</strong>. Silaka cari gambar di Google, klik kanan "Copy Image Address", lalu tempel (*paste*) URL tersebut ke kotak di atas.</p>
                     </div>
                   </div>
 
@@ -2768,7 +2808,7 @@ export default function App() {
 
       {/* OVERLAY PRINT PREVIEW (MENGGANTIKAN POPUP WINDOW.OPEN) */}
       {printIframeData && (
-        <div className="fixed inset-0 z-[99999] bg-slate-100 flex flex-col h-screen w-screen overflow-hidden">
+        <div className="fixed inset-0 z-[99999] bg-slate-100 flex flex-col h-screen w-screen overflow-hidden animate-fadeIn">
           <iframe 
             title="Print Preview"
             srcDoc={printIframeData}
