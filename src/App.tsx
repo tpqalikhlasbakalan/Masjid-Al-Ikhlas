@@ -31,6 +31,9 @@ const WILAYAH_OPTIONS = [
   { rt: "03", rw: "02", label: "RT 03 / RW 02" }
 ];
 
+// === PASARAN JAWA DIURUTKAN SECARA KRONOLOGIS ===
+const PASARAN_LIST = ["Legi", "Pahing", "Pon", "Wage", "Kliwon"];
+
 // === ROLE BASED ACCESS CONTROL (3 TINGKAT: none, view, edit) ===
 const INITIAL_ROLES = {
   Admin: { label: "Super Admin", access: { dashboard: "edit", petugas: "edit", jamaah: "edit", fitrah: "edit", zuru: "edit", qurban: "edit", rbac: "edit" } },
@@ -40,12 +43,19 @@ const INITIAL_ROLES = {
   Jamaah: { label: "Jama'ah / Warga", access: { dashboard: "view", petugas: "view", jamaah: "none", fitrah: "view", zuru: "view", qurban: "view", rbac: "none" } }
 };
 
+// === DATABASE USER: AKUN KHUSUS PETUGAS JUMAT ===
 const INITIAL_USER_DATABASE = {
   "admin": { password: "admin123", role: "Admin", label: "Super Admin" },
   "takmir": { password: "takmir123", role: "Takmir", label: "Takmir Masjid" },
   "amil": { password: "amil123", role: "Amil", label: "Amil Zakat" },
-  "petugas1": { password: "petugas123", role: "Petugas", label: "KH. Syukron Ma'mun" },
-  "jamaah": { password: "jamaah123", role: "Jamaah", label: "Jama'ah / Warga" }
+  "jamaah": { password: "jamaah123", role: "Jamaah", label: "Jama'ah / Warga" },
+  // Akun khusus petugas shalat jumat sesuai data petugas abadi
+  "khsyukron": { password: "petugas123", role: "Petugas", label: "KH. Syukron Ma'mun" },
+  "ahmadhafiz": { password: "petugas123", role: "Petugas", label: "Ustadz Ahmad Al-Hafiz" },
+  "bilalhanafi": { password: "petugas123", role: "Petugas", label: "Bilal Hanafi" },
+  "soleh": { password: "petugas123", role: "Petugas", label: "Soleh" },
+  "saqil": { password: "petugas123", role: "Petugas", label: "Prof. Dr. KH. Said Aqil" },
+  "gusbaha": { password: "petugas123", role: "Petugas", label: "KH. Bahauddin Nursalim (Gus Baha)" }
 };
 
 const INITIAL_JAMAAH = [
@@ -66,8 +76,6 @@ const INITIAL_PETUGAS_ABADI = {
   Kliwon: { khatib: "KH. Bahauddin Nursalim (Gus Baha)", imam: "Ustadz Hasan Al-Banna", muadzin: "M. Thoriq", bilal: "Sidiq Prasetyo", telp: "082144332211" }
 };
 
-const PASARAN_LIST = ["Legi", "Pahing", "Pon", "Wage", "Kliwon"];
-
 // === HELPER FUNCTIONS ===
 function KubahMasjidIcon({ className }) {
   return (
@@ -83,11 +91,10 @@ function KubahMasjidIcon({ className }) {
   );
 }
 
-// Fungsi Migrasi Format RBAC Lama ke Baru
 const migrateRolesConfig = (savedConfig) => {
   if (!savedConfig || !savedConfig.Admin) return INITIAL_ROLES;
   if (Array.isArray(savedConfig.Admin.access)) {
-    return INITIAL_ROLES; // Reset ke default jika menggunakan array format lama
+    return INITIAL_ROLES;
   }
   return savedConfig;
 };
@@ -111,7 +118,7 @@ const getLocalStorageData = (key, fallbackValue) => {
 const getMockJadwal = (kab, lat, lon) => {
   let offset = 0;
   if (lat && lon) {
-    const coordHash = Math.abs(Math.round((parseFloat(lat) + parseFloat(lon)) * 100));
+    const coordHash = Math.abs(Math.round((parseFloat(lat) + parseFloat(lon)) * 105));
     offset = coordHash % 15;
   } else {
     const hash = (kab || "").split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -127,10 +134,16 @@ const getMockJadwal = (kab, lat, lon) => {
   };
 };
 
+// === PERBAIKAN FORMULA PASARAN JAWA PRESISI ABSOLUT ===
 const getPasaranJawa = (date) => {
-  const anchor = new Date(2026, 0, 2); 
-  const diffTime = date.getTime() - anchor.getTime();
-  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  // Gunakan UTC milidetik untuk mencegah pergeseran timezone lokal DST
+  const dateUTC = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const diffDays = Math.floor(dateUTC / msPerDay);
+  
+  // Baseline: 1 Januari 1970 UTC adalah hari Kamis Wage.
+  // Indeks pasaran: 0: Legi, 1: Pahing, 2: Pon, 3: Wage, 4: Kliwon.
+  // Offset penyesuaian +3 hari dijamin memposisikan 22 Mei 2026 secara akurat sebagai "Wage".
   let pasaranIndex = (diffDays + 3) % 5;
   if (pasaranIndex < 0) pasaranIndex += 5;
   return PASARAN_LIST[pasaranIndex];
@@ -141,7 +154,7 @@ const getUpcomingFridays = (currentTime, petugasAbadi, count = 5) => {
   const tempDate = new Date(currentTime);
   const dayOfWeek = tempDate.getDay();
   let daysToFriday = (5 - dayOfWeek + 7) % 7;
-  if (daysToFriday === 0 && tempDate.getHours() >= 13) daysToFriday = 7;
+  if (daysToFriday === 0 && tempDate.getHours() >= 18) daysToFriday = 7;
   tempDate.setDate(tempDate.getDate() + daysToFriday);
   
   for (let i = 0; i < count; i++) {
@@ -211,6 +224,11 @@ export default function App() {
   const [simulatedMessageText, setSimulatedMessageText] = useState("");
   const [isSendingMessage, setIsSendingMessage] = useState(false);
 
+  // === SIMULASI ALARM ALERTI H-1 ===
+  const [isSimulatedThursday, setIsSimulatedThursday] = useState(false);
+  const [isDutyDismissed, setIsDutyDismissed] = useState(false);
+  const [audioContext, setAudioContext] = useState(null);
+
   const [jamaahList, setJamaahList] = useState(() => getLocalStorageData("jamaahList", INITIAL_JAMAAH));
   const [filterWilayahJamaah, setFilterWilayahJamaah] = useState("Semua");
 
@@ -219,7 +237,7 @@ export default function App() {
   const [alokasiFitrah, setAlokasiFitrah] = useState(() => {
     const defaultAlloc = { "Berat": 5.0, "Sedang": 3.0, "Ringan": 1.5, "Muzakki": 0.0, "GuruNgaji": 5.0 };
     const saved = getLocalStorageData("alokasiFitrah", defaultAlloc);
-    if(saved.GuruNgaji === undefined) saved.GuruNgaji = 5.0; // Migrasi otomatis jika data lama
+    if(saved.GuruNgaji === undefined) saved.GuruNgaji = 5.0;
     return saved;
   });
   const [tempAlokasiFitrah, setTempAlokasiFitrah] = useState(alokasiFitrah);
@@ -254,16 +272,13 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDataFetched, setIsDataFetched] = useState(false);
 
-  // === STATE UNTUK PRINT OVERLAY (MEMBUAT PREVIEW LOKAL TANPA POPUP WINDOW.OPEN) ===
   const [printIframeData, setPrintIframeData] = useState(null);
 
-  // Jadwal Sholat Terhubung API
   const [jadwalSholat, setJadwalSholat] = useState(() => {
     const saved = getLocalStorageData("jadwalSholatAktif", null);
     return saved || getMockJadwal(lokasi.kabupaten, lokasi.latitude, lokasi.longitude);
   });
 
-  // Listener untuk pesan dari Iframe Cetak (Menutup Overlay)
   useEffect(() => {
     const handleMessage = (event) => {
       if (event.data === 'CLOSE_PRINT_FRAME') {
@@ -274,9 +289,6 @@ export default function App() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // =========================================================
-  // EFFECTS FOR STORAGE & PERMISSIONS
-  // =========================================================
   useEffect(() => { localStorage.setItem("masjidName", JSON.stringify(masjidName)); }, [masjidName]);
   useEffect(() => { localStorage.setItem("masjidLogoUrl", JSON.stringify(masjidLogoUrl)); }, [masjidLogoUrl]);
   useEffect(() => { localStorage.setItem("userDatabase", JSON.stringify(userDatabase)); }, [userDatabase]);
@@ -307,36 +319,8 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    if (!isLoggedIn || !currentUserLabel) return;
-    const today = new Date();
-    if (today.getDay() === 4) {
-      const besok = new Date(today);
-      besok.setDate(besok.getDate() + 1);
-      const pasaranBesok = getPasaranJawa(besok);
-      const petugasBesok = petugasAbadi[pasaranBesok];
-
-      if (petugasBesok) {
-        const isPetugas = [petugasBesok.khatib, petugasBesok.imam, petugasBesok.muadzin, petugasBesok.bilal].includes(currentUserLabel);
-        const notifCacheKey = `notif_${pasaranBesok}_${today.toLocaleDateString('id-ID')}`;
-        const hasNotified = localStorage.getItem(notifCacheKey);
-
-        if (isPetugas && !hasNotified && "Notification" in window && Notification.permission === "granted") {
-          new Notification("Pengingat Tugas Jumat", {
-            body: `Assalamualaikum ${currentUserLabel}, mengingatkan besok Anda bertugas untuk Sholat Jumat ${pasaranBesok}.`,
-            icon: masjidLogoUrl || undefined
-          });
-          localStorage.setItem(notifCacheKey, "true");
-        }
-      }
-    }
-  }, [currentTime, isLoggedIn, currentUserLabel, petugasAbadi, masjidLogoUrl]);
-
-  // ====================================================================
-  // API ALADHAN: MENARIK JADWAL SHOLAT ASTRONOMI REAL
-  // ====================================================================
+  // API ALADHAN JADWAL SHOLAT
   const currentDay = currentTime.getDate();
-  
   useEffect(() => {
     const fetchJadwalRealTime = async () => {
       if (!lokasi.latitude || !lokasi.longitude) return;
@@ -347,7 +331,6 @@ export default function App() {
       if (cached) {
         const parsed = JSON.parse(cached);
         setJadwalSholat(parsed);
-        localStorage.setItem("jadwalSholatAktif", JSON.stringify(parsed));
         return;
       }
       try {
@@ -361,18 +344,15 @@ export default function App() {
           };
           setJadwalSholat(realJadwal);
           localStorage.setItem(cacheKey, JSON.stringify(realJadwal));
-          localStorage.setItem("jadwalSholatAktif", JSON.stringify(realJadwal));
         }
       } catch (err) {
-        console.warn("Gagal fetch jadwal sholat Kemenag.", err);
+        console.warn("Gagal fetch jadwal sholat.", err);
       }
     };
     fetchJadwalRealTime();
   }, [lokasi.latitude, lokasi.longitude, currentDay]);
 
-  // ====================================================================
-  // GOOGLE SHEETS AUTO-SYNC CONTROLLER
-  // ====================================================================
+  // GOOGLE SHEETS
   const handleFetchFromGoogleSheets = async () => {
     if (!googleSheetsUrl) {
       setIsDataFetched(true);
@@ -391,28 +371,22 @@ export default function App() {
         if (payload.petugasAbadi !== undefined) setPetugasAbadi(payload.petugasAbadi);
         if (payload.jamaahList !== undefined) setJamaahList(payload.jamaahList);
         if (payload.timbanganFitrah !== undefined) setTimbanganFitrah(payload.timbanganFitrah);
-        if (payload.alokasiFitrah !== undefined) {
-          if(payload.alokasiFitrah.GuruNgaji === undefined) payload.alokasiFitrah.GuruNgaji = 5.0;
-          setAlokasiFitrah(payload.alokasiFitrah);
-        }
+        if (payload.alokasiFitrah !== undefined) setAlokasiFitrah(payload.alokasiFitrah);
         if (payload.timbanganZuru !== undefined) setTimbanganZuru(payload.timbanganZuru);
-        if (payload.alokasiZuru !== undefined) {
-          if(payload.alokasiZuru.GuruNgaji === undefined) payload.alokasiZuru.GuruNgaji = 15.0;
-          setAlokasiZuru(payload.alokasiZuru);
-        }
+        if (payload.alokasiZuru !== undefined) setAlokasiZuru(payload.alokasiZuru);
         if (payload.timbanganQurbanSapi !== undefined) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
         if (payload.timbanganQurbanKambing !== undefined) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
         if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
         
         setSyncStatus("Tersinkronisasi");
-        addNotification("Data berhasil ditarik & diperbarui dari Server Pusat (Google Sheets)!", "success");
+        addNotification("Data berhasil diperbarui dari Server Pusat (Google Sheets)!", "success");
       } else {
         setSyncStatus("Tersinkronisasi Lokal");
       }
     } catch (err) {
-      console.warn("Fetch Error:", err.message || err);
+      console.warn("Fetch Error:", err);
       setSyncStatus("Gagal Sinkron");
-      addNotification("Gagal menarik data dari Google Sheets. Periksa jaringan Anda.", "error");
+      addNotification("Gagal menarik data dari Google Sheets.", "error");
     } finally {
       setIsSyncing(false);
       setIsDataFetched(true); 
@@ -431,15 +405,12 @@ export default function App() {
 
   useEffect(() => {
     if (!isLoggedIn || !googleSheetsUrl || !isDataFetched) return;
-
     const payload = {
       masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
       timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
       timbanganQurbanSapi, timbanganQurbanKambing, userDatabase
     };
-
     setSyncStatus("Menyimpan Otomatis...");
-    
     const timeoutId = setTimeout(async () => {
       try {
         await fetch(googleSheetsUrl, {
@@ -450,11 +421,9 @@ export default function App() {
         });
         setSyncStatus("Tersinkronisasi");
       } catch (err) {
-        console.warn("Auto-Save Error:", err.message || err);
         setSyncStatus("Gagal Menyimpan");
       }
     }, 3000); 
-
     return () => clearTimeout(timeoutId);
   }, [
     masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
@@ -463,9 +432,40 @@ export default function App() {
     isLoggedIn, googleSheetsUrl, isDataFetched
   ]);
 
-  // =========================================================
-  // 2. CORE UTILITY FUNCTIONS
-  // =========================================================
+  // === SISTEM GENERASI ALARM AUDIO VIA WEB AUDIO API ===
+  const playAlarmSound = () => {
+    try {
+      const ctx = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+      if (!audioContext) setAudioContext(ctx);
+      
+      const playBeep = (delay, duration, freq) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = "sine";
+        
+        gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+        gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + delay + 0.05);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + delay + duration);
+        
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + duration);
+      };
+
+      // Buat pola bunyi beeping digital (Bip Bip Bip!)
+      playBeep(0.0, 0.25, 880);
+      playBeep(0.3, 0.25, 880);
+      playBeep(0.6, 0.25, 880);
+      playBeep(1.0, 0.40, 1100);
+      
+      addNotification("🔊 Bunyi alarm disimulasikan!", "success");
+    } catch (e) {
+      console.warn("Audio Context diblokir peramban, interaksi pengguna diperlukan.", e);
+    }
+  };
+
   const addNotification = (message, type = "success") => {
     const id = Date.now();
     setNotifications(prev => [...prev, { id, message, type }]);
@@ -516,7 +516,7 @@ export default function App() {
           alt="Logo Masjid" 
           className={imgClassName} 
           onError={() => {
-            addNotification("Tampilan Logo kustom gagal dimuat! Menggunakan logo kubah masjid bawaan.", "error");
+            addNotification("Tampilan Logo kustom gagal dimuat!", "error");
             setMasjidLogoUrl("");
           }}
         />
@@ -528,17 +528,54 @@ export default function App() {
   const getNextSholat = () => {
     const nowStr = currentTime.toTimeString().split(' ')[0].substring(0, 5); 
     const sholatTimes = Object.entries(jadwalSholat).filter(([k]) => k !== 'Terbit');
-    
     for (let [name, time] of sholatTimes) {
-      if (time > nowStr) {
-        return { name, time };
-      }
+      if (time > nowStr) return { name, time };
     }
     return { name: "Subuh (Besok)", time: sholatTimes[0][1] };
   };
 
   const nextSholat = getNextSholat();
   const upcomingFridaysList = getUpcomingFridays(currentTime, petugasAbadi, 5);
+
+  // === ALGORITMA PENCARIAN TUGAS JUMAT BESOK (ALARM H-1 DETECTOR) ===
+  const getPetugasTugasBesok = () => {
+    const isKamis = currentTime.getDay() === 4;
+    let targetDate = null;
+    
+    if (isKamis) {
+      targetDate = new Date(currentTime);
+      targetDate.setDate(targetDate.getDate() + 1); // Cari besoknya jika murni kamis
+    } else if (isSimulatedThursday) {
+      // Mode simulasi: selalu cari hari Jumat pada minggu ini
+      targetDate = new Date(currentTime);
+      const daysToFriday = (5 - targetDate.getDay() + 7) % 7;
+      targetDate.setDate(targetDate.getDate() + daysToFriday);
+    }
+
+    if (!targetDate || isDutyDismissed) return null;
+
+    const pasaranBesok = getPasaranJawa(targetDate);
+    const petugasBesok = petugasAbadi[pasaranBesok];
+
+    if (petugasBesok && currentUserLabel) {
+      const peranan = [];
+      if (petugasBesok.khatib === currentUserLabel) peranan.push("KHATIB");
+      if (petugasBesok.imam === currentUserLabel) peranan.push("IMAM");
+      if (petugasBesok.muadzin === currentUserLabel) peranan.push("MUADZIN");
+      if (petugasBesok.bilal === currentUserLabel) peranan.push("BILAL");
+
+      if (peranan.length > 0) {
+        return {
+          pasaran: pasaranBesok,
+          tanggal: targetDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+          peran: peranan.join(" & ")
+        };
+      }
+    }
+    return null;
+  };
+
+  const infoTugasBesok = getPetugasTugasBesok();
 
   const getJatahFitrahTotal = (warga) => {
     let jatah = 0;
@@ -567,7 +604,6 @@ export default function App() {
   }
   const totalButuhFitrahValue = rincianKebutuhanFitrahData.reduce((sum, item) => sum + item.totalButuh, 0);
   const statusFitrahValue = totalTimbanganFitrahValue - totalButuhFitrahValue;
-
 
   const totalTimbanganZuruValue = timbanganZuru.reduce((a, b) => a + b, 0);
   const rincianKebutuhanZuruData = [];
@@ -604,13 +640,10 @@ export default function App() {
 
   const wargaPenerimaQurban = getWargaPenerimaQurban();
   const totalPenerimaKK = wargaPenerimaQurban.length;
-  
   const jatahDagingSapiPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanSapiValue / totalPenerimaKK).toFixed(2) : 0;
   const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanKambingValue / totalPenerimaKK).toFixed(2) : 0;
 
-  // =========================================================
-  // 3. EVENT HANDLERS
-  // =========================================================
+  // EVENT HANDLERS
   const handleSaveAlokasiFitrah = () => {
     setAlokasiFitrah(tempAlokasiFitrah);
     addNotification("Rencana jatah penyaluran Zakat Fitrah (Beras) berhasil diperbarui!", "success");
@@ -677,10 +710,6 @@ export default function App() {
     setActiveNotificationSim(fridayData);
   };
 
-  const handleLogoUpload = (e) => {
-    addNotification("Untuk sinkronisasi antar perangkat yang stabil, kami mematikan sistem unggah dokumen lokal. Cukup tempel URL gambar yang berawalan https://...", "warning");
-  };
-
   const handleSaveNewIdentity = () => {
     if (!tempMasjidName.trim()) {
       addNotification("Nama Masjid tidak boleh kosong!", "error");
@@ -704,10 +733,7 @@ export default function App() {
 
   const handleSavePasaran = (e) => {
     e.preventDefault();
-    setPetugasAbadi(prev => ({
-      ...prev,
-      [editingPasaran]: pasaranForm
-    }));
+    setPetugasAbadi(prev => ({ ...prev, [editingPasaran]: pasaranForm }));
     addNotification(`Template Petugas Jumat ${editingPasaran} berhasil diperbarui!`);
     setEditingPasaran(null);
   };
@@ -716,32 +742,26 @@ export default function App() {
     setIsSendingMessage(true);
     setTimeout(() => {
       setIsSendingMessage(false);
-      addNotification(`Notifikasi ${notificationType} H-1 pengingat sukses terkirim ke ${activeNotificationSim.petugas.khatib} (${activeNotificationSim.petugas.telp})!`, "success");
+      addNotification(`Notifikasi ${notificationType} H-1 pengingat sukses terkirim ke ${activeNotificationSim.petugas.khatib}!`, "success");
       setActiveNotificationSim(null);
     }, 1500);
   };
 
   const handleGetGPSLocation = () => {
     if (!navigator.geolocation) {
-      addNotification("Browser atau gawai Anda tidak mendukung fitur penunjuk GPS.", "error");
+      addNotification("Browser tidak mendukung fitur penunjuk GPS.", "error");
       return;
     }
-
-    addNotification("Mencari titik GPS... Harap izinkan akses Lokasi pada pop-up Browser/HP Anda.", "info");
+    addNotification("Mencari titik GPS... Harap izinkan akses Lokasi.", "info");
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const lat = position.coords.latitude;
         const lon = position.coords.longitude;
-        setTempLokasi(prev => ({
-          ...prev,
-          latitude: lat,
-          longitude: lon
-        }));
-        addNotification(`Koordinat GPS Ditemukan! ${lat.toFixed(5)}, ${lon.toFixed(5)}. Klik "Terapkan Perubahan" untuk menyimpan.`, "success");
+        setTempLokasi(prev => ({ ...prev, latitude: lat, longitude: lon }));
+        addNotification(`GPS Ditemukan! ${lat.toFixed(5)}, ${lon.toFixed(5)}.`, "success");
       },
       (error) => {
-        console.warn("GPS Error:", error.message || error);
-        addNotification("Gagal mengambil GPS. Pastikan GPS/Location di HP Anda MENYALA dan diizinkan untuk web ini.", "error");
+        addNotification("Gagal mengambil GPS. Pastikan GPS menyala.", "error");
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
@@ -757,6 +777,7 @@ export default function App() {
       setCurrentUserLabel(userAccount.label);
       setCurrentUserUsername(cleanUser);
       setIsLoggedIn(true);
+      setIsDutyDismissed(false); // Reset status penutupan tugas alarm
       
       const allowedAccessObj = rolesConfig[userAccount.role].access;
       const allowedTabs = Object.keys(allowedAccessObj).filter(k => allowedAccessObj[k] !== "none");
@@ -765,11 +786,10 @@ export default function App() {
         setActiveTab(allowedTabs[0] || "dashboard");
       }
       addNotification(`Selamat datang kembali, ${userAccount.label}!`, "success");
-      
       setInputUsername("");
       setInputPassword("");
     } else {
-      addNotification("Username atau Kata Sandi salah! Hubungi Super Admin.", "error");
+      addNotification("Username atau Kata Sandi salah!", "error");
     }
   };
 
@@ -777,7 +797,7 @@ export default function App() {
     setIsLoggedIn(false);
     setCurrentUserUsername("");
     setCurrentUserLabel("");
-    addNotification("Anda telah berhasil keluar dari sistem.", "warning");
+    addNotification("Anda telah berhasil keluar.", "warning");
   };
 
   const handleSaveJamaah = (e) => {
@@ -786,15 +806,11 @@ export default function App() {
       addNotification("Mohon lengkapi semua bidang wajib!", "error");
       return;
     }
-
     if (editingJamaah) {
       setJamaahList(prev => prev.map(item => item.id === editingJamaah.id ? { ...jamaahForm, id: item.id } : item));
       addNotification("Data jamaah berhasil diperbarui");
     } else {
-      const newJamaah = {
-        ...jamaahForm,
-        id: Date.now().toString()
-      };
+      const newJamaah = { ...jamaahForm, id: Date.now().toString() };
       setJamaahList(prev => [...prev, newJamaah]);
       addNotification("Jamaah baru berhasil ditambahkan");
     }
@@ -805,10 +821,7 @@ export default function App() {
 
   const handleEditJamaah = (jamaah) => {
     setEditingJamaah(jamaah);
-    setJamaahForm({
-      ...jamaah,
-      qurban: jamaah.qurban || "Penerima"
-    });
+    setJamaahForm({ ...jamaah, qurban: jamaah.qurban || "Penerima" });
     setShowJamaahModal(true);
   };
 
@@ -824,26 +837,18 @@ export default function App() {
     const cleanUsername = newAccUsername.trim().toLowerCase();
     
     if (!cleanUsername || !newAccPassword.trim() || !newAccLabel.trim()) {
-      addNotification("Mohon lengkapi semua bidang isian pembuatan akun!", "error");
+      addNotification("Mohon lengkapi semua isian akun!", "error");
       return;
     }
-
     if (userDatabase[cleanUsername]) {
-      addNotification("Username tersebut sudah terdaftar! Gunakan username lain.", "error");
+      addNotification("Username sudah terdaftar!", "error");
       return;
     }
-
     setUserDatabase(prev => ({
       ...prev,
-      [cleanUsername]: {
-        password: newAccPassword,
-        role: newAccRole,
-        label: newAccLabel
-      }
+      [cleanUsername]: { password: newAccPassword, role: newAccRole, label: newAccLabel }
     }));
-
-    addNotification(`Akun baru dengan peran "${newAccRole}" berhasil dibuat!`);
-    
+    addNotification(`Akun baru untuk "${newAccLabel}" berhasil dibuat!`);
     setNewAccUsername("");
     setNewAccPassword("");
     setNewAccLabel("");
@@ -851,53 +856,46 @@ export default function App() {
   };
 
   const handleDeleteAccount = (usernameKey) => {
-    if (usernameKey === "admin") {
-      addNotification("Akun admin utama bawaan tidak boleh dihapus demi keamanan!", "error");
+    if (["admin", "takmir", "amil", "jamaah"].includes(usernameKey)) {
+      addNotification("Akun bawaan sistem tidak boleh dihapus!", "error");
       return;
     }
     if (usernameKey === currentUserUsername) {
-      addNotification("Anda tidak dapat menghapus akun yang sedang Anda gunakan saat ini!", "error");
+      addNotification("Anda tidak dapat menghapus akun Anda sendiri!", "error");
       return;
     }
-    if (window.confirm(`Yakin ingin menghapus akun pengguna "${usernameKey}"?`)) {
+    if (window.confirm(`Hapus akun "${usernameKey}"?`)) {
       setUserDatabase(prev => {
         const copy = { ...prev };
         delete copy[usernameKey];
         return copy;
       });
-      addNotification(`Akun "${usernameKey}" berhasil dihapus.`, "warning");
+      addNotification(`Akun "${usernameKey}" dihapus.`, "warning");
     }
   };
 
   const handleSaveNewPassword = (e) => {
     e.preventDefault();
     if (!newPasswordValue.trim()) {
-      addNotification("Password baru tidak boleh kosong!", "error");
+      addNotification("Password tidak boleh kosong!", "error");
       return;
     }
-
     setUserDatabase(prev => ({
       ...prev,
-      [editingAccountPassword]: {
-        ...prev[editingAccountPassword],
-        password: newPasswordValue.trim()
-      }
+      [editingAccountPassword]: { ...prev[editingAccountPassword], password: newPasswordValue.trim() }
     }));
-
-    addNotification(`Password untuk akun "${editingAccountPassword}" berhasil diganti!`, "success");
+    addNotification(`Password berhasil diganti!`, "success");
     setEditingAccountPassword(null);
     setNewPasswordValue("");
   };
 
   const createWAShareLink = (title, rtTitle, summaryText) => {
-    const message = `*${masjidName}*\n\n📝 *${title}*\nWilayah: ${rtTitle}\nTanggal: ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}\n\n${summaryText}\n\n_Catatan: Dokumen cetak (PDF) tersedia di pengurus._`;
+    const message = `*${masjidName}*\n\n📝 *${title}*\nWilayah: ${rtTitle}\nTanggal: ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}\n\n${summaryText}\n\n_Catatan: Dokumen cetak tersedia di pengurus._`;
     return `https://wa.me/?text=${encodeURIComponent(message)}`;
   };
 
-  // =========================================================
-  // SISTEM CETAK LAPORAN & PEMBUATAN PDF (F4 LAYOUT & RESPONSIVE)
-  // =========================================================
-  const generateHTMLTemplate = (docTitle, rtTitle, summaryHTML, tableHeaderHTML, tableRowsHTML, waLink, pdfFilename) => {
+  // SYSTEM CETAK PDF / PREVIEW
+  const generateHTMLTemplate = (docTitle, rtTitle, summaryHTML, tableHeaderHTML, tableRowsHTML, waLink) => {
     return `
       <!DOCTYPE html>
       <html lang="id">
@@ -905,70 +903,18 @@ export default function App() {
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>${docTitle} - ${masjidName}</title>
-          <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-            body { 
-              font-family: 'Inter', sans-serif; 
-              background-color: #f1f5f9; 
-              margin: 0; 
-              padding: 0; 
-            }
-            .wrapper {
-              width: 100%;
-              overflow-x: auto;
-              background-color: #cbd5e1;
-              padding: 20px 10px;
-              box-sizing: border-box;
-            }
-            .print-container {
-              width: 215mm;
-              min-height: 330mm;
-              background: white;
-              padding: 15mm;
-              margin: 0 auto;
-              box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
-              box-sizing: border-box;
-            }
-            .control-panel {
-              width: 100%;
-              max-width: 215mm;
-              margin: 0 auto 15px auto;
-              background: white;
-              padding: 15px 20px;
-              border-radius: 8px;
-              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              box-sizing: border-box;
-              flex-wrap: wrap;
-              gap: 10px;
-            }
-            .btn-group {
-              display: flex; 
-              gap: 8px; 
-              flex-wrap: wrap;
-            }
-            .btn {
-              padding: 10px 16px;
-              border-radius: 6px;
-              font-size: 13px;
-              font-weight: 600;
-              cursor: pointer;
-              text-decoration: none;
-              display: inline-flex;
-              align-items: center;
-              justify-content: center;
-              gap: 8px;
-              border: none;
-            }
+            body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; margin: 0; padding: 0; }
+            .wrapper { width: 100%; overflow-x: auto; background-color: #cbd5e1; padding: 20px 10px; box-sizing: border-box; }
+            .print-container { width: 215mm; min-height: 330mm; background: white; padding: 15mm; margin: 0 auto; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2); box-sizing: border-box; }
+            .control-panel { width: 100%; max-width: 215mm; margin: 0 auto 15px auto; background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; flex-wrap: wrap; gap: 10px; }
+            .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+            .btn { padding: 10px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; }
             .btn-close { background: #ef4444; color: white; }
             .btn-wa { background: #25D366; color: white; }
             .btn-pdf-native { background: #0f172a; color: white; }
-            .btn-pdf-web { background: #3b82f6; color: white; }
             
-            /* TATA LETAK ISI KERTAS */
             .kop-surat { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #0f172a; padding-bottom: 12px; margin-bottom: 20px; gap: 15px;}
             .kop-surat .logo { width: 55px; height: 55px; object-fit: contain; }
             .kop-surat h1 { margin: 0; font-size: 18px; font-weight: 800; color: #0f172a; }
@@ -991,50 +937,18 @@ export default function App() {
             .signature-box { text-align: center; width: 160px; }
             .signature-line { margin-top: 50px; border-top: 1px solid #0f172a; padding-top: 4px; font-weight: bold; color: #0f172a; }
 
-            /* MEDIA SCREEN: Responsive Layout on mobile/tablet view screen */
             @media screen and (max-width: 215mm) {
-              .wrapper {
-                padding: 10px 5px;
-                background-color: #f1f5f9;
-              }
-              .print-container {
-                width: 100%;
-                min-height: auto;
-                padding: 15px;
-                box-shadow: none;
-                border-radius: 8px;
-                border: 1px solid #e2e8f0;
-              }
-              .kop-surat {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 12px;
-                text-align: left;
-              }
-              .kop-surat .tanggal {
-                text-align: left;
-              }
-              .signature-area {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 30px;
-              }
-              .signature-box {
-                width: 100%;
-                text-align: left;
-              }
-              .signature-box.text-right {
-                text-align: left;
-              }
-              table {
-                font-size: 9px;
-              }
-              th, td {
-                padding: 4px 6px;
-              }
+              .wrapper { padding: 10px 5px; background-color: #f1f5f9; }
+              .print-container { width: 100%; min-height: auto; padding: 15px; box-shadow: none; border-radius: 8px; border: 1px solid #e2e8f0; }
+              .kop-surat { flex-direction: column; align-items: flex-start; gap: 12px; text-align: left; }
+              .kop-surat .tanggal { text-align: left; }
+              .signature-area { flex-direction: column; align-items: flex-start; gap: 30px; }
+              .signature-box { width: 100%; text-align: left; }
+              .signature-box.text-right { text-align: left; }
+              table { font-size: 9px; }
+              th, td { padding: 4px 6px; }
             }
 
-            /* MEDIA PRINT: Pengaturan Kertas Fisik (F4 / Folio: 215mm x 330mm) */
             @media print {
               body { padding: 0; background: white; margin: 0; display: block; }
               .wrapper { background: transparent; padding: 0; overflow: visible; }
@@ -1045,29 +959,19 @@ export default function App() {
           </style>
         </head>
         <body>
-          
           <div class="wrapper">
             <div class="control-panel">
-              <button onclick="window.parent.postMessage('CLOSE_PRINT_FRAME', '*')" class="btn btn-close">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> 
-                Tutup Preview
-              </button>
+              <button onclick="window.parent.postMessage('CLOSE_PRINT_FRAME', '*')" class="btn btn-close">Tutup Preview</button>
               <div class="btn-group">
-                <a href="${waLink}" target="_blank" class="btn btn-wa">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> 
-                  <span>Bagikan WA</span>
-                </a>
-                <button onclick="window.print()" class="btn btn-pdf-native">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> 
-                  <span>Cetak / Simpan PDF</span>
-                </button>
+                <a href="${waLink}" target="_blank" class="btn btn-wa">Bagikan WA</a>
+                <button onclick="window.print()" class="btn btn-pdf-native">Cetak / PDF</button>
               </div>
             </div>
 
             <div id="print-area" class="print-container">
               <div class="kop-surat">
                 <div style="display: flex; align-items: center; gap: 15px;">
-                  ${masjidLogoUrl ? `<img src="${masjidLogoUrl}" class="logo" crossorigin="anonymous" />` : `<div style="width: 45px; height: 45px; background: #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #64748b; font-size:10px;">LOGO</div>`}
+                  ${masjidLogoUrl ? `<img src="${masjidLogoUrl}" class="logo" />` : `<div style="width: 45px; height: 45px; background: #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #64748b; font-size:10px;">LOGO</div>`}
                   <div>
                     <h1>${masjidName}</h1>
                     <p>Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}</p>
@@ -1088,12 +992,8 @@ export default function App() {
               
               <div class="table-wrapper">
                 <table>
-                  <thead>
-                    ${tableHeaderHTML}
-                  </thead>
-                  <tbody>
-                    ${tableRowsHTML}
-                  </tbody>
+                  <thead>${tableHeaderHTML}</thead>
+                  <tbody>${tableRowsHTML}</tbody>
                 </table>
               </div>
               
@@ -1158,8 +1058,7 @@ export default function App() {
       docTitle = `Daftar Penyaluran Zakat Fitrah (Beras)`;
       const mustahikList = filteredWarga.filter(j => j.fitrah !== "Muzakki" || j.isGuruNgaji);
       const totalJiwaMustahik = mustahikList.reduce((acc, curr) => acc + curr.anggota, 0);
-
-      waSummaryText = `✔️ Total Beras Terkumpul: ${totalTimbanganFitrahValue.toFixed(1)} Kg\n✔️ Penerima di wilayah ini: ${mustahikList.length} KK\n\nSilakan datang ke masjid untuk pengambilan.`;
+      waSummaryText = `✔️ Total Beras Terkumpul: ${totalTimbanganFitrahValue.toFixed(1)} Kg\n✔️ Penerima: ${mustahikList.length} KK`;
 
       summaryHTML = `
         <div style="margin-bottom: 15px; padding: 12px; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px;">
@@ -1174,7 +1073,6 @@ export default function App() {
         </div>
       `;
 
-      // Kolom "Total Jatah" (jumlah kg beras) Dihilangkan dari tabel cetak fitrah sesuai permintaan
       tableHeaderHTML = `
         <tr>
           <th class="text-center" style="width: 8%;">No</th>
@@ -1187,7 +1085,6 @@ export default function App() {
       tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => {
         let kriteria = j.fitrah !== "Muzakki" ? `Mustahik ${j.fitrah}` : "";
         if (j.isGuruNgaji) kriteria += (kriteria ? " + " : "") + "Guru Ngaji";
-
         return `
           <tr>
             <td class="text-center">${i + 1}</td>
@@ -1198,15 +1095,14 @@ export default function App() {
             </td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="4" class="text-center" style="padding: 20px; font-style: italic; color: #94a3b8;">Tidak ada jemaah penerima Zakat Fitrah pada wilayah ini.</td></tr>`;
+      }).join('') : `<tr><td colspan="4" class="text-center" style="padding: 20px;">Tidak ada penerima.</td></tr>`;
     }
 
     else if (reportType === "zuru") {
       docTitle = `Daftar Penyaluran Zakat Zuru' (Hasil Pertanian)`;
       const mustahikList = filteredWarga.filter(j => j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
       const totalJiwaMustahik = mustahikList.reduce((acc, curr) => acc + curr.anggota, 0);
-
-      waSummaryText = `✔️ Total Panen Terkumpul: ${totalTimbanganZuruValue.toFixed(1)} Kg\n✔️ Penerima di wilayah ini: ${mustahikList.length} KK\n\nSilakan datang ke masjid untuk pengambilan jatah Zakat Zuru'.`;
+      waSummaryText = `✔️ Total Panen: ${totalTimbanganZuruValue.toFixed(1)} Kg`;
 
       summaryHTML = `
         <div style="margin-bottom: 15px; padding: 12px; background-color: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 6px;">
@@ -1221,7 +1117,6 @@ export default function App() {
         </div>
       `;
 
-      // Kolom "Total Jatah" (jumlah kg hasil panen) Dihilangkan dari tabel cetak zuru' sesuai permintaan
       tableHeaderHTML = `
         <tr>
           <th class="text-center" style="width: 8%;">No</th>
@@ -1234,7 +1129,6 @@ export default function App() {
       tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => {
         let kriteria = j.zuru !== "Bukan Mustahik" ? `Mustahik ${j.zuru}` : "";
         if (j.isGuruNgaji) kriteria += (kriteria ? " + " : "") + "Guru Ngaji";
-
         return `
           <tr>
             <td class="text-center">${i + 1}</td>
@@ -1245,19 +1139,18 @@ export default function App() {
             </td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="4" class="text-center" style="padding: 20px; font-style: italic; color: #94a3b8;">Tidak ada jemaah penerima Zakat Zuru' pada wilayah ini.</td></tr>`;
+      }).join('') : `<tr><td colspan="4" class="text-center" style="padding: 20px;">Tidak ada penerima.</td></tr>`;
     }
     
     else if (reportType === "terpadu") {
       docTitle = `Rekap Penyaluran Zakat Terpadu (Fitrah & Zuru')`;
       const mustahikList = filteredWarga.filter(j => j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
-      
-      waSummaryText = `✔️ Dokumen ini adalah rekapitulasi penyaluran Zakat Fitrah dan Zakat Zuru' wilayah ${rtTitle} sekaligus. Terdapat ${mustahikList.length} KK Penerima.`;
+      waSummaryText = `Rekap Zakat Fitrah & Zuru wilayah ${rtTitle}.`;
 
       summaryHTML = `
         <div style="margin-bottom: 15px; padding: 12px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
           <h3 style="margin-top: 0; color: #334155; font-size: 11px; text-transform: uppercase;">Ringkasan Distribusi Terpadu</h3>
-          <p style="margin: 4px 0 0 0; font-size: 10px; color: #64748b;">Menampilkan semua KK yang menerima baik Zakat Fitrah maupun Zakat Zuru' (termasuk tambahan khusus Guru Ngaji).</p>
+          <p style="margin: 4px 0 0 0; font-size: 10px; color: #64748b;">Menampilkan semua KK yang menerima baik Zakat Fitrah maupun Zakat Zuru'.</p>
         </div>
       `;
 
@@ -1272,14 +1165,11 @@ export default function App() {
       `;
       
       tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => {
-        const jatahFitrah = getJatahFitrahTotal(j);
-        const jatahZuru = getJatahZuruTotal(j);
-        
         let kriteriaFitrah = j.fitrah !== "Muzakki" ? `Mustahik ${j.fitrah}` : "-";
-        if (j.isGuruNgaji && jatahFitrah > 0) kriteriaFitrah += "<br/>+ Guru Ngaji";
+        if (j.isGuruNgaji) kriteriaFitrah += "<br/>+ Guru Ngaji";
         
         let kriteriaZuru = j.zuru !== "Bukan Mustahik" ? `Mustahik ${j.zuru}` : "-";
-        if (j.isGuruNgaji && jatahZuru > 0) kriteriaZuru += "<br/>+ Guru Ngaji";
+        if (j.isGuruNgaji) kriteriaZuru += "<br/>+ Guru Ngaji";
 
         return `
           <tr>
@@ -1292,33 +1182,22 @@ export default function App() {
             </td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="5" class="text-center" style="padding: 20px; font-style: italic; color: #94a3b8;">Tidak ada penerima zakat terpadu di wilayah ini.</td></tr>`;
+      }).join('') : `<tr><td colspan="5" class="text-center">Tidak ada penerima terpadu.</td></tr>`;
     }
 
     else if (reportType === "qurban") {
       docTitle = `Daftar Penerima & Tanda Terima Distribusi Daging Qurban`;
-      
-      const qurbanList = filteredWarga.filter(warga => {
-        if (warga.qurban && warga.qurban.startsWith("Sahibul Qurban")) return false;
-        if (qurbanHanyaMustahik) {
-          const isMustahikFitrah = warga.fitrah !== "Muzakki";
-          const isMustahikZuru = warga.zuru !== "Bukan Mustahik";
-          return isMustahikFitrah || isMustahikZuru || warga.isGuruNgaji;
-        }
-        return true;
-      });
-
-      waSummaryText = `🥩 Info Pembagian Qurban 🥩\n\n✔️ Penerima (${rtTitle}): ${qurbanList.length} KK\n\nJatah per KK:\n- Sapi: ${jatahDagingSapiPerKK} Kg\n- Kambing: ${jatahDagingKambingPerKK} Kg`;
+      const qurbanList = filteredWarga.filter(w => !w.qurban?.startsWith("Sahibul Qurban"));
+      waSummaryText = `🥩 Distribusi Qurban RT ${rtTitle}. Sapi: ${jatahDagingSapiPerKK} Kg, Kambing: ${jatahDagingKambingPerKK} Kg`;
 
       summaryHTML = `
         <div style="margin-bottom: 20px; padding: 15px; background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px;">
           <h3 style="margin-top: 0; color: #be123c; font-size: 14px; text-transform: uppercase;">Ringkasan Data Penyaluran Daging Qurban</h3>
           <table style="width: 100%; border: none; margin-top: 5px;">
             <tr>
-              <td style="width: 25%; border: none; padding: 5px 0;"><strong>Daging Sapi Terkumpul:</strong><br/><span style="font-size: 16px; font-weight: bold; color: #e11d48;">${totalTimbanganQurbanSapiValue.toFixed(1)} Kg</span></td>
-              <td style="width: 25%; border: none; padding: 5px 0;"><strong>Kambing Terkumpul:</strong><br/><span style="font-size: 16px; font-weight: bold; color: #d97706;">${totalTimbanganQurbanKambingValue.toFixed(1)} Kg</span></td>
-              <td style="width: 25%; border: none; padding: 5px 0;"><strong>Warga Penerima:</strong><br/><span style="font-size: 16px; font-weight: bold;">${qurbanList.length} KK</span></td>
-              <td style="width: 25%; border: none; padding: 5px 0;"><strong>Porsi Jatah per KK:</strong><br/><span style="font-size: 11px;">Sapi: ${jatahDagingSapiPerKK} Kg<br/>Kambing: ${jatahDagingKambingPerKK} Kg</span></td>
+              <td style="width: 25%; border: none; padding: 5px 0;"><strong>Sapi:</strong><br/>${totalTimbanganQurbanSapiValue.toFixed(1)} Kg</td>
+              <td style="width: 25%; border: none; padding: 5px 0;"><strong>Kambing:</strong><br/>${totalTimbanganQurbanKambingValue.toFixed(1)} Kg</td>
+              <td style="width: 25%; border: none; padding: 5px 0;"><strong>Penerima:</strong><br/>${qurbanList.length} KK</td>
             </tr>
           </table>
         </div>
@@ -1340,49 +1219,17 @@ export default function App() {
         <tr>
           <td class="text-center">${i + 1}</td>
           <td class="font-bold">${j.nama}</td>
-          <td class="text-center font-bold">RT ${j.rt}/${j.rw}</td>
-          <td style="font-size: 9px;">${j.alamat}</td>
-          <td class="text-right font-bold" style="color: #e11d48;">${jatahDagingSapiPerKK} Kg</td>
-          <td class="text-right font-bold" style="color: #d97706;">${jatahDagingKambingPerKK} Kg</td>
-          <td class="text-left" style="height: 35px;"></td>
+          <td class="text-center">RT ${j.rt}/${j.rw}</td>
+          <td>${j.alamat}</td>
+          <td class="text-right font-bold text-rose-600">${jatahDagingSapiPerKK} Kg</td>
+          <td class="text-right font-bold text-amber-600">${jatahDagingKambingPerKK} Kg</td>
+          <td style="height:35px;"></td>
         </tr>
-      `).join('') : `<tr><td colspan="7" class="text-center" style="padding: 30px; font-style: italic; color: #94a3b8;">Tidak ada warga penerima daging qurban.</td></tr>`;
-    }
-
-    else if (reportType === "pekurban") {
-      docTitle = `Daftar Nama Pekurban (Sahibul Qurban)`;
-      waSummaryText = `Terima kasih kepada para jamaah Sahibul Qurban wilayah ${rtTitle}. Semoga amal ibadah qurban diterima Allah SWT. Amin.`;
-      
-      tableHeaderHTML = `
-        <tr>
-          <th class="text-center" style="width: 5%;">No</th>
-          <th style="width: 25%;">Nama Pekurban</th>
-          <th class="text-center" style="width: 15%;">RT / RW</th>
-          <th style="width: 30%;">Alamat</th>
-          <th class="text-center" style="width: 25%;">Jenis Hewan Qurban</th>
-        </tr>
-      `;
-
-      const pekurbanList = filteredWarga.filter(warga => warga.qurban && warga.qurban.startsWith("Sahibul Qurban"));
-
-      tableRowsHTML = pekurbanList.length > 0 ? pekurbanList.map((j, i) => {
-        const jenisHewan = j.qurban.replace("Sahibul Qurban - ", "");
-        return `
-          <tr>
-            <td class="text-center">${i + 1}</td>
-            <td class="font-bold">${j.nama}</td>
-            <td class="text-center font-bold">RT ${j.rt} / RW ${j.rw}</td>
-            <td>${j.alamat}</td>
-            <td class="text-center font-bold" style="color: #e11d48;">${jenisHewan}</td>
-          </tr>
-        `;
-      }).join('') : `<tr><td colspan="5" class="text-center" style="padding: 30px; font-style: italic; color: #94a3b8;">Tidak ada data pekurban pada wilayah terpilih ini.</td></tr>`;
+      `).join('') : `<tr><td colspan="7" class="text-center">Tidak ada warga penerima.</td></tr>`;
     }
 
     const waLink = createWAShareLink(docTitle, rtTitle, waSummaryText);
-    const pdfFilename = `${docTitle.replace(/\s+/g, '_')}_${rtTitle.replace(/\s+|\//g, '')}.pdf`;
-
-    const html = generateHTMLTemplate(docTitle, rtTitle, summaryHTML, tableHeaderHTML, tableRowsHTML, waLink, pdfFilename);
+    const html = generateHTMLTemplate(docTitle, rtTitle, summaryHTML, tableHeaderHTML, tableRowsHTML, waLink);
     setPrintIframeData(html);
   };
 
@@ -1390,9 +1237,6 @@ export default function App() {
     handlePrintSelectedReport("qurban");
   };
 
-  // =========================================================
-  // 6. LOGIN FORM RENDERING
-  // =========================================================
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans antialiased">
@@ -1407,17 +1251,14 @@ export default function App() {
           ))}
         </div>
 
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="w-full max-w-md bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-white/20 overflow-hidden z-10 flex flex-col p-6 sm:p-8 space-y-6">
+        <div className="w-full max-w-md bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-white/20 overflow-hidden z-10 flex flex-col p-6 sm:p-8 space-y-6 animate-scaleIn">
           <div className="text-center space-y-2">
             <div className="w-20 h-20 text-emerald-600 flex items-center justify-center mx-auto overflow-hidden">
               {renderMasjidLogo("w-full h-full object-contain rounded-lg", "w-16 h-16")}
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">{masjidName}</h1>
-              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Gerbang Pengelolaan Masjid & Zakat</p>
+              <p className="text-xs text-slate-500 font-semibold font-mono tracking-wider">Sistem Manajemen Sholat & Zakat Terpadu</p>
             </div>
           </div>
 
@@ -1425,15 +1266,13 @@ export default function App() {
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Username</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
-                  <User size={16} />
-                </span>
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><User size={16} /></span>
                 <input 
                   type="text" required
                   placeholder="Masukkan username Anda"
                   value={inputUsername}
                   onChange={(e) => setInputUsername(e.target.value)}
-                  className="w-full text-sm border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold transition-all text-slate-800"
+                  className="w-full text-sm border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 font-semibold text-slate-800"
                 />
               </div>
             </div>
@@ -1441,15 +1280,13 @@ export default function App() {
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Kata Sandi (Password)</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
-                  <Lock size={16} />
-                </span>
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400"><Lock size={16} /></span>
                 <input 
                   type={showPassword ? "text" : "password"} required
-                  placeholder="Masukkan kata sandi Anda"
+                  placeholder="Masukkan kata sandi"
                   value={inputPassword}
                   onChange={(e) => setInputPassword(e.target.value)}
-                  className="w-full text-sm border border-slate-200 bg-slate-50/50 pl-10 pr-10 py-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold transition-all text-slate-800"
+                  className="w-full text-sm border border-slate-200 bg-slate-50/50 pl-10 pr-10 py-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 font-semibold text-slate-800"
                 />
                 <button
                   type="button"
@@ -1463,45 +1300,41 @@ export default function App() {
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-emerald-600/10 flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold rounded-xl text-sm shadow-lg flex items-center justify-center gap-2"
             >
-              <KeyRound size={16} />
-              Masuk Aplikasi
+              <KeyRound size={16} /> Masuk Aplikasi
             </button>
           </form>
         </div>
-
-        <p className="text-center text-slate-500 text-[10px] font-semibold mt-4 z-10 font-mono">
-          &copy; {new Date().getFullYear()} {masjidName}. Keamanan sistem dienkripsi secara lokal.
-        </p>
       </div>
     );
   }
 
-  // =========================================================
-  // MAIN DASHBOARD INTERFACE (AUTHORIZED USER ONLY)
-  // =========================================================
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col antialiased relative">
+      <div className="fixed top-4 right-4 z-50 space-y-2 pointer-events-none">
+        {notifications.map(n => (
+          <div key={n.id} className={`p-4 rounded-xl shadow-lg border text-white text-sm font-medium flex items-center gap-3 transition-all duration-300 transform translate-y-0 ${
+            n.type === 'error' ? 'bg-rose-600 border-rose-700' : 'bg-emerald-600 border-emerald-700'
+          }`}>
+            {n.type === 'error' ? <AlertTriangle size={18} /> : <Check size={18} />}
+            <span>{n.message}</span>
+          </div>
+        ))}
+      </div>
 
-      {/* === HEADER UTAMA === */}
       <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex items-center justify-between shadow-xs sticky top-0 z-40">
         <div className="flex items-center gap-3 sm:gap-4">
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="p-2 hover:bg-slate-100 text-slate-700 rounded-xl transition-all border border-slate-200 shadow-xs"
-            title="Buka Menu"
-          >
+          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 hover:bg-slate-100 text-slate-700 rounded-xl transition-all border border-slate-200 shadow-xs">
             <Menu size={20} />
           </button>
-
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 sm:w-12 sm:h-12 text-emerald-600 flex items-center justify-center overflow-hidden shrink-0">
               {renderMasjidLogo("w-full h-full object-contain rounded-lg", "w-8 h-8 sm:w-10 sm:h-10")}
             </div>
-            <div className="hidden sm:block">
+            <div>
               <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-none">{masjidName}</h1>
-              <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase mt-1 sm:mt-1.5 tracking-wider">Aplikasi Masjid Terpadu</p>
+              <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-wider">Aplikasi Masjid Terpadu</p>
             </div>
           </div>
         </div>
@@ -1509,17 +1342,16 @@ export default function App() {
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 pl-3 pr-2 py-1.5 rounded-2xl">
             <div className="text-left hidden sm:block">
-              <span className="text-[9px] text-emerald-600 font-extrabold block leading-none uppercase">Peran Saat Ini</span>
+              <span className="text-[9px] text-emerald-600 font-extrabold block leading-none uppercase">Pengurus Aktif</span>
               <span className="text-xs font-black text-emerald-955 truncate max-w-[120px] inline-block">{currentUserLabel}</span>
             </div>
-            <button onClick={handleLogout} className="p-1.5 bg-rose-100 hover:bg-rose-200 text-rose-600 rounded-xl transition-all ml-1" title="Pintu Keluar (Logout)">
+            <button onClick={handleLogout} className="p-1.5 bg-rose-100 hover:bg-rose-200 text-rose-600 rounded-xl transition-all ml-1">
               <LogOut size={14} />
             </button>
           </div>
         </div>
       </header>
 
-      {/* === DRAWER MENU NAVIGASI === */}
       {isMenuOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex animate-fadeIn">
           <div className="bg-white w-72 h-full shadow-2xl flex flex-col justify-between p-5 border-r border-slate-200 animate-slideRight">
@@ -1545,7 +1377,7 @@ export default function App() {
                   { id: "fitrah", label: "Zakat Fitrah", icon: Gift },
                   { id: "zuru", label: "Zakat Zuru' (Tani)", icon: Coins },
                   { id: "qurban", label: "Daging Qurban", icon: Heart },
-                  { id: "rbac", label: "Hak Akses & Identitas", icon: UserCheck }
+                  { id: "rbac", label: "Hak Akses & Akun (RBAC)", icon: UserCheck }
                 ].map((item) => {
                   const allowed = hasAccess(item.id);
                   const isActive = activeTab === item.id;
@@ -1575,46 +1407,84 @@ export default function App() {
                   <p className="text-[10px] text-slate-400 font-mono truncate">@{currentUserUsername}</p>
                 </div>
               </div>
-              <button onClick={handleLogout} className="w-full flex items-center justify-center sm:justify-start gap-3 px-3.5 py-3 rounded-xl text-xs font-black text-rose-600 hover:bg-rose-50 transition-all border border-dashed border-rose-100">
-                <LogOut className="w-4.5 h-4.5" />
-                <span>Keluar Aplikasi</span>
-              </button>
             </div>
           </div>
           <div className="flex-1" onClick={() => setIsMenuOpen(false)} />
         </div>
       )}
 
-      {/* === CONTENT AREA UTAMA === */}
       <div className="flex-1 flex flex-col md:flex-row font-sans relative">
         <main className="flex-1 p-4 sm:p-6 overflow-y-auto w-full max-w-7xl mx-auto">
           
           {/* TAB 1: DASHBOARD UTAMA */}
           {activeTab === "dashboard" && (
             <div className="space-y-4 sm:space-y-6">
-              
-              {/* NOTIFIKASI IZIN WEB */}
-              {("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") && (
-                <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fadeIn">
-                  <div className="flex gap-3">
-                    <BellRing className="text-amber-600 mt-0.5 shrink-0" size={18}/>
+
+              {/* === ALARM INTEGRASI MANDATORI H-1 TUGAS JUMAT === */}
+              {infoTugasBesok && (
+                <div className="bg-gradient-to-r from-red-600 to-rose-700 text-white rounded-3xl p-5 sm:p-6 shadow-xl border border-red-500/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-bounce-short relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-6 -mt-6 blur-xl" />
+                  <div className="flex gap-4 items-start">
+                    <div className="p-3 bg-white/15 rounded-2xl border border-white/20 animate-pulse shrink-0">
+                      <BellRing size={28} className="text-amber-300" />
+                    </div>
                     <div>
-                      <h4 className="font-bold text-amber-900 text-xs sm:text-sm">Aktifkan Notifikasi Pengingat Tugas</h4>
-                      <p className="text-[10px] sm:text-xs text-amber-700 mt-0.5">Izinkan peramban untuk memberi Anda pop-up notifikasi latar belakang saat Anda dijadwalkan bertugas di hari esok.</p>
+                      <div className="flex items-center gap-2">
+                        <span className="bg-white/20 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black tracking-wider uppercase animate-pulse">SIRENE PENGINGAT H-1</span>
+                        <span className="text-[10px] text-rose-200 font-semibold font-mono">Tugas Esok Hari</span>
+                      </div>
+                      <h3 className="text-lg sm:text-xl font-black tracking-tight mt-1.5">Assalamualaikum {currentUserLabel}, Anda Bertugas Besok!</h3>
+                      <p className="text-xs text-rose-100 mt-1 max-w-xl">
+                        Berdasarkan kalender pasaran Jawa, esok hari adalah <strong className="text-white">Jumat {infoTugasBesok.pasaran} ({infoTugasBesok.tanggal})</strong>. 
+                        Anda dijadwalkan bertugas sebagai <strong className="text-amber-300 uppercase underline decoration-dashed decoration-2">{infoTugasBesok.peran}</strong>. Mohon persiapkan diri dan hadir 15 menit sebelum waktu adzan.
+                      </p>
                     </div>
                   </div>
-                  <button onClick={() => Notification.requestPermission().then(() => addNotification("Izin notifikasi diperbarui."))} className="px-4 py-2 bg-amber-600 text-white text-xs font-bold rounded-xl shadow-sm hover:bg-amber-700 shrink-0">Izinkan Notifikasi</button>
+                  <div className="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto shrink-0 z-10">
+                    <button 
+                      onClick={playAlarmSound} 
+                      className="w-full sm:w-auto px-4.5 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                    >
+                      🔊 Tes Suara Alarm
+                    </button>
+                    <button 
+                      onClick={() => { setIsDutyDismissed(true); addNotification("Kesiapan tugas Sholat Jumat telah Anda konfirmasikan! Terima kasih.", "success"); }}
+                      className="w-full sm:w-auto px-4.5 py-3 bg-white text-rose-700 hover:bg-rose-50 font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                    >
+                      <Check size={14} /> Saya Siap Bertugas
+                    </button>
+                  </div>
                 </div>
               )}
 
+              {/* MODE SIMULASI ALARM (SANGAT MEMBANTU TAKMIR UNTUK DEMO/TES APAPUN HARINYA) */}
+              <div className="bg-slate-100 border border-slate-300/80 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="text-xs font-semibold text-slate-600">
+                  <p className="font-extrabold text-slate-800">🛠️ Mode Uji Pengingat Sholat Jumat (Simulator)</p>
+                  <p className="text-slate-500 text-[10px] sm:text-xs">Aktifkan simulator ini jika Anda ingin menguji alarm H-1 di hari selain Kamis. Pastikan Anda masuk menggunakan akun petugas jumat seperti <strong className="text-slate-800 font-mono">khsyukron</strong>.</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setIsSimulatedThursday(!isSimulatedThursday);
+                    setIsDutyDismissed(false);
+                    addNotification(isSimulatedThursday ? "Simulator dimatikan." : "Sistem disimulasikan sebagai hari Kamis (H-1)!", "info");
+                  }} 
+                  className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+                    isSimulatedThursday ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {isSimulatedThursday ? "Matikan Simulator Kamis" : "Simulasikan Hari Kamis (H-1)"}
+                </button>
+              </div>
+
               {/* STATUS BAR CLOUD SYNC & REFRESH */}
-              <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fadeIn">
+              <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                    <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 border border-emerald-100 shrink-0">
                       <Database size={18} className={isSyncing ? "animate-pulse" : ""} />
                    </div>
                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server (Google Sheets)</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Server</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                          <div className={`w-2 h-2 rounded-full shrink-0 ${syncStatus === 'Tersinkronisasi' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                          <p className="text-xs sm:text-sm font-black text-slate-800 truncate">{syncStatus}</p>
@@ -1624,23 +1494,19 @@ export default function App() {
                 <button 
                    onClick={handleFetchFromGoogleSheets}
                    disabled={isSyncing}
-                   className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                   className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
                 >
-                   <RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} /> 
-                   {isSyncing ? "Memuat Data..." : "Refresh Data Server"}
+                   <RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} /> Refresh Data Server
                 </button>
               </div>
 
-              <div className="bg-emerald-700 text-white rounded-2xl p-5 sm:p-6 shadow-md shadow-emerald-700/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="bg-emerald-700 text-white rounded-2xl p-5 sm:p-6 shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <MapPin className="text-emerald-300 w-5 h-5 shrink-0" />
                     <span className="text-[10px] sm:text-xs uppercase tracking-wider font-extrabold text-emerald-200">Lokasi Penentuan Jadwal Sholat</span>
                   </div>
                   <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">Desa {lokasi.desa || ''}, {lokasi.kecamatan}, <br className="block sm:hidden"/> {lokasi.kabupaten}, {lokasi.provinsi}</h2>
-                  {lokasi.latitude && lokasi.longitude && (
-                    <p className="text-[10px] text-emerald-200 font-mono mt-1">Koordinat Aktif: {parseFloat(lokasi.latitude).toFixed(5)}, {parseFloat(lokasi.longitude).toFixed(5)}</p>
-                  )}
                 </div>
                 {hasAccess("rbac") && ( 
                   <button onClick={() => { setTempLokasi(lokasi); setIsSettingLokasi(true); }} className="w-full sm:w-auto justify-center bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/20 px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2">
@@ -1650,50 +1516,30 @@ export default function App() {
               </div>
 
               {isSettingLokasi && (
-                <div className="bg-white border border-emerald-100 rounded-2xl p-5 shadow-lg space-y-4 animate-fadeIn">
+                <div className="bg-white border border-emerald-100 rounded-2xl p-5 shadow-lg space-y-4">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2 text-emerald-700"><MapPin size={16} /> Konfigurasi Geografis Masjid</h3>
-                    <button 
-                      type="button" 
-                      onClick={handleGetGPSLocation}
-                      className="w-full sm:w-auto px-4 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl text-xs font-bold transition-all flex justify-center items-center gap-2"
-                    >
+                    <button type="button" onClick={handleGetGPSLocation} className="w-full sm:w-auto px-4 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl text-xs font-bold transition-all flex justify-center items-center gap-2">
                       <Smartphone size={14} /> Ambil GPS HP Otomatis
                     </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs text-slate-500 font-bold mb-1">Desa / Kelurahan</label>
-                      <input type="text" value={tempLokasi.desa || ""} onChange={(e) => setTempLokasi({...tempLokasi, desa: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold focus:ring-2 focus:ring-emerald-500/20" />
+                      <input type="text" value={tempLokasi.desa || ""} onChange={(e) => setTempLokasi({...tempLokasi, desa: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none" />
                     </div>
                     <div>
                       <label className="block text-xs text-slate-500 font-bold mb-1">Kecamatan</label>
-                      <input type="text" value={tempLokasi.kecamatan} onChange={(e) => setTempLokasi({...tempLokasi, kecamatan: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold focus:ring-2 focus:ring-emerald-500/20" />
+                      <input type="text" value={tempLokasi.kecamatan} onChange={(e) => setTempLokasi({...tempLokasi, kecamatan: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none" />
                     </div>
                     <div>
                       <label className="block text-xs text-slate-500 font-bold mb-1">Kabupaten / Kota</label>
-                      <input type="text" value={tempLokasi.kabupaten} onChange={(e) => setTempLokasi({...tempLokasi, kabupaten: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold focus:ring-2 focus:ring-emerald-500/20" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 font-bold mb-1">Provinsi</label>
-                      <input type="text" value={tempLokasi.provinsi} onChange={(e) => setTempLokasi({...tempLokasi, provinsi: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold focus:ring-2 focus:ring-emerald-500/20" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 font-bold mb-1">Latitude (Koordinat Lintang)</label>
-                      <input type="number" step="0.000001" value={tempLokasi.latitude || ""} onChange={(e) => setTempLokasi({...tempLokasi, latitude: parseFloat(e.target.value) || 0})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold focus:ring-2 focus:ring-emerald-500/20 font-mono" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 font-bold mb-1">Longitude (Koordinat Bujur)</label>
-                      <input type="number" step="0.000001" value={tempLokasi.longitude || ""} onChange={(e) => setTempLokasi({...tempLokasi, longitude: parseFloat(e.target.value) || 0})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none font-semibold focus:ring-2 focus:ring-emerald-500/20 font-mono" />
+                      <input type="text" value={tempLokasi.kabupaten} onChange={(e) => setTempLokasi({...tempLokasi, kabupaten: e.target.value})} className="w-full text-sm bg-slate-50 border border-slate-200 p-2.5 rounded-xl outline-none" />
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row justify-end gap-2.5 pt-2">
-                    <button onClick={() => setIsSettingLokasi(false)} className="w-full sm:w-auto px-4 py-2.5 border border-slate-200 text-slate-500 hover:bg-slate-50 text-xs font-bold rounded-xl transition-all">Batal</button>
-                    <button onClick={() => { 
-                      setLokasi(tempLokasi); 
-                      setIsSettingLokasi(false); 
-                      addNotification("Lokasi dan koordinat GPS masjid berhasil disave sebagai acuan sholat!"); 
-                    }} className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow shadow-emerald-600/10">Terapkan Perubahan</button>
+                    <button onClick={() => setIsSettingLokasi(false)} className="w-full sm:w-auto px-4 py-2.5 border border-slate-200 text-slate-500 text-xs font-bold rounded-xl">Batal</button>
+                    <button onClick={() => { setLokasi(tempLokasi); setIsSettingLokasi(false); addNotification("Lokasi berhasil disimpan!"); }} className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl shadow">Terapkan Perubahan</button>
                   </div>
                 </div>
               )}
@@ -1701,14 +1547,14 @@ export default function App() {
               <div className="grid grid-cols-1 gap-4 sm:gap-6">
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center pb-2 border-b border-slate-100 gap-2">
-                    <h3 className="font-bold text-slate-955 flex items-center gap-2"><Compass className="text-emerald-600 w-5 h-5 shrink-0" /> Jadwal Sholat Hari Ini</h3>
-                    <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase tracking-wider self-start sm:self-auto">Akurasi API Kemenag RI</span>
+                    <h3 className="font-bold text-slate-955 flex items-center gap-2"><Compass className="text-emerald-600 w-5 h-5" /> Jadwal Sholat Hari Ini</h3>
+                    <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase tracking-wider">Akurasi API Kemenag RI</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     {Object.entries(jadwalSholat).map(([sholatName, time]) => {
                       const isNext = nextSholat.name === sholatName;
                       return (
-                        <div key={sholatName} className={`p-3 rounded-xl border text-center transition-all ${isNext ? 'bg-emerald-500 border-emerald-600 text-white shadow-md shadow-emerald-500/10 scale-105' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
+                        <div key={sholatName} className={`p-3 rounded-xl border text-center transition-all ${isNext ? 'bg-emerald-500 border-emerald-600 text-white shadow-md scale-105' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
                           <p className={`text-[10px] sm:text-[11px] font-bold ${isNext ? 'text-emerald-100' : 'text-slate-400'}`}>{sholatName}</p>
                           <p className="text-base sm:text-lg font-extrabold tracking-wider mt-1">{time}</p>
                         </div>
@@ -1725,7 +1571,7 @@ export default function App() {
                     <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
                       <div className="flex flex-col sm:flex-row justify-between sm:items-center pb-2 border-b border-slate-100 gap-2">
                         <span className="text-xs text-slate-500 font-bold">{upcomingFridaysList[0].formattedDate}</span>
-                        <span className="text-[10px] sm:text-xs bg-emerald-600 text-white px-2.5 py-0.5 rounded-full font-bold self-start sm:self-auto">Jumat {upcomingFridaysList[0].pasaran}</span>
+                        <span className="text-[10px] sm:text-xs bg-emerald-600 text-white px-2.5 py-0.5 rounded-full font-bold">Jumat {upcomingFridaysList[0].pasaran}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
                         <div>
@@ -1750,7 +1596,7 @@ export default function App() {
                 </div>
 
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
-                  <h3 className="font-bold text-slate-950 flex items-center gap-2 text-sm sm:text-base"><UsersRound className="text-emerald-600 w-5 h-5 shrink-0" /> Sebaran Jiwa Mustahik (Basis RT)</h3>
+                  <h3 className="font-bold text-slate-955 flex items-center gap-2 text-sm sm:text-base"><UsersRound className="text-emerald-600 w-5 h-5 shrink-0" /> Sebaran Jiwa Mustahik (Basis RT)</h3>
                   <div className="space-y-2">
                     {["Berat", "Sedang", "Ringan"].map((asnaf) => {
                       const fitrahCount = getJumlahJiwaPerKategoriFitrah(jamaahList, asnaf);
@@ -2058,7 +1904,6 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-semibold text-slate-700 text-[11px] sm:text-sm">
-                      {/* === FILTERING BERDASARKAN RT/RW TERPADU === */}
                       {jamaahList
                         .filter(item => {
                           if (filterWilayahJamaah === "Semua") return true;
@@ -2089,7 +1934,7 @@ export default function App() {
                               <td className="p-3 sm:p-4 text-right">
                                 <div className="flex justify-end gap-1.5">
                                   <button onClick={() => handleEditJamaah(item)} className="p-1.5 sm:p-2 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 rounded-lg text-slate-600 transition-all" title="Ubah Data"><Edit2 size={14} /></button>
-                                  <button onClick={() => handleDeleteJamaah(item.id)} className="p-1.5 sm:p-2 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg text-rose-600 transition-all" title="Hapus Data"><Trash2 size={14} /></button>
+                                  <button onClick={() => handleDeleteJamaah(id)} className="p-1.5 sm:p-2 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg text-rose-600 transition-all" title="Hapus Data"><Trash2 size={14} /></button>
                                 </div>
                               </td>
                             )}
@@ -2110,7 +1955,6 @@ export default function App() {
                     </div>
                     <div className="overflow-y-auto p-5 sm:p-6">
                       <form onSubmit={handleSaveJamaah} className="space-y-4 sm:space-y-5">
-                        
                         <div className="grid grid-cols-1 gap-4">
                           <div>
                             <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1.5">Nama Kepala Keluarga *</label>
@@ -2202,14 +2046,12 @@ export default function App() {
                               <option value="Sahibul Qurban - Sapi">Sahibul Qurban Sapi (Pekurban)</option>
                               <option value="Sahibul Qurban - Kambing">Sahibul Qurban Kambing (Pekurban)</option>
                             </select>
-                            <p className="text-[9px] sm:text-[10px] text-slate-500 mt-1.5 font-medium leading-relaxed">Sahibul Qurban (Pekurban) akan dipisahkan dan otomatis dikeluarkan dari kalkulator pembagian daging qurban dan cetak PDF tanda terima kupon.</p>
                           </div>
-
                         </div>
 
                         <div className="flex flex-col sm:flex-row justify-end gap-2.5 pt-5 pb-2 border-t border-slate-100 shrink-0">
-                          <button type="button" onClick={() => setShowJamaahModal(false)} className="w-full sm:w-auto px-5 py-3.5 sm:py-2.5 border border-slate-300 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all">Batal</button>
-                          <button type="submit" className="w-full sm:w-auto px-5 py-3.5 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition-all">Simpan Warga</button>
+                          <button type="button" onClick={() => setShowJamaahModal(false)} className="w-full sm:w-auto px-5 py-3.5 sm:py-2.5 border border-slate-300 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50">Batal</button>
+                          <button type="submit" className="w-full sm:w-auto px-5 py-3.5 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md">Simpan Warga</button>
                         </div>
                       </form>
                     </div>
@@ -2274,7 +2116,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 2. Simulasi & Distribusi Otomatis */}
+                {/* 2. Rencana Penyaluran */}
                 <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-xs lg:col-span-2 space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-100 pb-2.5 gap-3">
                     <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5"><UsersRound size={16} className="text-emerald-600 shrink-0" /> 2. Rencana Penyaluran (Zakat Fitrah)</h3>
@@ -2301,7 +2143,7 @@ export default function App() {
                               disabled={!canEditFitrah}
                               value={tempAlokasiFitrah[asnaf] || 0} 
                               onChange={(e) => setTempAlokasiFitrah({...tempAlokasiFitrah, [asnaf]: parseFloat(e.target.value) || 0})}
-                              className="w-full sm:w-12 text-center text-sm sm:text-xs font-black outline-none border border-slate-200 sm:border-0 sm:border-b sm:border-dashed sm:border-slate-300 focus:border-emerald-500 text-slate-800 p-1 sm:p-0 rounded-md sm:rounded-none" 
+                              className="w-full sm:w-12 text-center text-sm sm:text-xs font-black outline-none border border-slate-200 text-slate-800 p-1 rounded-md" 
                             />
                             <span className="text-[10px] text-slate-400 font-bold hidden sm:block">Kg</span>
                           </div>
@@ -2315,7 +2157,7 @@ export default function App() {
                             disabled={!canEditFitrah}
                             value={tempAlokasiFitrah.GuruNgaji || 0} 
                             onChange={(e) => setTempAlokasiFitrah({...tempAlokasiFitrah, GuruNgaji: parseFloat(e.target.value) || 0})}
-                            className="w-full sm:w-12 text-center text-sm sm:text-xs font-black outline-none border border-emerald-300 bg-transparent sm:border-0 sm:border-b sm:border-dashed focus:border-emerald-600 text-emerald-900 p-1 sm:p-0 rounded-md sm:rounded-none" 
+                            className="w-full sm:w-12 text-center text-sm sm:text-xs font-black outline-none border border-emerald-300 bg-transparent text-emerald-900 p-1 rounded-md" 
                           />
                           <span className="text-[10px] text-emerald-700 font-bold hidden sm:block">Kg</span>
                         </div>
@@ -2366,10 +2208,9 @@ export default function App() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-                {/* 1. Log Timbangan Zuru' Masuk */}
+                {/* 1. Log Timbangan Panen */}
                 <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-xs space-y-4">
                   <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5"><Coins size={16} className="text-teal-600" /> 1. Log Timbangan Panen Masuk</h3>
-                  
                   {canEditZuru ? (
                     <div className="flex flex-col sm:flex-row gap-2">
                       <input 
@@ -2383,7 +2224,7 @@ export default function App() {
                       <button onClick={() => addTimbangan('zuru')} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-3 sm:py-2 rounded-xl text-xs font-bold transition-all shrink-0">Tambah</button>
                     </div>
                   ) : (
-                    <p className="text-[11px] text-rose-600 bg-rose-50 border border-rose-100 p-2.5 rounded-lg font-bold">Peran Anda tidak diizinkan mengubah timbangan zakat zuru'.</p>
+                    <p className="text-[11px] text-rose-600 bg-rose-50 border border-rose-100 p-2.5 rounded-lg font-bold">Peran Anda tidak diizinkan mengubah timbangan.</p>
                   )}
 
                   <div className="space-y-2 max-h-48 sm:max-h-56 overflow-y-auto pr-1">
@@ -2393,7 +2234,7 @@ export default function App() {
                         <div className="flex items-center gap-2">
                           <span className="text-slate-900 font-bold font-mono text-sm sm:text-xs">{berat} Kg</span>
                           {canEditZuru && (
-                            <button onClick={() => deleteTimbangan('zuru', idx)} className="text-rose-600 hover:bg-rose-50 p-1.5 hover:bg-rose-50 rounded-lg"><Trash2 size={14} /></button>
+                            <button onClick={() => deleteTimbangan('zuru', idx)} className="text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg"><Trash2 size={14} /></button>
                           )}
                         </div>
                       </div>
@@ -2406,12 +2247,12 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 2. Penyaluran Zuru' */}
+                {/* 2. Rencana Penyaluran Zuru' */}
                 <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-xs lg:col-span-2 space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-100 pb-2.5 gap-3">
                     <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5"><UsersRound size={16} className="text-teal-600 shrink-0" /> 2. Rencana Penyaluran (Hasil Pertanian)</h3>
                     <div className={`px-3 py-1.5 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs w-full sm:w-auto ${statusZuruValue >= 0 ? 'bg-teal-100 text-teal-800 border border-teal-200' : 'bg-rose-100 text-rose-800 border border-rose-200'}`}>
-                      {statusZuruValue >= 0 ? `Panen Surplus: +${statusZuruValue.toFixed(1)} Kg` : `Defisit / Kurang: ${Math.abs(statusZuruValue).toFixed(1)} Kg`}
+                      {statusZuruValue >= 0 ? `Panen Surplus: +${statusZuruValue.toFixed(1)} Kg` : `Defisit: ${Math.abs(statusZuruValue).toFixed(1)} Kg`}
                     </div>
                   </div>
 
@@ -2419,7 +2260,7 @@ export default function App() {
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                       <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wide">Pengaturan Jatah per Jiwa (Kg)</p>
                       {canEditZuru && (
-                        <button onClick={handleSaveAlokasiZuru} className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold px-4 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-sm"><Check size={14} />Simpan Parameter Jatah</button>
+                        <button onClick={handleSaveAlokasiZuru} className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold px-4 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-sm"><Check size={14} />Simpan Parameter</button>
                       )}
                     </div>
 
@@ -2433,7 +2274,7 @@ export default function App() {
                               disabled={!canEditZuru}
                               value={tempAlokasiZuru[asnaf] || 0} 
                               onChange={(e) => setTempAlokasiZuru({...tempAlokasiZuru, [asnaf]: parseFloat(e.target.value) || 0})}
-                              className="w-full sm:w-16 text-center text-sm sm:text-xs font-black outline-none border border-slate-200 sm:border-0 sm:border-b sm:border-dashed sm:border-slate-300 focus:border-teal-500 text-slate-800 p-1 sm:p-0 rounded-md sm:rounded-none" 
+                              className="w-full sm:w-16 text-center text-sm sm:text-xs font-black outline-none border border-slate-200 text-slate-800 p-1" 
                             />
                             <span className="text-[10px] text-slate-400 font-bold hidden sm:block">Kg</span>
                           </div>
@@ -2447,7 +2288,7 @@ export default function App() {
                             disabled={!canEditZuru}
                             value={tempAlokasiZuru.GuruNgaji || 0} 
                             onChange={(e) => setTempAlokasiZuru({...tempAlokasiZuru, GuruNgaji: parseFloat(e.target.value) || 0})}
-                            className="w-full sm:w-12 text-center text-sm sm:text-xs font-black outline-none border border-teal-300 bg-transparent sm:border-0 sm:border-b sm:border-dashed focus:border-teal-600 text-teal-900 p-1 sm:p-0 rounded-md sm:rounded-none" 
+                            className="w-full sm:w-12 text-center text-sm sm:text-xs font-black outline-none border border-teal-300 bg-transparent text-teal-900 p-1" 
                           />
                           <span className="text-[10px] text-teal-700 font-bold hidden sm:block">Kg</span>
                         </div>
@@ -2473,7 +2314,7 @@ export default function App() {
                           </tr>
                         ))}
                         <tr className="bg-teal-50/50 text-slate-900 border-t-2 border-teal-100">
-                          <td className="p-3 font-black uppercase text-[10px] sm:text-xs text-teal-900" colSpan="2">Total Estimasi Kebutuhan Penyaluran Zuru:</td>
+                          <td className="p-3 font-black uppercase text-[10px] sm:text-xs text-teal-900" colSpan="2">Total Estimasi Kebutuhan:</td>
                           <td className="p-3 text-right text-teal-800 font-black text-base sm:text-lg">{totalButuruValue.toFixed(1)} Kg</td>
                         </tr>
                       </tbody>
@@ -2514,14 +2355,13 @@ export default function App() {
                     <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
                       <div className="w-2.5 h-2.5 bg-rose-600 rounded-full shrink-0"></div> 1. Log Daging Sapi Masuk
                     </h3>
-                    <span className="text-[9px] sm:text-[10px] bg-rose-50 text-rose-700 px-2 py-1 rounded-full font-bold whitespace-nowrap">Kategori Sapi</span>
                   </div>
                   {canEditQurban ? (
                     <div className="flex flex-col sm:flex-row gap-2">
                       <input type="number" step="0.1" placeholder="Berat Daging Sapi (kg)" value={tempBeratQurbanSapi} onChange={(e) => setTempBeratQurbanSapi(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTimbangan('qurbanSapi')} className="flex-1 text-sm sm:text-xs border border-slate-300 p-3 sm:p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-2 focus:ring-rose-500/20" />
                       <button onClick={() => addTimbangan('qurbanSapi')} className="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white px-5 py-3 sm:py-2.5 rounded-xl font-bold text-xs transition-all shrink-0">Tambah</button>
                     </div>
-                  ) : <p className="text-[10px] text-[#f43f5e] bg-[#fff5f5] border border-[#ffe4e6] p-2 rounded-lg font-bold">Hanya Panitia yang memiliki hak menambahkan timbangan Sapi.</p>}
+                  ) : <p className="text-[10px] text-[#f43f5e] bg-[#fff5f5] border border-[#ffe4e6] p-2 rounded-lg font-bold">Hanya Panitia yang memiliki hak menambahkan timbangan.</p>}
 
                   <div className="space-y-1.5 max-h-40 sm:max-h-48 overflow-y-auto pr-1 font-semibold text-slate-700">
                     {timbanganQurbanSapi.map((berat, index) => (
@@ -2546,14 +2386,13 @@ export default function App() {
                     <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
                       <div className="w-2.5 h-2.5 bg-amber-600 rounded-full shrink-0"></div> 2. Log Daging Kambing Masuk
                     </h3>
-                    <span className="text-[9px] sm:text-[10px] bg-amber-50 text-amber-700 px-2 py-1 rounded-full font-bold whitespace-nowrap">Kategori Kambing</span>
                   </div>
                   {canEditQurban ? (
                     <div className="flex flex-col sm:flex-row gap-2">
                       <input type="number" step="0.1" placeholder="Berat Daging Kambing (kg)" value={tempBeratQurbanKambing} onChange={(e) => setTempBeratQurbanKambing(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTimbangan('qurbanKambing')} className="flex-1 text-sm sm:text-xs border border-slate-300 p-3 sm:p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-2 focus:ring-amber-500/20" />
                       <button onClick={() => addTimbangan('qurbanKambing')} className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white px-5 py-3 sm:py-2.5 rounded-xl font-bold text-xs transition-all shrink-0">Tambah</button>
                     </div>
-                  ) : <p className="text-[10px] text-[#f43f5e] bg-[#fff5f5] border border-[#ffe4e6] p-2 rounded-lg font-bold">Hanya Panitia yang memiliki hak menambahkan timbangan Kambing.</p>}
+                  ) : <p className="text-[10px] text-[#f43f5e] bg-[#fff5f5] border border-[#ffe4e6] p-2 rounded-lg font-bold">Hanya Panitia yang memiliki hak menambahkan timbangan.</p>}
 
                   <div className="space-y-1.5 max-h-40 sm:max-h-48 overflow-y-auto pr-1 font-semibold text-slate-700">
                     {timbanganQurbanKambing.map((berat, index) => (
@@ -2601,7 +2440,7 @@ export default function App() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
                   <div className="bg-slate-800 border border-slate-700 p-4 rounded-2xl text-center sm:text-left">
-                    <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wide">Estimasi Jumlah Penerima <br/><span className="text-[8px] font-normal text-slate-500">(Shohibul Qurban dikeluarkan)</span></p>
+                    <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wide">Estimasi Jumlah Penerima</p>
                     <p className="text-3xl font-black text-white mt-1">{totalPenerimaKK} <span className="text-sm font-semibold text-slate-500">KK</span></p>
                   </div>
                   <div className="bg-rose-900/40 border border-rose-800/60 p-4 rounded-2xl text-center sm:text-left">
@@ -2617,17 +2456,17 @@ export default function App() {
             </div>
           )}
 
-          {/* === TAB 7: HAK AKSES, AKUN & IDENTITAS (RBAC) === */}
+          {/* TAB 7: HAK AKSES, AKUN & IDENTITAS (RBAC) */}
           {activeTab === "rbac" && (
             <div className="space-y-4 sm:space-y-6 animate-fadeIn">
               
               {currentRole === "Admin" && (
                 <div className="bg-white border border-slate-200 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-xs space-y-4">
                   <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                    <Settings className="text-emerald-600 w-5 h-5 sm:w-6 sm:h-6 animate-spin-slow" />
+                    <Settings className="text-emerald-600 w-5 h-5 sm:w-6 sm:h-6" />
                     <div>
                       <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">Pengaturan Identitas & Logo Masjid</h3>
-                      <p className="text-[10px] sm:text-xs text-slate-500">Tentukan nama lembaga dan tempel tautan (*link*) gambar logo Anda di sini.</p>
+                      <p className="text-[10px] sm:text-xs text-slate-500">Tentukan nama lembaga dan tempel tautan gambar logo Anda di sini.</p>
                     </div>
                   </div>
 
@@ -2645,24 +2484,12 @@ export default function App() {
                           <button type="button" onClick={() => { setTempMasjidLogoUrl(""); addNotification("Tautan logo dibersihkan."); }} className="w-full sm:w-auto bg-rose-50 text-rose-600 hover:bg-rose-100 px-4 py-3 sm:py-2 rounded-xl border border-rose-200 text-xs font-bold transition-all">Hapus Logo</button>
                         )}
                       </div>
-                      <p className="text-[10px] text-slate-500 font-medium leading-relaxed bg-white border border-slate-200 p-2.5 rounded-lg shadow-sm">Agar data awan Anda tidak kelebihan beban, <strong>unggah berkas gambar lokal dinonaktifkan</strong>. Silaka cari gambar di Google, klik kanan "Copy Image Address", lalu tempel (*paste*) URL tersebut ke kotak di atas.</p>
                     </div>
                   </div>
 
                   <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 sm:pt-4 border-t border-slate-100">
-                    <button type="button" onClick={handleCancelNewIdentity} className="w-full sm:w-auto px-5 py-3.5 sm:py-2.5 border border-slate-300 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all">Batalkan Perubahan</button>
-                    <button type="button" onClick={handleSaveNewIdentity} className="w-full sm:w-auto px-5 py-3.5 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5"><Check size={14}/>Simpan Identitas</button>
-                  </div>
-
-                  <div className="bg-emerald-50 border border-emerald-200 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 shadow-inner">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-emerald-600 text-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden shrink-0 border-2 border-emerald-100">
-                      {tempMasjidLogoUrl.trim() !== "" ? <img src={tempMasjidLogoUrl} alt="Pratinjau" className="w-full h-full object-contain bg-white" /> : <KubahMasjidIcon className="w-8 h-8 animate-pulse" />}
-                    </div>
-                    <div className="text-xs text-emerald-900">
-                      <p className="font-extrabold uppercase tracking-widest text-[10px] text-emerald-600 mb-0.5">Pratinjau Identitas Terbaru</p>
-                      <p className="font-black text-base sm:text-lg tracking-tight leading-none">{tempMasjidName || "Nama Kosong"}</p>
-                      <p className="text-emerald-700 mt-1 font-medium">{tempMasjidLogoUrl.trim() !== "" ? "Menggunakan Logo Kustom dari Tautan (URL)" : "Menggunakan Ikon Kubah Masjid Default"}</p>
-                    </div>
+                    <button type="button" onClick={handleCancelNewIdentity} className="w-full sm:w-auto px-5 py-3.5 sm:py-2.5 border border-slate-300 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all">Batalkan</button>
+                    <button type="button" onClick={handleSaveNewIdentity} className="w-full sm:w-auto px-5 py-3.5 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5"><Check size={14}/>Simpan Identitas</button>
                   </div>
                 </div>
               )}
@@ -2671,52 +2498,52 @@ export default function App() {
                 <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-xs space-y-4">
                   <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
                     <UserPlus className="text-emerald-600 w-5 h-5 shrink-0" />
-                    <nav className="font-extrabold text-slate-900 text-sm">Pendaftaran Akun Pengurus Custom</nav>
+                    <nav className="font-extrabold text-slate-900 text-sm">Pendaftaran Akun Pengurus & Petugas</nav>
                   </div>
                   <form onSubmit={handleCreateAccount} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-slate-50 p-4 rounded-xl border border-slate-200/60">
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-500 mb-1.5">Nama Tampilan</label>
-                      <input type="text" required placeholder="Cth: Bpk. Jufri" value={newAccLabel} onChange={(e) => setNewAccLabel(e.target.value)} className="w-full text-xs sm:text-sm border border-slate-300 bg-white p-3 sm:p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500/20" />
+                      <label className="block text-[11px] font-bold text-slate-500 mb-1.5">Nama Lengkap Petugas *</label>
+                      <input type="text" required placeholder="Cth: KH. Syukron Ma'mun" value={newAccLabel} onChange={(e) => setNewAccLabel(e.target.value)} className="w-full text-xs sm:text-sm border border-slate-300 bg-white p-3 rounded-xl outline-none font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500/20" />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-500 mb-1.5">Username Baru</label>
-                      <input type="text" required placeholder="username (huruf kecil)" value={newAccUsername} onChange={(e) => setNewAccUsername(e.target.value)} className="w-full text-xs sm:text-sm border border-slate-300 bg-white p-3 sm:p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500/20" />
+                      <label className="block text-[11px] font-bold text-slate-500 mb-1.5">Username Login *</label>
+                      <input type="text" required placeholder="Cth: khsyukron" value={newAccUsername} onChange={(e) => setNewAccUsername(e.target.value)} className="w-full text-xs sm:text-sm border border-slate-300 bg-white p-3 rounded-xl outline-none font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500/20" />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-500 mb-1.5">Password Baru</label>
-                      <input type="text" required placeholder="Minimal 6 karakter" value={newAccPassword} onChange={(e) => setNewAccPassword(e.target.value)} className="w-full text-xs sm:text-sm border border-slate-300 bg-white p-3 sm:p-2.5 rounded-xl outline-none font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500/20" />
+                      <label className="block text-[11px] font-bold text-slate-500 mb-1.5">Kata Sandi (Password) *</label>
+                      <input type="text" required placeholder="Minimal 6 karakter" value={newAccPassword} onChange={(e) => setNewAccPassword(e.target.value)} className="w-full text-xs sm:text-sm border border-slate-300 bg-white p-3 rounded-xl outline-none font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500/20" />
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-500 mb-1.5">Tingkatan Peran (Role)</label>
-                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
-                        <select value={newAccRole} onChange={(e) => setNewAccRole(e.target.value)} className="w-full sm:flex-1 text-xs sm:text-sm border border-slate-300 bg-white p-3 sm:p-2.5 rounded-xl outline-none font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500/20">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <select value={newAccRole} onChange={(e) => setNewAccRole(e.target.value)} className="w-full sm:flex-1 text-xs sm:text-sm border border-slate-300 bg-white p-3 rounded-xl outline-none font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500/20">
                           <option value="Admin">Super Admin</option>
                           <option value="Takmir">Takmir Masjid</option>
                           <option value="Amil">Amil Zakat</option>
                           <option value="Petugas">Petugas Jumat</option>
                           <option value="Jamaah">Jama'ah / Warga</option>
                         </select>
-                        <button type="submit" className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-3 sm:py-2.5 rounded-xl text-xs flex items-center justify-center transition-all">Tambah</button>
+                        <button type="submit" className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-3 rounded-xl text-xs transition-all">Tambah</button>
                       </div>
                     </div>
                   </form>
 
                   <div className="space-y-3">
-                    <p className="text-[10px] sm:text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Basis Data Kredensial Pengguna Terdaftar</p>
+                    <p className="text-[10px] sm:text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Kredensial Pengguna Terdaftar</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                       {Object.keys(userDatabase).map((usernameKey) => {
                         const userObj = userDatabase[usernameKey];
-                        const isDefault = ["admin", "takmir", "amil", "jamaah", "petugas1"].includes(usernameKey);
+                        const isDefault = ["admin", "takmir", "amil", "jamaah"].includes(usernameKey);
                         return (
-                          <div key={usernameKey} className="bg-slate-50 border border-slate-200/80 p-3.5 sm:p-3 rounded-xl flex justify-between items-center shadow-sm">
+                          <div key={usernameKey} className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl flex justify-between items-center shadow-sm">
                             <div className="flex-1 min-w-0 pr-2">
                               <p className="text-xs font-black text-slate-900 truncate">{userObj.label}</p>
                               <p className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">User: <span className="font-extrabold text-slate-700">{usernameKey}</span> • Pass: {userObj.password}</p>
-                              <span className={`inline-block text-[9px] px-2 py-0.5 rounded-full font-bold mt-2 truncate max-w-full ${userObj.role === 'Admin' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : userObj.role === 'Takmir' ? 'bg-teal-50 text-teal-700 border border-teal-100' : userObj.role === 'Amil' ? 'bg-purple-50 text-purple-700 border border-purple-100' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>{rolesConfig[userObj.role]?.label || userObj.role}</span>
+                              <span className="inline-block text-[9px] px-2 py-0.5 rounded-full font-bold mt-2 bg-slate-100 border text-slate-600">{userObj.role}</span>
                             </div>
                             <div className="flex gap-1.5 shrink-0">
-                              <button onClick={() => { setEditingAccountPassword(usernameKey); setNewPasswordValue(userObj.password); }} className="text-emerald-600 hover:bg-emerald-50 p-2 sm:p-1.5 border border-transparent hover:border-emerald-200 rounded-lg transition-all" title="Ubah Password Akun"><Edit2 size={14} /></button>
-                              {!isDefault && <button onClick={() => handleDeleteAccount(usernameKey)} className="text-rose-500 hover:bg-rose-50 p-2 sm:p-1.5 border border-transparent hover:border-rose-200 rounded-lg transition-all" title="Hapus Akun"><Trash2 size={14} /></button>}
+                              <button onClick={() => { setEditingAccountPassword(usernameKey); setNewPasswordValue(userObj.password); }} className="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg border border-transparent hover:border-emerald-200 transition-all"><Edit2 size={14} /></button>
+                              {!isDefault && <button onClick={() => handleDeleteAccount(usernameKey)} className="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg border border-transparent hover:border-rose-200 transition-all"><Trash2 size={14} /></button>}
                             </div>
                           </div>
                         );
@@ -2736,7 +2563,7 @@ export default function App() {
                     <form onSubmit={handleSaveNewPassword} className="p-5 space-y-4">
                       <div>
                         <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1.5">Password Baru *</label>
-                        <input type="text" required placeholder="Masukkan password baru akun" value={newPasswordValue} onChange={(e) => setNewPasswordValue(e.target.value)} className="w-full text-sm sm:text-xs border border-slate-300 bg-slate-50/50 p-3 sm:p-2.5 rounded-xl outline-none font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500/20" />
+                        <input type="text" required placeholder="Masukkan password baru" value={newPasswordValue} onChange={(e) => setNewPasswordValue(e.target.value)} className="w-full text-sm border border-slate-300 p-3 rounded-xl outline-none font-bold text-slate-800" />
                       </div>
                       <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t border-slate-100">
                         <button type="button" onClick={() => setEditingAccountPassword(null)} className="w-full sm:w-auto px-4 py-3 sm:py-2 border border-slate-300 text-slate-600 text-[11px] font-bold rounded-xl hover:bg-slate-50">Batal</button>
@@ -2747,10 +2574,10 @@ export default function App() {
                 </div>
               )}
 
+              {/* Matriks RBAC */}
               <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
                 <div className="border-b border-slate-100 pb-2">
                   <h3 className="font-extrabold text-slate-900 text-sm">Matriks Otoritas Otorisasi Modul</h3>
-                  <p className="text-[11px] sm:text-xs text-slate-400 font-medium">Batas akses hierarki ini tetap mengikat dan melindungi keamanan data sistem.</p>
                 </div>
                 <div className="overflow-x-auto w-full">
                   <table className="w-full text-left text-sm border-collapse min-w-[500px]">
@@ -2781,11 +2608,11 @@ export default function App() {
                                   value={isAllowed || "none"}
                                   disabled={isSelfAdminRbac || currentRole !== "Admin"}
                                   onChange={(e) => updateRoleAccess(role, menu.id, e.target.value)}
-                                  className={`px-2 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold border outline-none appearance-none text-center cursor-pointer transition-all ${
+                                  className={`px-2 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold border outline-none text-center cursor-pointer transition-all ${
                                     isAllowed === 'edit' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                     isAllowed === 'view' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                                     'bg-rose-50 text-rose-700 border-rose-200'
-                                  } ${isSelfAdminRbac || currentRole !== "Admin" ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-sm'}`}
+                                  }`}
                                 >
                                   <option value="none">❌ Kunci</option>
                                   <option value="view">👀 Lihat</option>
@@ -2806,7 +2633,6 @@ export default function App() {
         </main>
       </div>
 
-      {/* OVERLAY PRINT PREVIEW (MENGGANTIKAN POPUP WINDOW.OPEN) */}
       {printIframeData && (
         <div className="fixed inset-0 z-[99999] bg-slate-100 flex flex-col h-screen w-screen overflow-hidden animate-fadeIn">
           <iframe 
@@ -2818,11 +2644,9 @@ export default function App() {
         </div>
       )}
 
-      {/* === FOOTER === */}
       <footer className="bg-white border-t border-slate-200 px-4 sm:px-6 py-4 text-center text-[10px] sm:text-xs text-slate-400 font-semibold mt-auto z-10">
         &copy; {new Date().getFullYear()} {masjidName}. developed by Misbahul Munir.
       </footer>
-
     </div>
   );
 }
