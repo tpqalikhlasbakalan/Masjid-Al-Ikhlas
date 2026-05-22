@@ -31,13 +31,13 @@ const WILAYAH_OPTIONS = [
   { rt: "03", rw: "02", label: "RT 03 / RW 02" }
 ];
 
-// === PENAMBAHAN ROLE BARU: PETUGAS ===
+// === ROLE BASED ACCESS CONTROL (3 TINGKAT: none, view, edit) ===
 const INITIAL_ROLES = {
-  Admin: { label: "Super Admin", access: ["dashboard", "petugas", "jamaah", "fitrah", "zuru", "qurban", "rbac"] },
-  Takmir: { label: "Takmir Masjid", access: ["dashboard", "petugas", "jamaah", "qurban"] },
-  Amil: { label: "Amil Zakat", access: ["dashboard", "jamaah", "fitrah", "zuru", "qurban"] },
-  Petugas: { label: "Petugas Jumat", access: ["dashboard", "petugas"] }, 
-  Jamaah: { label: "Jama'ah / Warga", access: ["dashboard", "petugas", "fitrah", "zuru", "qurban"] }
+  Admin: { label: "Super Admin", access: { dashboard: "edit", petugas: "edit", jamaah: "edit", fitrah: "edit", zuru: "edit", qurban: "edit", rbac: "edit" } },
+  Takmir: { label: "Takmir Masjid", access: { dashboard: "view", petugas: "edit", jamaah: "edit", fitrah: "none", zuru: "none", qurban: "view", rbac: "none" } },
+  Amil: { label: "Amil Zakat", access: { dashboard: "view", petugas: "none", jamaah: "view", fitrah: "edit", zuru: "edit", qurban: "edit", rbac: "none" } },
+  Petugas: { label: "Petugas Jumat", access: { dashboard: "view", petugas: "view", jamaah: "none", fitrah: "none", zuru: "none", qurban: "none", rbac: "none" } },
+  Jamaah: { label: "Jama'ah / Warga", access: { dashboard: "view", petugas: "view", jamaah: "none", fitrah: "view", zuru: "view", qurban: "view", rbac: "none" } }
 };
 
 const INITIAL_USER_DATABASE = {
@@ -49,13 +49,13 @@ const INITIAL_USER_DATABASE = {
 };
 
 const INITIAL_JAMAAH = [
-  { id: "1", nama: "Ahmad Subarjo", anggota: 4, rt: "01", rw: "01", alamat: "Jl. Masjid No. 12", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima" },
-  { id: "2", nama: "Slamet Rahardjo", anggota: 3, rt: "01", rw: "01", alamat: "Gang Kelinci No. 2", ekonomi: "Sangat Kurang", fitrah: "Berat", zuru: "Berat", qurban: "Penerima" },
-  { id: "3", nama: "Budi Santoso", anggota: 5, rt: "02", rw: "01", alamat: "Jl. Mangga No. 5", ekonomi: "Kurang Mampu", fitrah: "Sedang", zuru: "Sedang", qurban: "Penerima" },
-  { id: "4", nama: "H. Abdul Rozak", anggota: 2, rt: "02", rw: "02", alamat: "Jl. Diponegoro No. 88", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Sahibul Qurban - Sapi" },
-  { id: "5", nama: "Ustadz Hasan", anggota: 4, rt: "03", rw: "02", alamat: "Kamar Marbot Masjid", ekonomi: "Kurang Mampu", fitrah: "Ringan", zuru: "Bukan Mustahik", qurban: "Penerima" },
-  { id: "6", nama: "Mbah Sutini", anggota: 1, rt: "03", rw: "01", alamat: "Gubuk RT 3", ekonomi: "Sangat Kurang", fitrah: "Berat", zuru: "Bukan Mustahik", qurban: "Penerima" },
-  { id: "7", nama: "Andi Wijaya", anggota: 3, rt: "01", rw: "02", alamat: "Jl. Baru No. 17", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Ringan", qurban: "Penerima" }
+  { id: "1", nama: "Ahmad Subarjo", anggota: 4, rt: "01", rw: "01", alamat: "Jl. Masjid No. 12", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", isGuruNgaji: false },
+  { id: "2", nama: "Slamet Rahardjo", anggota: 3, rt: "01", rw: "01", alamat: "Gang Kelinci No. 2", ekonomi: "Sangat Kurang", fitrah: "Berat", zuru: "Berat", qurban: "Penerima", isGuruNgaji: false },
+  { id: "3", nama: "Budi Santoso", anggota: 5, rt: "02", rw: "01", alamat: "Jl. Mangga No. 5", ekonomi: "Kurang Mampu", fitrah: "Sedang", zuru: "Sedang", qurban: "Penerima", isGuruNgaji: false },
+  { id: "4", nama: "H. Abdul Rozak", anggota: 2, rt: "02", rw: "02", alamat: "Jl. Diponegoro No. 88", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Sahibul Qurban - Sapi", isGuruNgaji: false },
+  { id: "5", nama: "Ustadz Hasan", anggota: 4, rt: "03", rw: "02", alamat: "Kamar Marbot Masjid", ekonomi: "Kurang Mampu", fitrah: "Ringan", zuru: "Bukan Mustahik", qurban: "Penerima", isGuruNgaji: true },
+  { id: "6", nama: "Mbah Sutini", anggota: 1, rt: "03", rw: "01", alamat: "Gubuk RT 3", ekonomi: "Sangat Kurang", fitrah: "Berat", zuru: "Bukan Mustahik", qurban: "Penerima", isGuruNgaji: false },
+  { id: "7", nama: "Andi Wijaya", anggota: 3, rt: "01", rw: "02", alamat: "Jl. Baru No. 17", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Ringan", qurban: "Penerima", isGuruNgaji: false }
 ];
 
 const INITIAL_PETUGAS_ABADI = {
@@ -83,11 +83,24 @@ function KubahMasjidIcon({ className }) {
   );
 }
 
+// Fungsi Migrasi Format RBAC Lama ke Baru
+const migrateRolesConfig = (savedConfig) => {
+  if (!savedConfig || !savedConfig.Admin) return INITIAL_ROLES;
+  if (Array.isArray(savedConfig.Admin.access)) {
+    return INITIAL_ROLES; // Reset ke default jika menggunakan array format lama
+  }
+  return savedConfig;
+};
+
 const getLocalStorageData = (key, fallbackValue) => {
   try {
     const saved = localStorage.getItem(key);
     if (saved === null || saved === "undefined") return fallbackValue;
-    try { return JSON.parse(saved); } catch (e) {
+    try { 
+      const parsed = JSON.parse(saved); 
+      if(key === "rolesConfig") return migrateRolesConfig(parsed);
+      return parsed;
+    } catch (e) {
       if (typeof fallbackValue === 'string') return saved;
       return fallbackValue;
     }
@@ -203,12 +216,22 @@ export default function App() {
 
   const [timbanganFitrah, setTimbanganFitrah] = useState(() => getLocalStorageData("timbanganFitrah", [25, 50, 15, 30]));
   const [tempBeratFitrah, setTempBeratFitrah] = useState("");
-  const [alokasiFitrah, setAlokasiFitrah] = useState(() => getLocalStorageData("alokasiFitrah", { "Berat": 5.0, "Sedang": 3.0, "Ringan": 1.5, "Muzakki": 0.0 }));
+  const [alokasiFitrah, setAlokasiFitrah] = useState(() => {
+    const defaultAlloc = { "Berat": 5.0, "Sedang": 3.0, "Ringan": 1.5, "Muzakki": 0.0, "GuruNgaji": 5.0 };
+    const saved = getLocalStorageData("alokasiFitrah", defaultAlloc);
+    if(saved.GuruNgaji === undefined) saved.GuruNgaji = 5.0; // Migrasi otomatis jika data lama
+    return saved;
+  });
   const [tempAlokasiFitrah, setTempAlokasiFitrah] = useState(alokasiFitrah);
 
   const [timbanganZuru, setTimbanganZuru] = useState(() => getLocalStorageData("timbanganZuru", [120, 250, 80]));
   const [tempBeratZuru, setTempBeratZuru] = useState("");
-  const [alokasiZuru, setAlokasiZuru] = useState(() => getLocalStorageData("alokasiZuru", { "Berat": 15.0, "Sedang": 10.0, "Ringan": 5.0, "Bukan Mustahik": 0.0 }));
+  const [alokasiZuru, setAlokasiZuru] = useState(() => {
+    const defaultAlloc = { "Berat": 15.0, "Sedang": 10.0, "Ringan": 5.0, "Bukan Mustahik": 0.0, "GuruNgaji": 15.0 };
+    const saved = getLocalStorageData("alokasiZuru", defaultAlloc);
+    if(saved.GuruNgaji === undefined) saved.GuruNgaji = 15.0;
+    return saved;
+  });
   const [tempAlokasiZuru, setTempAlokasiZuru] = useState(alokasiZuru);
 
   const [timbanganQurbanSapi, setTimbanganQurbanSapi] = useState(() => getLocalStorageData("timbanganQurbanSapi", [85.5, 120.0, 95.0, 65.5]));
@@ -223,7 +246,7 @@ export default function App() {
   const [showJamaahModal, setShowJamaahModal] = useState(false);
   const [editingJamaah, setEditingJamaah] = useState(null);
   const [jamaahForm, setJamaahForm] = useState({
-    nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima"
+    nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", isGuruNgaji: false
   });
 
   const [googleSheetsUrl, setGoogleSheetsUrl] = useState(() => getLocalStorageData("googleSheetsUrl", GOOGLE_SHEETS_SCRIPT_URL));
@@ -341,7 +364,7 @@ export default function App() {
           localStorage.setItem("jadwalSholatAktif", JSON.stringify(realJadwal));
         }
       } catch (err) {
-        console.warn("Gagal fetch jadwal sholat Kemenag. Menampilkan estimasi dari cache lokal.", err);
+        console.warn("Gagal fetch jadwal sholat Kemenag.", err);
       }
     };
     fetchJadwalRealTime();
@@ -368,9 +391,15 @@ export default function App() {
         if (payload.petugasAbadi !== undefined) setPetugasAbadi(payload.petugasAbadi);
         if (payload.jamaahList !== undefined) setJamaahList(payload.jamaahList);
         if (payload.timbanganFitrah !== undefined) setTimbanganFitrah(payload.timbanganFitrah);
-        if (payload.alokasiFitrah !== undefined) setAlokasiFitrah(payload.alokasiFitrah);
+        if (payload.alokasiFitrah !== undefined) {
+          if(payload.alokasiFitrah.GuruNgaji === undefined) payload.alokasiFitrah.GuruNgaji = 5.0;
+          setAlokasiFitrah(payload.alokasiFitrah);
+        }
         if (payload.timbanganZuru !== undefined) setTimbanganZuru(payload.timbanganZuru);
-        if (payload.alokasiZuru !== undefined) setAlokasiZuru(payload.alokasiZuru);
+        if (payload.alokasiZuru !== undefined) {
+          if(payload.alokasiZuru.GuruNgaji === undefined) payload.alokasiZuru.GuruNgaji = 15.0;
+          setAlokasiZuru(payload.alokasiZuru);
+        }
         if (payload.timbanganQurbanSapi !== undefined) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
         if (payload.timbanganQurbanKambing !== undefined) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
         if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
@@ -446,14 +475,29 @@ export default function App() {
   };
 
   const hasAccess = (tabName) => {
-    return rolesConfig[currentRole]?.access?.includes(tabName) || false;
+    const acc = rolesConfig[currentRole]?.access?.[tabName];
+    return acc === "view" || acc === "edit" || currentRole === "Admin";
   };
 
-  const canEditPetugas = currentRole === "Admin" || hasAccess("petugas");
-  const canEditJamaah = currentRole === "Admin" || hasAccess("jamaah");
-  const canEditFitrah = currentRole === "Admin" || hasAccess("fitrah");
-  const canEditZuru = currentRole === "Admin" || hasAccess("zuru");
-  const canEditQurban = currentRole === "Admin" || hasAccess("qurban");
+  const canEditPetugas = currentRole === "Admin" || rolesConfig[currentRole]?.access?.petugas === "edit";
+  const canEditJamaah = currentRole === "Admin" || rolesConfig[currentRole]?.access?.jamaah === "edit";
+  const canEditFitrah = currentRole === "Admin" || rolesConfig[currentRole]?.access?.fitrah === "edit";
+  const canEditZuru = currentRole === "Admin" || rolesConfig[currentRole]?.access?.zuru === "edit";
+  const canEditQurban = currentRole === "Admin" || rolesConfig[currentRole]?.access?.qurban === "edit";
+  
+  const updateRoleAccess = (role, menuId, newAccess) => {
+    setRolesConfig(prev => ({
+      ...prev,
+      [role]: {
+        ...prev[role],
+        access: {
+          ...prev[role].access,
+          [menuId]: newAccess
+        }
+      }
+    }));
+    addNotification(`Hak akses ${menuId} untuk ${rolesConfig[role].label} diubah.`, "success");
+  };
 
   const navigateTo = (tabName) => {
     if (hasAccess(tabName)) {
@@ -496,23 +540,46 @@ export default function App() {
   const nextSholat = getNextSholat();
   const upcomingFridaysList = getUpcomingFridays(currentTime, petugasAbadi, 5);
 
-  const totalTimbanganFitrahValue = timbanganFitrah.reduce((a, b) => a + b, 0);
-  const rincianKebutuhanFitrahData = Object.entries(alokasiFitrah).map(([kategori, jatah]) => {
-    const jumlahJiwa = getJumlahJiwaPerKategoriFitrah(jamaahList, kategori);
-    const totalButuh = jumlahJiwa * jatah;
-    return { kategori, jumlahJiwa, jatah, totalButuh };
-  }).filter(item => item.totalButuh > 0);
+  const getJatahFitrahTotal = (warga) => {
+    let jatah = 0;
+    if (warga.fitrah !== "Muzakki") jatah += (alokasiFitrah[warga.fitrah] || 0) * (warga.anggota || 1);
+    if (warga.isGuruNgaji) jatah += parseFloat(alokasiFitrah.GuruNgaji || 0);
+    return jatah;
+  };
 
+  const getJatahZuruTotal = (warga) => {
+    let jatah = 0;
+    if (warga.zuru !== "Bukan Mustahik") jatah += (alokasiZuru[warga.zuru] || 0) * (warga.anggota || 1);
+    if (warga.isGuruNgaji) jatah += parseFloat(alokasiZuru.GuruNgaji || 0);
+    return jatah;
+  };
+
+  const totalTimbanganFitrahValue = timbanganFitrah.reduce((a, b) => a + b, 0);
+  const rincianKebutuhanFitrahData = [];
+  ["Berat", "Sedang", "Ringan"].forEach(kat => {
+      const list = jamaahList.filter(j => j.fitrah === kat);
+      const jiwa = list.reduce((s, j) => s + (j.anggota||0), 0);
+      if(jiwa > 0) rincianKebutuhanFitrahData.push({ kategori: `Mustahik ${kat}`, jiwa: `${jiwa} Org`, jatah: `${alokasiFitrah[kat]} Kg/Jiwa`, totalButuh: jiwa * (alokasiFitrah[kat] || 0) });
+  });
+  const listGuruFitrah = jamaahList.filter(j => j.isGuruNgaji);
+  if(listGuruFitrah.length > 0) {
+      rincianKebutuhanFitrahData.push({ kategori: `Tambahan Guru Ngaji`, jiwa: `${listGuruFitrah.length} KK`, jatah: `${alokasiFitrah.GuruNgaji} Kg/KK`, totalButuh: listGuruFitrah.length * (alokasiFitrah.GuruNgaji || 0) });
+  }
   const totalButuhFitrahValue = rincianKebutuhanFitrahData.reduce((sum, item) => sum + item.totalButuh, 0);
   const statusFitrahValue = totalTimbanganFitrahValue - totalButuhFitrahValue;
 
-  const totalTimbanganZuruValue = timbanganZuru.reduce((a, b) => a + b, 0);
-  const rincianKebutuhanZuruData = Object.entries(alokasiZuru).map(([kategori, jatah]) => {
-    const jumlahJiwa = getJumlahJiwaPerKategoriZuru(jamaahList, kategori);
-    const totalButuh = jumlahJiwa * jatah;
-    return { kategori, jumlahJiwa, jatah, totalButuh };
-  }).filter(item => item.totalButuh > 0);
 
+  const totalTimbanganZuruValue = timbanganZuru.reduce((a, b) => a + b, 0);
+  const rincianKebutuhanZuruData = [];
+  ["Berat", "Sedang", "Ringan"].forEach(kat => {
+      const list = jamaahList.filter(j => j.zuru === kat);
+      const jiwa = list.reduce((s, j) => s + (j.anggota||0), 0);
+      if(jiwa > 0) rincianKebutuhanZuruData.push({ kategori: `Mustahik ${kat}`, jiwa: `${jiwa} Org`, jatah: `${alokasiZuru[kat]} Kg/Jiwa`, totalButuh: jiwa * (alokasiZuru[kat] || 0) });
+  });
+  const listGuruZuru = jamaahList.filter(j => j.isGuruNgaji);
+  if(listGuruZuru.length > 0) {
+      rincianKebutuhanZuruData.push({ kategori: `Tambahan Guru Ngaji`, jiwa: `${listGuruZuru.length} KK`, jatah: `${alokasiZuru.GuruNgaji} Kg/KK`, totalButuh: listGuruZuru.length * (alokasiZuru.GuruNgaji || 0) });
+  }
   const totalButuruValue = rincianKebutuhanZuruData.reduce((sum, item) => sum + item.totalButuh, 0);
   const statusZuruValue = totalTimbanganZuruValue - totalButuruValue;
 
@@ -529,7 +596,7 @@ export default function App() {
       if (qurbanHanyaMustahik) {
         const isMustahikFitrah = warga.fitrah !== "Muzakki";
         const isMustahikZuru = warga.zuru !== "Bukan Mustahik";
-        return isMustahikFitrah || isMustahikZuru;
+        return isMustahikFitrah || isMustahikZuru || warga.isGuruNgaji;
       }
       return true;
     });
@@ -691,9 +758,11 @@ export default function App() {
       setCurrentUserUsername(cleanUser);
       setIsLoggedIn(true);
       
-      const allowedAccess = rolesConfig[userAccount.role].access;
-      if (!allowedAccess.includes(activeTab)) {
-        setActiveTab(allowedAccess[0] || "dashboard");
+      const allowedAccessObj = rolesConfig[userAccount.role].access;
+      const allowedTabs = Object.keys(allowedAccessObj).filter(k => allowedAccessObj[k] !== "none");
+      
+      if (!allowedTabs.includes(activeTab)) {
+        setActiveTab(allowedTabs[0] || "dashboard");
       }
       addNotification(`Selamat datang kembali, ${userAccount.label}!`, "success");
       
@@ -731,7 +800,7 @@ export default function App() {
     }
     setShowJamaahModal(false);
     setEditingJamaah(null);
-    setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima" });
+    setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", isGuruNgaji: false });
   };
 
   const handleEditJamaah = (jamaah) => {
@@ -820,7 +889,6 @@ export default function App() {
     setNewPasswordValue("");
   };
 
-  // Helper WA Formatter
   const createWAShareLink = (title, rtTitle, summaryText) => {
     const message = `*${masjidName}*\n\n📝 *${title}*\nWilayah: ${rtTitle}\nTanggal: ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}\n\n${summaryText}\n\n_Catatan: Dokumen cetak (PDF) tersedia di pengurus._`;
     return `https://wa.me/?text=${encodeURIComponent(message)}`;
@@ -837,7 +905,6 @@ export default function App() {
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>${docTitle} - ${masjidName}</title>
-          <!-- Menggunakan html2pdf untuk konversi PDF Web ke Gambar -->
           <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
@@ -845,26 +912,28 @@ export default function App() {
               font-family: 'Inter', sans-serif; 
               background-color: #f1f5f9; 
               margin: 0; 
-              padding: 10px; 
-              display: flex; 
-              flex-direction: column; 
-              align-items: center; 
+              padding: 0; 
+            }
+            .wrapper {
+              width: 100%;
+              overflow-x: auto;
+              background-color: #cbd5e1;
+              padding: 20px 10px;
+              box-sizing: border-box;
             }
             .print-container {
-              width: 100%;
-              max-width: 1000px;
-              min-height: auto;
+              width: 215mm;
+              min-height: 330mm;
               background: white;
-              padding: 20px;
-              margin-top: 10px;
-              box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-              border-radius: 8px;
+              padding: 15mm;
+              margin: 0 auto;
+              box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
               box-sizing: border-box;
-              overflow-x: hidden;
             }
             .control-panel {
               width: 100%;
-              max-width: 1000px;
+              max-width: 215mm;
+              margin: 0 auto 15px auto;
               background: white;
               padding: 15px 20px;
               border-radius: 8px;
@@ -900,86 +969,79 @@ export default function App() {
             .btn-pdf-web { background: #3b82f6; color: white; }
             
             /* TATA LETAK ISI KERTAS */
-            .kop-surat { display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid #0f172a; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;}
-            .kop-surat .logo { width: 60px; height: 60px; object-fit: contain; }
-            .kop-surat h1 { margin: 0; font-size: 18px; font-weight: 800; text-transform: uppercase; color: #0f172a; }
-            .kop-surat p { margin: 5px 0 0; font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+            .kop-surat { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #0f172a; padding-bottom: 12px; margin-bottom: 20px; gap: 15px;}
+            .kop-surat .logo { width: 55px; height: 55px; object-fit: contain; }
+            .kop-surat h1 { margin: 0; font-size: 18px; font-weight: 800; color: #0f172a; }
+            .kop-surat p { margin: 3px 0 0; font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
             .tanggal { text-align: right; font-size: 10px; color: #64748b; font-weight: bold; }
             
-            .judul-dokumen { text-align: center; margin-bottom: 25px; }
+            .judul-dokumen { text-align: center; margin-bottom: 20px; }
             .judul-dokumen h2 { margin: 0; font-size: 14px; font-weight: 800; text-transform: uppercase; color: #0f172a; }
-            .judul-dokumen p { margin: 5px 0 0; font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+            .judul-dokumen p { margin: 4px 0 0; font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; }
             
-            .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 10px; min-width: 600px;}
-            th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; }
+            th, td { border: 1px solid #cbd5e1; padding: 5px 8px; text-align: left; }
             th { background-color: #f8fafc; font-weight: bold; text-transform: uppercase; color: #475569; }
-            td { color: #334155; }
+            td { color: #0f172a; }
             .text-center { text-align: center; }
             .text-right { text-align: right; }
             .font-bold { font-weight: bold; }
-            .signature-area { margin-top: 40px; display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; flex-wrap: wrap; gap: 20px;}
-            .signature-box { text-align: center; width: 180px; }
-            .signature-line { margin-top: 60px; border-top: 1px solid #0f172a; padding-top: 5px; font-weight: bold; color: #0f172a; }
+            .signature-area { margin-top: 30px; display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; flex-wrap: wrap; gap: 20px; page-break-inside: avoid; }
+            .signature-box { text-align: center; width: 160px; }
+            .signature-line { margin-top: 50px; border-top: 1px solid #0f172a; padding-top: 4px; font-weight: bold; color: #0f172a; }
 
             /* MEDIA PRINT: Pengaturan Kertas Fisik (F4 / Folio: 215mm x 330mm) */
             @media print {
               body { padding: 0; background: white; margin: 0; display: block; }
+              .wrapper { background: transparent; padding: 0; overflow: visible; }
               .control-panel { display: none !important; }
-              .print-container { max-width: none; width: 100%; box-shadow: none; padding: 0; margin: 0; border-radius: 0; overflow-x: visible !important; }
-              .table-responsive { overflow-x: visible !important; }
-              table { min-width: auto; width: 100%; }
+              .print-container { width: 100%; max-width: none; box-shadow: none; padding: 0; margin: 0; }
               @page { size: 215mm 330mm; margin: 15mm; } 
             }
           </style>
         </head>
         <body>
           
-          <!-- Panel Kontrol Aksi (Tidak Ikut Tercetak) -->
-          <div class="control-panel">
-            <button onclick="window.parent.postMessage('CLOSE_PRINT_FRAME', '*')" class="btn btn-close">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> 
-              Tutup Preview
-            </button>
-            <div class="btn-group">
-              <a href="${waLink}" target="_blank" class="btn btn-wa">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> 
-                <span>WA</span>
-              </a>
-              <button id="btn-print" onclick="window.print()" class="btn btn-pdf-native">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> 
-                <span>Cetak PDF Luring (F4)</span>
+          <div class="wrapper">
+            <div class="control-panel">
+              <button onclick="window.parent.postMessage('CLOSE_PRINT_FRAME', '*')" class="btn btn-close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> 
+                Tutup Preview
               </button>
-              <button id="btn-download" onclick="downloadPDFWeb()" class="btn btn-pdf-web">
-                <span>⬇️ Unduh Gambar PDF</span>
-              </button>
+              <div class="btn-group">
+                <a href="${waLink}" target="_blank" class="btn btn-wa">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> 
+                  <span>Bagikan WA</span>
+                </a>
+                <button onclick="window.print()" class="btn btn-pdf-native">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> 
+                  <span>Cetak / Simpan PDF</span>
+                </button>
+              </div>
             </div>
-          </div>
 
-          <!-- Area yang akan diubah menjadi PDF atau di-Print -->
-          <div id="print-area" class="print-container">
-            <div class="kop-surat">
-              <div style="display: flex; align-items: center; gap: 15px;">
-                ${masjidLogoUrl ? `<img src="${masjidLogoUrl}" class="logo" crossorigin="anonymous" />` : `<div style="width: 50px; height: 50px; background: #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #64748b;">LOGO</div>`}
-                <div>
-                  <h1>${masjidName}</h1>
-                  <p>Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}, Provinsi ${lokasi.provinsi}</p>
+            <div id="print-area" class="print-container">
+              <div class="kop-surat">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                  ${masjidLogoUrl ? `<img src="${masjidLogoUrl}" class="logo" crossorigin="anonymous" />` : `<div style="width: 45px; height: 45px; background: #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #64748b; font-size:10px;">LOGO</div>`}
+                  <div>
+                    <h1>${masjidName}</h1>
+                    <p>Desa ${lokasi.desa || ''}, Kec. ${lokasi.kecamatan}, Kab. ${lokasi.kabupaten}</p>
+                  </div>
+                </div>
+                <div class="tanggal text-right">
+                  Tanggal Dokumen:<br/>
+                  <span style="color: #0f172a; font-size: 11px;">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</span>
                 </div>
               </div>
-              <div class="tanggal text-right">
-                Tanggal Dokumen:<br/>
-                <span style="color: #0f172a; font-size: 11px;">${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</span>
-              </div>
-            </div>
 
-            <div class="judul-dokumen">
-              <h2>${docTitle}</h2>
-              <p>Wilayah Pengurusan: ${rtTitle}</p>
-            </div>
-            
-            ${summaryHTML}
-            
-            <div class="table-responsive">
+              <div class="judul-dokumen">
+                <h2>${docTitle}</h2>
+                <p>Wilayah Pengurusan: ${rtTitle}</p>
+              </div>
+              
+              ${summaryHTML}
+              
               <table>
                 <thead>
                   ${tableHeaderHTML}
@@ -988,67 +1050,23 @@ export default function App() {
                   ${tableRowsHTML}
                 </tbody>
               </table>
-            </div>
-            
-            <div class="signature-area">
-              <div class="signature-box">
-                <p>Menyetujui & Mengesahkan,</p>
-                <div class="signature-line">Ketua Takmir Masjid</div>
-              </div>
-              <div class="signature-box text-right">
-                <p>Lamongan, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
-                <p>Penanggung Jawab Laporan,</p>
-                <div class="signature-line">Kepala Pengurus RT</div>
+              
+              <div class="signature-area">
+                <div class="signature-box">
+                  <p>Menyetujui & Mengesahkan,</p>
+                  <div class="signature-line">Ketua Takmir Masjid</div>
+                </div>
+                <div class="signature-box text-right">
+                  <p>Lamongan, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+                  <p>Penanggung Jawab Laporan,</p>
+                  <div class="signature-line">Kepala Pengurus RT</div>
+                </div>
               </div>
             </div>
           </div>
-          
-          <script>
-            // Fungsi Unduh Otomatis via JS (Bagus untuk Desktop/Web)
-            function downloadPDFWeb() {
-              const element = document.getElementById('print-area');
-              const btn = document.getElementById('btn-download');
-              const originalText = btn.innerHTML;
-              
-              btn.innerHTML = 'Memproses PDF...';
-              btn.style.opacity = '0.7';
-              btn.disabled = true;
-
-              if (typeof html2pdf === 'undefined') {
-                 // Jika library gagal dimuat karena jaringan, panggil fungsi native print
-                 window.print();
-                 btn.innerHTML = originalText;
-                 btn.style.opacity = '1';
-                 btn.disabled = false;
-                 return;
-              }
-
-              // Konfigurasi Kertas F4 (215mm x 330mm)
-              const opt = {
-                margin:       10, // margin 10mm
-                filename:     '${pdfFilename}',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, allowTaint: true },
-                jsPDF:        { unit: 'mm', format: [215, 330], orientation: 'portrait' }
-              };
-              
-              html2pdf().set(opt).from(element).save().then(() => {
-                btn.innerHTML = originalText;
-                btn.style.opacity = '1';
-                btn.disabled = false;
-              }).catch(err => {
-                console.error("Gagal buat PDF otomatis:", err);
-                window.print();
-                btn.innerHTML = originalText;
-                btn.style.opacity = '1';
-                btn.disabled = false;
-              });
-            }
-          </script>
         </body>
       </html>
     `;
-    return html;
   };
 
   const handlePrintSelectedReport = (reportType) => {
@@ -1082,8 +1100,8 @@ export default function App() {
       tableRowsHTML = filteredWarga.map((j, i) => `
         <tr>
           <td class="text-center">${i + 1}</td>
-          <td class="font-bold">${j.nama}</td>
-          <td class="text-center font-bold">RT ${j.rt} / RW ${j.rw}</td>
+          <td class="font-bold">${j.nama} ${j.isGuruNgaji ? '<span style="font-size:8px; background:#ecfdf5; color:#047857; padding:1px 4px; border-radius:4px; margin-left:4px;">Guru Ngaji</span>' : ''}</td>
+          <td class="text-center font-bold">RT ${j.rt}/${j.rw}</td>
           <td>${j.alamat}</td>
           <td class="text-center font-bold">${j.anggota} Orang</td>
         </tr>
@@ -1091,20 +1109,20 @@ export default function App() {
     }
 
     else if (reportType === "fitrah") {
-      docTitle = `Daftar Penyaluran & Tanda Terima Zakat Fitrah (Beras)`;
-      const mustahikList = filteredWarga.filter(j => j.fitrah !== "Muzakki");
+      docTitle = `Daftar Penyaluran Zakat Fitrah (Beras)`;
+      const mustahikList = filteredWarga.filter(j => j.fitrah !== "Muzakki" || j.isGuruNgaji);
       const totalJiwaMustahik = mustahikList.reduce((acc, curr) => acc + curr.anggota, 0);
 
-      waSummaryText = `✔️ Total Beras Terkumpul: ${totalTimbanganFitrahValue.toFixed(1)} Kg\n✔️ Penerima di wilayah ini: ${mustahikList.length} KK (${totalJiwaMustahik} Jiwa)\n\nSilakan datang ke masjid untuk pengambilan.`;
+      waSummaryText = `✔️ Total Beras Terkumpul: ${totalTimbanganFitrahValue.toFixed(1)} Kg\n✔️ Penerima di wilayah ini: ${mustahikList.length} KK\n\nSilakan datang ke masjid untuk pengambilan.`;
 
       summaryHTML = `
-        <div style="margin-bottom: 20px; padding: 15px; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px;">
-          <h3 style="margin-top: 0; color: #065f46; font-size: 14px; text-transform: uppercase;">Ringkasan Data Penyaluran Zakat Fitrah</h3>
-          <table style="width: 100%; border: none; margin-top: 5px;">
+        <div style="margin-bottom: 15px; padding: 12px; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px;">
+          <h3 style="margin-top: 0; color: #065f46; font-size: 11px; text-transform: uppercase;">Ringkasan Penyaluran Zakat Fitrah</h3>
+          <table style="width: 100%; border: none; margin-top: 5px; font-size: 10px;">
             <tr>
-              <td style="width: 33%; border: none; padding: 5px 0;"><strong>Total Beras Terkumpul:</strong><br/><span style="font-size: 16px; font-weight: bold; color: #047857;">${totalTimbanganFitrahValue.toFixed(1)} Kg</span></td>
-              <td style="width: 33%; border: none; padding: 5px 0;"><strong>Total Mustahik Penerima:</strong><br/><span style="font-size: 16px; font-weight: bold; color: #047857;">${mustahikList.length} KK (${totalJiwaMustahik} Jiwa)</span></td>
-              <td style="width: 33%; border: none; padding: 5px 0;"><strong>Jatah Dibagikan Per Jiwa:</strong><br/><span style="font-size: 11px;">Berat: ${alokasiFitrah.Berat} Kg | Sedang: ${alokasiFitrah.Sedang} Kg | Ringan: ${alokasiFitrah.Ringan} Kg</span></td>
+              <td style="width: 33%; border: none; padding: 0;"><strong>Beras Terkumpul:</strong><br/><span style="font-size: 14px; font-weight: bold; color: #047857;">${totalTimbanganFitrahValue.toFixed(1)} Kg</span></td>
+              <td style="width: 33%; border: none; padding: 0;"><strong>Total Penerima:</strong><br/><span style="font-size: 14px; font-weight: bold; color: #047857;">${mustahikList.length} KK (${totalJiwaMustahik} Jiwa)</span></td>
+              <td style="width: 33%; border: none; padding: 0;"><strong>Jatah Tambahan:</strong><br/><span style="font-size: 14px; font-weight: bold; color: #047857;">Guru Ngaji (+${alokasiFitrah.GuruNgaji} Kg)</span></td>
             </tr>
           </table>
         </div>
@@ -1113,47 +1131,47 @@ export default function App() {
       tableHeaderHTML = `
         <tr>
           <th class="text-center" style="width: 5%;">No</th>
-          <th style="width: 25%;">Nama Kepala Keluarga</th>
-          <th class="text-center" style="width: 15%;">Kriteria</th>
-          <th class="text-center" style="width: 15%;">Jiwa KK</th>
-          <th class="text-right" style="width: 15%;">Jatah Beras</th>
-          <th class="text-center" style="width: 25%;">Tanda Terima</th>
+          <th style="width: 35%;">Nama Kepala Keluarga</th>
+          <th class="text-center" style="width: 25%;">Kriteria Mustahik</th>
+          <th class="text-right" style="width: 15%;">Total Jatah</th>
+          <th class="text-center" style="width: 20%;">Tanda Terima</th>
         </tr>
       `;
       
       tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => {
-        const jatahPerJiwa = alokasiFitrah[j.fitrah] || 0;
-        const totalJatah = jatahPerJiwa * j.anggota;
+        const jatah = getJatahFitrahTotal(j);
+        let kriteria = j.fitrah !== "Muzakki" ? `Mustahik ${j.fitrah}` : "";
+        if (j.isGuruNgaji) kriteria += (kriteria ? " + " : "") + "Guru Ngaji";
+
         return `
           <tr>
             <td class="text-center">${i + 1}</td>
             <td class="font-bold">${j.nama}</td>
-            <td class="text-center">Mustahik ${j.fitrah}</td>
-            <td class="text-center">${j.anggota} Jiwa</td>
-            <td class="text-right font-bold" style="color: #047857;">${totalJatah.toFixed(1)} Kg</td>
-            <td class="text-left" style="height: 40px; position: relative;">
-              <span style="position: absolute; bottom: 5px; left: 10px; font-size: 9px; color: #94a3b8;">${i + 1}.</span>
+            <td class="text-center">${kriteria}</td>
+            <td class="text-right font-bold" style="color: #047857;">${jatah.toFixed(1)} Kg</td>
+            <td class="text-left" style="height: 35px; position: relative;">
+              <span style="position: absolute; bottom: 3px; left: 6px; font-size: 8px; color: #94a3b8;">${i + 1}.</span>
             </td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="6" class="text-center" style="padding: 30px; font-style: italic; color: #94a3b8;">Tidak ada jemaah penerima Zakat Fitrah pada wilayah terpilih ini.</td></tr>`;
+      }).join('') : `<tr><td colspan="5" class="text-center" style="padding: 20px; font-style: italic; color: #94a3b8;">Tidak ada jemaah penerima Zakat Fitrah pada wilayah ini.</td></tr>`;
     }
 
     else if (reportType === "zuru") {
-      docTitle = `Daftar Penyaluran & Tanda Terima Zakat Zuru' (Pertanian)`;
-      const mustahikList = filteredWarga.filter(j => j.zuru !== "Bukan Mustahik");
+      docTitle = `Daftar Penyaluran Zakat Zuru' (Hasil Pertanian)`;
+      const mustahikList = filteredWarga.filter(j => j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
       const totalJiwaMustahik = mustahikList.reduce((acc, curr) => acc + curr.anggota, 0);
 
-      waSummaryText = `✔️ Total Panen Terkumpul: ${totalTimbanganZuruValue.toFixed(1)} Kg\n✔️ Penerima di wilayah ini: ${mustahikList.length} KK (${totalJiwaMustahik} Jiwa)\n\nSilakan datang ke masjid untuk pengambilan jatah Zakat Zuru'.`;
+      waSummaryText = `✔️ Total Panen Terkumpul: ${totalTimbanganZuruValue.toFixed(1)} Kg\n✔️ Penerima di wilayah ini: ${mustahikList.length} KK\n\nSilakan datang ke masjid untuk pengambilan jatah Zakat Zuru'.`;
 
       summaryHTML = `
-        <div style="margin-bottom: 20px; padding: 15px; background-color: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 8px;">
-          <h3 style="margin-top: 0; color: #115e59; font-size: 14px; text-transform: uppercase;">Ringkasan Data Penyaluran Zakat Zuru'</h3>
-          <table style="width: 100%; border: none; margin-top: 5px;">
+        <div style="margin-bottom: 15px; padding: 12px; background-color: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 6px;">
+          <h3 style="margin-top: 0; color: #115e59; font-size: 11px; text-transform: uppercase;">Ringkasan Penyaluran Zakat Zuru'</h3>
+          <table style="width: 100%; border: none; margin-top: 5px; font-size: 10px;">
             <tr>
-              <td style="width: 33%; border: none; padding: 5px 0;"><strong>Total Panen Terkumpul:</strong><br/><span style="font-size: 16px; font-weight: bold; color: #0f766e;">${totalTimbanganZuruValue.toFixed(1)} Kg</span></td>
-              <td style="width: 33%; border: none; padding: 5px 0;"><strong>Total Mustahik Penerima:</strong><br/><span style="font-size: 16px; font-weight: bold; color: #0f766e;">${mustahikList.length} KK (${totalJiwaMustahik} Jiwa)</span></td>
-              <td style="width: 33%; border: none; padding: 5px 0;"><strong>Jatah Dibagikan Per Jiwa:</strong><br/><span style="font-size: 11px;">Berat: ${alokasiZuru.Berat} Kg | Sedang: ${alokasiZuru.Sedang} Kg | Ringan: ${alokasiZuru.Ringan} Kg</span></td>
+              <td style="width: 33%; border: none; padding: 0;"><strong>Panen Terkumpul:</strong><br/><span style="font-size: 14px; font-weight: bold; color: #0f766e;">${totalTimbanganZuruValue.toFixed(1)} Kg</span></td>
+              <td style="width: 33%; border: none; padding: 0;"><strong>Total Penerima:</strong><br/><span style="font-size: 14px; font-weight: bold; color: #0f766e;">${mustahikList.length} KK (${totalJiwaMustahik} Jiwa)</span></td>
+              <td style="width: 33%; border: none; padding: 0;"><strong>Jatah Tambahan:</strong><br/><span style="font-size: 14px; font-weight: bold; color: #0f766e;">Guru Ngaji (+${alokasiZuru.GuruNgaji} Kg)</span></td>
             </tr>
           </table>
         </div>
@@ -1162,30 +1180,79 @@ export default function App() {
       tableHeaderHTML = `
         <tr>
           <th class="text-center" style="width: 5%;">No</th>
-          <th style="width: 25%;">Nama Kepala Keluarga</th>
-          <th class="text-center" style="width: 15%;">Kriteria</th>
-          <th class="text-center" style="width: 15%;">Jiwa KK</th>
-          <th class="text-right" style="width: 15%;">Jatah Panen</th>
-          <th class="text-center" style="width: 25%;">Tanda Terima</th>
+          <th style="width: 35%;">Nama Kepala Keluarga</th>
+          <th class="text-center" style="width: 25%;">Kriteria Mustahik</th>
+          <th class="text-right" style="width: 15%;">Total Jatah</th>
+          <th class="text-center" style="width: 20%;">Tanda Terima</th>
         </tr>
       `;
       
       tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => {
-        const jatahPerJiwa = alokasiZuru[j.zuru] || 0;
-        const totalJatah = jatahPerJiwa * j.anggota;
+        const jatah = getJatahZuruTotal(j);
+        let kriteria = j.zuru !== "Bukan Mustahik" ? `Mustahik ${j.zuru}` : "";
+        if (j.isGuruNgaji) kriteria += (kriteria ? " + " : "") + "Guru Ngaji";
+
         return `
           <tr>
             <td class="text-center">${i + 1}</td>
             <td class="font-bold">${j.nama}</td>
-            <td class="text-center">Mustahik ${j.zuru}</td>
-            <td class="text-center">${j.anggota} Jiwa</td>
-            <td class="text-right font-bold" style="color: #0f766e;">${totalJatah.toFixed(1)} Kg</td>
-            <td class="text-left" style="height: 40px; position: relative;">
-              <span style="position: absolute; bottom: 5px; left: 10px; font-size: 9px; color: #94a3b8;">${i + 1}.</span>
+            <td class="text-center">${kriteria}</td>
+            <td class="text-right font-bold" style="color: #0f766e;">${jatah.toFixed(1)} Kg</td>
+            <td class="text-left" style="height: 35px; position: relative;">
+              <span style="position: absolute; bottom: 3px; left: 6px; font-size: 8px; color: #94a3b8;">${i + 1}.</span>
             </td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="6" class="text-center" style="padding: 30px; font-style: italic; color: #94a3b8;">Tidak ada jemaah penerima Zakat Zuru' pada wilayah terpilih ini.</td></tr>`;
+      }).join('') : `<tr><td colspan="5" class="text-center" style="padding: 20px; font-style: italic; color: #94a3b8;">Tidak ada jemaah penerima Zakat Zuru' pada wilayah ini.</td></tr>`;
+    }
+    
+    else if (reportType === "terpadu") {
+      docTitle = `Rekap Penyaluran Zakat Terpadu (Fitrah & Zuru')`;
+      const mustahikList = filteredWarga.filter(j => j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
+      
+      waSummaryText = `✔️ Dokumen ini adalah rekapitulasi penyaluran Zakat Fitrah dan Zakat Zuru' wilayah ${rtTitle} sekaligus. Terdapat ${mustahikList.length} KK Penerima.`;
+
+      summaryHTML = `
+        <div style="margin-bottom: 15px; padding: 12px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+          <h3 style="margin-top: 0; color: #334155; font-size: 11px; text-transform: uppercase;">Ringkasan Distribusi Terpadu</h3>
+          <p style="margin: 4px 0 0 0; font-size: 10px; color: #64748b;">Menampilkan semua KK yang menerima baik Zakat Fitrah maupun Zakat Zuru' (termasuk tambahan khusus Guru Ngaji).</p>
+        </div>
+      `;
+
+      tableHeaderHTML = `
+        <tr>
+          <th class="text-center" style="width: 5%;">No</th>
+          <th style="width: 25%;">Nama Kepala Keluarga</th>
+          <th class="text-center" style="width: 17%;">Kriteria Fitrah</th>
+          <th class="text-right" style="width: 13%;">Jatah Fitrah</th>
+          <th class="text-center" style="width: 17%;">Kriteria Zuru'</th>
+          <th class="text-right" style="width: 13%;">Jatah Zuru'</th>
+          <th class="text-center" style="width: 10%;">Paraf</th>
+        </tr>
+      `;
+      
+      tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => {
+        const jatahFitrah = getJatahFitrahTotal(j);
+        const jatahZuru = getJatahZuruTotal(j);
+        
+        let kriteriaFitrah = j.fitrah !== "Muzakki" ? `Mustahik ${j.fitrah}` : "-";
+        if (j.isGuruNgaji && jatahFitrah > 0) kriteriaFitrah += "<br/>+ Guru Ngaji";
+        
+        let kriteriaZuru = j.zuru !== "Bukan Mustahik" ? `Mustahik ${j.zuru}` : "-";
+        if (j.isGuruNgaji && jatahZuru > 0) kriteriaZuru += "<br/>+ Guru Ngaji";
+
+        return `
+          <tr>
+            <td class="text-center">${i + 1}</td>
+            <td class="font-bold">${j.nama}</td>
+            <td class="text-center">${kriteriaFitrah}</td>
+            <td class="text-right font-bold text-emerald-700">${jatahFitrah > 0 ? jatahFitrah.toFixed(1) + ' Kg' : '-'}</td>
+            <td class="text-center">${kriteriaZuru}</td>
+            <td class="text-right font-bold text-teal-700">${jatahZuru > 0 ? jatahZuru.toFixed(1) + ' Kg' : '-'}</td>
+            <td class="text-left" style="height: 35px;"></td>
+          </tr>
+        `;
+      }).join('') : `<tr><td colspan="7" class="text-center" style="padding: 20px; font-style: italic; color: #94a3b8;">Tidak ada penerima zakat terpadu di wilayah ini.</td></tr>`;
     }
 
     else if (reportType === "qurban") {
@@ -1196,12 +1263,12 @@ export default function App() {
         if (qurbanHanyaMustahik) {
           const isMustahikFitrah = warga.fitrah !== "Muzakki";
           const isMustahikZuru = warga.zuru !== "Bukan Mustahik";
-          return isMustahikFitrah || isMustahikZuru;
+          return isMustahikFitrah || isMustahikZuru || warga.isGuruNgaji;
         }
         return true;
       });
 
-      waSummaryText = `🥩 Info Pembagian Qurban 🥩\n\n✔️ Total Sapi: ${totalTimbanganQurbanSapiValue.toFixed(1)} Kg\n✔️ Kambing: ${totalTimbanganQurbanKambingValue.toFixed(1)} Kg\n✔️ Penerima (${rtTitle}): ${qurbanList.length} KK\n\nJatah per KK:\n- Sapi: ${jatahDagingSapiPerKK} Kg\n- Kambing: ${jatahDagingKambingPerKK} Kg`;
+      waSummaryText = `🥩 Info Pembagian Qurban 🥩\n\n✔️ Penerima (${rtTitle}): ${qurbanList.length} KK\n\nJatah per KK:\n- Sapi: ${jatahDagingSapiPerKK} Kg\n- Kambing: ${jatahDagingKambingPerKK} Kg`;
 
       summaryHTML = `
         <div style="margin-bottom: 20px; padding: 15px; background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px;">
@@ -1211,7 +1278,7 @@ export default function App() {
               <td style="width: 25%; border: none; padding: 5px 0;"><strong>Daging Sapi Terkumpul:</strong><br/><span style="font-size: 16px; font-weight: bold; color: #e11d48;">${totalTimbanganQurbanSapiValue.toFixed(1)} Kg</span></td>
               <td style="width: 25%; border: none; padding: 5px 0;"><strong>Kambing Terkumpul:</strong><br/><span style="font-size: 16px; font-weight: bold; color: #d97706;">${totalTimbanganQurbanKambingValue.toFixed(1)} Kg</span></td>
               <td style="width: 25%; border: none; padding: 5px 0;"><strong>Warga Penerima:</strong><br/><span style="font-size: 16px; font-weight: bold;">${qurbanList.length} KK</span></td>
-              <td style="width: 25%; border: none; padding: 5px 0;"><strong>Porsi Jatah per KK:</strong><br/><span style="font-size: 11px;">Sapi: ${jatahDagingSapiPerKK} Kg/KK<br/>Kambing: ${jatahDagingKambingPerKK} Kg/KK</span></td>
+              <td style="width: 25%; border: none; padding: 5px 0;"><strong>Porsi Jatah per KK:</strong><br/><span style="font-size: 11px;">Sapi: ${jatahDagingSapiPerKK} Kg<br/>Kambing: ${jatahDagingKambingPerKK} Kg</span></td>
             </tr>
           </table>
         </div>
@@ -1220,12 +1287,12 @@ export default function App() {
       tableHeaderHTML = `
         <tr>
           <th class="text-center" style="width: 5%;">No</th>
-          <th style="width: 25%;">Nama Kepala Keluarga</th>
-          <th class="text-center" style="width: 10%;">RT/RW</th>
+          <th style="width: 30%;">Nama Kepala Keluarga</th>
+          <th class="text-center" style="width: 15%;">RT/RW</th>
           <th style="width: 20%;">Alamat</th>
-          <th class="text-right" style="width: 10%;">Jatah Sapi</th>
+          <th class="text-right" style="width: 10%;">Sapi</th>
           <th class="text-right" style="width: 10%;">Kambing</th>
-          <th class="text-center" style="width: 20%;">Tanda Tangan</th>
+          <th class="text-center" style="width: 10%;">Paraf</th>
         </tr>
       `;
 
@@ -1237,11 +1304,9 @@ export default function App() {
           <td style="font-size: 9px;">${j.alamat}</td>
           <td class="text-right font-bold" style="color: #e11d48;">${jatahDagingSapiPerKK} Kg</td>
           <td class="text-right font-bold" style="color: #d97706;">${jatahDagingKambingPerKK} Kg</td>
-          <td class="text-left" style="height: 40px; position: relative;">
-            <span style="position: absolute; bottom: 5px; left: 10px; font-size: 9px; color: #94a3b8;">${i + 1}.</span>
-          </td>
+          <td class="text-left" style="height: 35px;"></td>
         </tr>
-      `).join('') : `<tr><td colspan="7" class="text-center" style="padding: 30px; font-style: italic; color: #94a3b8;">Tidak ada warga penerima daging qurban pada wilayah terpilih ini.</td></tr>`;
+      `).join('') : `<tr><td colspan="7" class="text-center" style="padding: 30px; font-style: italic; color: #94a3b8;">Tidak ada warga penerima daging qurban.</td></tr>`;
     }
 
     else if (reportType === "pekurban") {
@@ -1271,7 +1336,7 @@ export default function App() {
             <td class="text-center font-bold" style="color: #e11d48;">${jenisHewan}</td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="5" class="text-center" style="padding: 30px; font-style: italic; color: #94a3b8;">Tidak ada data pekurban (Sahibul Qurban) pada wilayah terpilih ini.</td></tr>`;
+      }).join('') : `<tr><td colspan="5" class="text-center" style="padding: 30px; font-style: italic; color: #94a3b8;">Tidak ada data pekurban pada wilayah terpilih ini.</td></tr>`;
     }
 
     const waLink = createWAShareLink(docTitle, rtTitle, waSummaryText);
@@ -1776,6 +1841,93 @@ export default function App() {
                   </div>
                 </div>
               )}
+
+              {/* MODAL SIMULATOR WHATSAPP/SMS NOTIFIKASI H-1 */}
+              {activeNotificationSim && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+                  <div className={`w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-scaleIn transition-all ${
+                    notificationType === "WA" ? "bg-[#eae6df] h-[550px]" : "bg-slate-100 h-[580px] border border-slate-300"
+                  }`}>
+                    
+                    {/* Header Sesuai Platform */}
+                    {notificationType === "WA" ? (
+                      <div className="bg-[#008069] text-white px-4 py-3.5 flex items-center justify-between shadow-md">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-emerald-700 rounded-full flex items-center justify-center font-bold text-sm text-white">WA</div>
+                          <div>
+                            <p className="font-bold text-sm">Masjid Gateway</p>
+                            <p className="text-[10px] text-emerald-100">Online • Kepada: {activeNotificationSim.petugas.khatib}</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setActiveNotificationSim(null)} className="text-white hover:text-slate-200"><X size={20} /></button>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-800 text-white px-5 py-4 flex items-center justify-between shadow-md">
+                        <div className="flex items-center gap-3">
+                          <Smartphone className="text-blue-400 w-5 h-5" />
+                          <div>
+                            <p className="font-bold text-sm">SMS Messenger (Android)</p>
+                            <p className="text-[10px] text-slate-300">Penerima: {activeNotificationSim.petugas.khatib} ({activeNotificationSim.petugas.telp})</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setActiveNotificationSim(null)} className="text-white hover:text-slate-200"><X size={20} /></button>
+                      </div>
+                    )}
+
+                    {/* Chat / Message Area */}
+                    <div className="flex-1 p-4 overflow-y-auto flex flex-col justify-end space-y-4" style={notificationType === "WA" ? { 
+                      backgroundImage: "url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')", 
+                      backgroundSize: "contain" 
+                    } : { backgroundColor: "#f3f4f6" }}>
+                      
+                      <div className="flex flex-col space-y-4">
+                        <div className="bg-slate-200/80 text-slate-600 px-3 py-1 rounded-lg text-[9px] font-bold text-center self-center uppercase shadow-xs">
+                          Hari Kamis (H-1) • Pengingat Sholat Jumat
+                        </div>
+
+                        {/* Tampilan Sesuai Platform */}
+                        {notificationType === "WA" ? (
+                          <div className="bg-[#d9fdd3] text-slate-800 p-3.5 rounded-2xl rounded-tr-none shadow-sm max-w-[85%] self-end relative border border-[#c1ebd0]">
+                            <p className="text-xs whitespace-pre-line leading-relaxed">{simulatedMessageText}</p>
+                            <span className="text-[8px] text-slate-400 text-right block mt-2 font-mono">14:00 ✓✓</span>
+                          </div>
+                        ) : (
+                          <div className="bg-blue-600 text-white p-3.5 rounded-2xl rounded-tr-none shadow-sm max-w-[85%] self-end relative">
+                            <p className="text-xs whitespace-pre-line leading-relaxed">{simulatedMessageText}</p>
+                            <span className="text-[8px] text-blue-200 text-right block mt-2 font-mono">Sent via Android Gateway</span>
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+
+                    {/* Input Footer */}
+                    <div className="bg-[#f0f2f5] p-3 flex gap-2 items-center border-t border-slate-200">
+                      <input 
+                        type="text" 
+                        value={simulatedMessageText}
+                        onChange={(e) => setSimulatedMessageText(e.target.value)}
+                        className="flex-1 bg-white border border-slate-200 px-4 py-2.5 rounded-full text-xs outline-none focus:ring-1 focus:ring-emerald-500 font-semibold text-slate-800"
+                      />
+                      <button 
+                        onClick={handleSendSimMessage}
+                        disabled={isSendingMessage}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:bg-slate-400 shrink-0 shadow ${
+                          notificationType === "WA" ? "bg-[#00a884] hover:bg-[#008f6f]" : "bg-blue-600 hover:bg-blue-700"
+                        } text-white`}
+                      >
+                        {isSendingMessage ? (
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Send size={15} className="ml-0.5" />
+                        )}
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
 
@@ -1789,7 +1941,7 @@ export default function App() {
                   <p className="text-[11px] sm:text-xs text-slate-500">Kelola dan cetak seluruh laporan data jemaah, qurban, dan pembagian zakat di sini.</p>
                 </div>
                 {canEditJamaah && (
-                  <button onClick={() => { setEditingJamaah(null); setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima" }); setShowJamaahModal(true); }} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-3 sm:py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow shadow-emerald-600/10 hover:scale-102">
+                  <button onClick={() => { setEditingJamaah(null); setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", isGuruNgaji: false }); setShowJamaahModal(true); }} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-3 sm:py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow shadow-emerald-600/10 hover:scale-102">
                     <Plus size={16} /> Tambah Warga Baru
                   </button>
                 )}
@@ -1816,9 +1968,10 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2.5">
+                <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-2.5">
                   <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 hover:bg-slate-900 text-white text-[11px] sm:text-xs font-bold px-3 py-2.5 rounded-xl flex justify-center items-center gap-1.5 transition-all shadow-sm w-full sm:w-auto"><FileText size={14} className="shrink-0"/>Data Warga</button>
                   <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 hover:bg-amber-700 text-white text-[11px] sm:text-xs font-bold px-3 py-2.5 rounded-xl flex justify-center items-center gap-1.5 transition-all shadow-sm w-full sm:w-auto"><Heart size={14} className="shrink-0"/>Data Pekurban</button>
+                  <button onClick={() => handlePrintSelectedReport("terpadu")} className="bg-teal-700 hover:bg-teal-800 text-white text-[11px] sm:text-xs font-bold px-3 py-2.5 rounded-xl flex justify-center items-center gap-1.5 transition-all shadow-sm w-full sm:w-auto"><FileText size={14} className="shrink-0"/>Cetak Zakat Terpadu</button>
                 </div>
               </div>
 
@@ -1874,7 +2027,9 @@ export default function App() {
                         })
                         .map((item) => (
                           <tr key={item.id} className="hover:bg-slate-50/50 transition-all">
-                            <td className="p-3 sm:p-4 text-slate-900 font-bold max-w-[120px] truncate">{item.nama}</td>
+                            <td className="p-3 sm:p-4 text-slate-900 font-bold max-w-[120px] truncate">{item.nama}
+                              {item.isGuruNgaji && <span className="block mt-1 text-[8px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200 w-max">GURU NGAJI</span>}
+                            </td>
                             <td className="p-3 sm:p-4"><span className="bg-slate-100 text-slate-700 text-[10px] sm:text-xs px-2 py-1 rounded-lg border border-slate-200/50 font-mono font-bold whitespace-nowrap">RT {item.rt}/{item.rw}</span></td>
                             <td className="p-3 sm:p-4 text-[10px] sm:text-xs font-medium text-slate-500 max-w-[150px] truncate" title={item.alamat}>{item.alamat}</td>
                             <td className="p-3 sm:p-4 text-center text-slate-900">{item.anggota}</td>
@@ -1952,14 +2107,18 @@ export default function App() {
                           </div>
 
                           <div className="border-t border-slate-200 pt-4 mt-2">
-                            <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-2">Status Ekonomi</label>
-                            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                            <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-2">Status Ekonomi & Profesi Khusus</label>
+                            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-3">
                               {["Mampu", "Kurang Mampu", "Sangat Kurang"].map((opsi) => (
                                 <label key={opsi} className={`flex-1 border p-3 sm:p-2.5 rounded-xl text-center text-xs font-semibold cursor-pointer select-none flex items-center justify-center gap-2 transition-all ${jamaahForm.ekonomi === opsi ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                   <input type="radio" name="ekonomi" value={opsi} checked={jamaahForm.ekonomi === opsi} onChange={() => setJamaahForm({...jamaahForm, ekonomi: opsi})} className="w-4 h-4 accent-emerald-600" />
                                   {opsi}
                                 </label>
                               ))}
+                            </div>
+                            <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                              <input type="checkbox" id="guruNgaji" checked={jamaahForm.isGuruNgaji} onChange={(e) => setJamaahForm({...jamaahForm, isGuruNgaji: e.target.checked})} className="w-5 h-5 accent-emerald-600 cursor-pointer rounded" />
+                              <label htmlFor="guruNgaji" className="text-xs font-bold text-slate-700 cursor-pointer">Warga ini berstatus <span className="text-emerald-700 uppercase">Guru Ngaji</span> <br/><span className="font-medium text-[10px] text-slate-500">(Mendapat jatah tambahan zakat)</span></label>
                             </div>
                           </div>
 
@@ -2088,11 +2247,11 @@ export default function App() {
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                       <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wide">Pengaturan Jatah per Jiwa (Kg)</p>
                       {canEditFitrah && (
-                        <button onClick={handleSaveAlokasiFitrah} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-4 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-sm"><Check size={14} />Simpan Parameter Jatah</button>
+                        <button onClick={handleSaveAlokasiFitrah} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-4 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-sm"><Check size={12} />Simpan Parameter Jatah</button>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                       {["Berat", "Sedang", "Ringan"].map((asnaf) => (
                         <div key={asnaf} className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
                           <span className="text-[10px] sm:text-xs text-slate-500 font-bold">{asnaf}</span>
@@ -2102,12 +2261,25 @@ export default function App() {
                               disabled={!canEditFitrah}
                               value={tempAlokasiFitrah[asnaf] || 0} 
                               onChange={(e) => setTempAlokasiFitrah({...tempAlokasiFitrah, [asnaf]: parseFloat(e.target.value) || 0})}
-                              className="w-full sm:w-16 text-center text-sm sm:text-xs font-black outline-none border border-slate-200 sm:border-0 sm:border-b sm:border-dashed sm:border-slate-300 focus:border-emerald-500 text-slate-800 p-1 sm:p-0 rounded-md sm:rounded-none" 
+                              className="w-full sm:w-12 text-center text-sm sm:text-xs font-black outline-none border border-slate-200 sm:border-0 sm:border-b sm:border-dashed sm:border-slate-300 focus:border-emerald-500 text-slate-800 p-1 sm:p-0 rounded-md sm:rounded-none" 
                             />
                             <span className="text-[10px] text-slate-400 font-bold hidden sm:block">Kg</span>
                           </div>
                         </div>
                       ))}
+                      <div className="bg-emerald-50 p-2.5 sm:p-3 rounded-xl border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+                        <span className="text-[10px] sm:text-[11px] text-emerald-800 font-black tracking-wide">+ GURU NGAJI</span>
+                        <div className="flex items-center gap-1 w-full sm:w-auto">
+                          <input 
+                            type="number" step="0.5" min="0" 
+                            disabled={!canEditFitrah}
+                            value={tempAlokasiFitrah.GuruNgaji || 0} 
+                            onChange={(e) => setTempAlokasiFitrah({...tempAlokasiFitrah, GuruNgaji: parseFloat(e.target.value) || 0})}
+                            className="w-full sm:w-12 text-center text-sm sm:text-xs font-black outline-none border border-emerald-300 bg-transparent sm:border-0 sm:border-b sm:border-dashed focus:border-emerald-600 text-emerald-900 p-1 sm:p-0 rounded-md sm:rounded-none" 
+                          />
+                          <span className="text-[10px] text-emerald-700 font-bold hidden sm:block">Kg</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -2115,23 +2287,21 @@ export default function App() {
                     <table className="w-full text-left text-xs border-collapse min-w-[400px]">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px] sm:text-[11px]">
-                          <th className="p-3">Golongan Mustahik</th>
-                          <th className="p-3 text-center">Jumlah Jiwa</th>
-                          <th className="p-3 text-center">Jatah Masing-masing</th>
+                          <th className="p-3">Kategori Status Mustahik</th>
+                          <th className="p-3 text-center">Jumlah Penerima</th>
                           <th className="p-3 text-right">Total Kebutuhan</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                        {rincianKebutuhanFitrahData.map((item) => (
-                          <tr key={item.kategori}>
-                            <td className="p-3 text-slate-900 font-bold">Mustahik {item.kategori}</td>
-                            <td className="p-3 text-center"><span className="bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">{item.jumlahJiwa} Orang</span></td>
-                            <td className="p-3 text-center font-mono text-emerald-700 font-bold">{item.jatah} Kg</td>
+                        {rincianKebutuhanFitrahData.map((item, idx) => (
+                          <tr key={idx}>
+                            <td className="p-3 text-slate-900 font-bold">{item.kategori} <span className="text-[9px] text-slate-400 font-normal ml-1">({item.jatah})</span></td>
+                            <td className="p-3 text-center"><span className="bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">{item.jiwa}</span></td>
                             <td className="p-3 text-right text-slate-900 font-black text-sm">{item.totalButuh.toFixed(1)} Kg</td>
                           </tr>
                         ))}
                         <tr className="bg-emerald-50/50 text-slate-900 border-t-2 border-emerald-100">
-                          <td className="p-3 font-black uppercase text-[10px] sm:text-xs text-emerald-900" colSpan="3">Total Estimasi Kebutuhan Penyaluran:</td>
+                          <td className="p-3 font-black uppercase text-[10px] sm:text-xs text-emerald-900" colSpan="2">Total Estimasi Kebutuhan Penyaluran:</td>
                           <td className="p-3 text-right text-emerald-700 font-black text-base sm:text-lg">{totalButuhFitrahValue.toFixed(1)} Kg</td>
                         </tr>
                       </tbody>
@@ -2213,7 +2383,7 @@ export default function App() {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                       {["Berat", "Sedang", "Ringan"].map((asnaf) => (
                         <div key={asnaf} className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
                           <span className="text-[10px] sm:text-xs text-slate-500 font-bold">{asnaf}</span>
@@ -2229,6 +2399,19 @@ export default function App() {
                           </div>
                         </div>
                       ))}
+                      <div className="bg-teal-50 p-2.5 sm:p-3 rounded-xl border border-teal-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+                        <span className="text-[10px] sm:text-[11px] text-teal-800 font-black tracking-wide">+ GURU NGAJI</span>
+                        <div className="flex items-center gap-1 w-full sm:w-auto">
+                          <input 
+                            type="number" step="0.5" min="0" 
+                            disabled={!canEditZuru}
+                            value={tempAlokasiZuru.GuruNgaji || 0} 
+                            onChange={(e) => setTempAlokasiZuru({...tempAlokasiZuru, GuruNgaji: parseFloat(e.target.value) || 0})}
+                            className="w-full sm:w-12 text-center text-sm sm:text-xs font-black outline-none border border-teal-300 bg-transparent sm:border-0 sm:border-b sm:border-dashed focus:border-teal-600 text-teal-900 p-1 sm:p-0 rounded-md sm:rounded-none" 
+                          />
+                          <span className="text-[10px] text-teal-700 font-bold hidden sm:block">Kg</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -2237,22 +2420,20 @@ export default function App() {
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px] sm:text-[11px]">
                           <th className="p-3">Kriteria Penerima Zuru'</th>
-                          <th className="p-3 text-center">Jumlah Jiwa</th>
-                          <th className="p-3 text-center">Jatah Masing-masing</th>
+                          <th className="p-3 text-center">Jumlah Penerima</th>
                           <th className="p-3 text-right">Total Kebutuhan</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
-                        {rincianKebutuhanZuruData.map((item) => (
-                          <tr key={item.kategori}>
-                            <td className="p-3 text-slate-900 font-bold">Mustahik {item.kategori}</td>
-                            <td className="p-3 text-center"><span className="bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">{item.jumlahJiwa} Orang</span></td>
-                            <td className="p-3 text-center font-mono text-teal-700 font-bold">{item.jatah} Kg</td>
+                        {rincianKebutuhanZuruData.map((item, idx) => (
+                          <tr key={idx}>
+                            <td className="p-3 text-slate-900 font-bold">{item.kategori} <span className="text-[9px] text-slate-400 font-normal ml-1">({item.jatah})</span></td>
+                            <td className="p-3 text-center"><span className="bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">{item.jiwa}</span></td>
                             <td className="p-3 text-right text-slate-900 font-black text-sm">{item.totalButuh.toFixed(1)} Kg</td>
                           </tr>
                         ))}
                         <tr className="bg-teal-50/50 text-slate-900 border-t-2 border-teal-100">
-                          <td className="p-3 font-black uppercase text-[10px] sm:text-xs text-teal-900" colSpan="3">Total Estimasi Kebutuhan Penyaluran Zuru:</td>
+                          <td className="p-3 font-black uppercase text-[10px] sm:text-xs text-teal-900" colSpan="2">Total Estimasi Kebutuhan Penyaluran Zuru:</td>
                           <td className="p-3 text-right text-teal-800 font-black text-base sm:text-lg">{totalButuruValue.toFixed(1)} Kg</td>
                         </tr>
                       </tbody>
@@ -2552,19 +2733,24 @@ export default function App() {
                         <tr key={menu.id} className="hover:bg-slate-50/50 transition-all">
                           <td className="p-3 sm:p-4 text-slate-900 font-bold text-xs sm:text-sm">{menu.label}</td>
                           {Object.keys(rolesConfig).map((role) => {
-                            const isAllowed = rolesConfig[role].access.includes(menu.id);
+                            const isAllowed = rolesConfig[role].access[menu.id];
                             const isSelfAdminRbac = role === "Admin" && menu.id === "rbac";
                             return (
                               <td key={role} className="p-3 sm:p-4 text-center">
-                                <button type="button" disabled={isSelfAdminRbac || currentRole !== "Admin"} onClick={() => {
-                                  setRolesConfig(prev => {
-                                    const updatedAccess = isAllowed ? prev[role].access.filter(id => id !== menu.id) : [...prev[role].access, menu.id];
-                                    return { ...prev, [role]: { ...prev[role], access: updatedAccess } };
-                                  });
-                                  addNotification(`Akses menu "${menu.label}" untuk peran ${rolesConfig[role].label} telah diubah!`);
-                                }} className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto transition-all shadow-sm ${isAllowed ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'} ${currentRole === "Admin" && !isSelfAdminRbac ? "hover:scale-105 hover:shadow-md" : "cursor-not-allowed opacity-70"}`}>
-                                  {isAllowed ? <Check size={16} /> : <X size={16} />}
-                                </button>
+                                <select 
+                                  value={isAllowed || "none"}
+                                  disabled={isSelfAdminRbac || currentRole !== "Admin"}
+                                  onChange={(e) => updateRoleAccess(role, menu.id, e.target.value)}
+                                  className={`px-2 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold border outline-none appearance-none text-center cursor-pointer transition-all ${
+                                    isAllowed === 'edit' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                    isAllowed === 'view' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                    'bg-rose-50 text-rose-700 border-rose-200'
+                                  } ${isSelfAdminRbac || currentRole !== "Admin" ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-sm'}`}
+                                >
+                                  <option value="none">❌ Kunci</option>
+                                  <option value="view">👀 Lihat</option>
+                                  <option value="edit">✏️ Edit</option>
+                                </select>
                               </td>
                             );
                           })}
@@ -2587,14 +2773,14 @@ export default function App() {
             title="Print Preview"
             srcDoc={printIframeData}
             className="w-full h-full border-0 bg-transparent flex-1"
-            sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-downloads"
+            sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-downloads allow-modals"
           />
         </div>
       )}
 
       {/* === FOOTER === */}
       <footer className="bg-white border-t border-slate-200 px-4 sm:px-6 py-4 text-center text-[10px] sm:text-xs text-slate-400 font-semibold mt-auto z-10">
-        &copy; {new Date().getFullYear()} {masjidName}. Developed By Misbahul Munir.
+        &copy; {new Date().getFullYear()} {masjidName}. Dirancang khusus untuk pengelolaan zakat yang akuntabel, modern, dan transparan.
       </footer>
 
     </div>
