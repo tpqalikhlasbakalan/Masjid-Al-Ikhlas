@@ -438,7 +438,6 @@ export default function App() {
         if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
         if (payload.rolesConfig !== undefined) setRolesConfig(payload.rolesConfig);
         setSyncStatus("Tersinkronisasi");
-        addNotification("Data berhasil diperbarui dari Server Pusat!", "success");
       } else { setSyncStatus("Tersinkronisasi Lokal"); }
     } catch (err) {
       setSyncStatus("Gagal Sinkron");
@@ -543,7 +542,7 @@ export default function App() {
     let currentDB = userDatabase;
     try {
       const localDB = JSON.parse(localStorage.getItem("userDatabase"));
-      if (localDB) currentDB = localDB;
+      if (localDB && typeof localDB === 'object') currentDB = localDB;
     } catch(err) {}
 
     let userAccount = currentDB[cleanUser];
@@ -811,6 +810,7 @@ export default function App() {
     const printDate = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
     const waLink = createWAShareLink(masjidName, docTitle, rtTitle, waSummaryText);
     
+    // PENAMBAHAN SCRIPT AUTO PRINT DALAM IFRAME AGAR OTOMATIS BUKA DIALOG CETAK
     const html = `<!DOCTYPE html>
     <html lang="id">
     <head>
@@ -841,6 +841,11 @@ export default function App() {
           @page { size: 215mm 330mm; margin: 15mm; }
         }
       </style>
+      <script>
+        window.onload = function() {
+           setTimeout(function() { window.print(); }, 500);
+        };
+      </script>
     </head>
     <body>
       <div class="wrapper">
@@ -942,40 +947,44 @@ export default function App() {
         ))}
       </div>
 
-      <header className="bg-white border-b border-slate-200 px-4 py-4 flex items-center justify-between sticky top-0 z-40 shadow-xs">
+      <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40 shadow-xs">
         <div className="flex items-center gap-3">
           <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 border rounded-xl hover:bg-slate-50 transition-colors"><Menu size={20} /></button>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 pl-3 pr-2 py-1.5 rounded-2xl">
-            <div className="text-left hidden sm:block">
-              <span className="text-[9px] text-emerald-600 font-extrabold block uppercase">{rolesConfig[currentRole]?.label || currentRole}</span>
-              <span className="text-xs font-black text-emerald-900 truncate block">{String(currentUserLabel)}</span>
+        
+        <div className="flex items-center gap-2">
+          {/* User profile info header - shown on mobile too */}
+          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 pl-3 pr-2 py-1.5 rounded-2xl mr-1">
+            <div className="text-left block">
+              <span className="text-[8px] sm:text-[9px] text-emerald-600 font-extrabold block uppercase leading-tight">{rolesConfig[currentRole]?.label || currentRole}</span>
+              <span className="text-[10px] sm:text-xs font-black text-emerald-900 truncate block max-w-[80px] sm:max-w-[150px] leading-tight">{String(currentUserLabel)}</span>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <div className="flex items-center justify-center p-2 rounded-xl bg-slate-50 border border-slate-200" title={`Status Database: ${syncStatus}`}>
-                <div className={`w-3 h-3 rounded-full ${isSyncing ? 'bg-amber-400 animate-pulse' : syncStatus.includes('Gagal') ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
+                <div className={`w-2.5 h-2.5 rounded-full ${isSyncing ? 'bg-amber-400 animate-pulse' : syncStatus.includes('Gagal') ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
             </div>
-            <button onClick={handleLogout} title="Keluar / Logout" className="p-2 bg-rose-100 text-rose-600 hover:bg-rose-200 rounded-xl transition-all"><LogOut size={16} /></button>
+            {/* Logout button hidden on mobile header, moved to sidebar */}
+            <button onClick={handleLogout} title="Keluar / Logout" className="hidden sm:block p-2 bg-rose-100 text-rose-600 hover:bg-rose-200 rounded-xl transition-all"><LogOut size={16} /></button>
           </div>
         </div>
       </header>
 
       {isMenuOpen && (
         <div className="fixed inset-0 bg-slate-900/40 z-50 flex">
-          <div className="bg-white w-72 h-full shadow-2xl p-5 border-r flex flex-col">
-            <div className="flex justify-between items-center pb-4 border-b">
+          <div className="bg-white w-72 h-full shadow-2xl flex flex-col">
+            <div className="p-5 border-b flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-2.5 overflow-hidden">
                 <div className="w-8 h-8 text-emerald-600 shrink-0">
                   {renderMasjidLogo("w-full h-full object-contain rounded", "w-7 h-7")}
                 </div>
                 <span className="text-sm font-black text-slate-800 tracking-wide truncate">{String(masjidName)}</span>
               </div>
-              <button onClick={() => setIsMenuOpen(false)} className="p-1 hover:bg-slate-100 text-slate-500 rounded-lg transition-all"><X size={18} /></button>
+              <button onClick={() => setIsMenuOpen(false)} className="p-1 hover:bg-slate-200 text-slate-500 rounded-lg transition-all"><X size={18} /></button>
             </div>
-            <nav className="space-y-1.5 py-4 flex-1">
+            
+            <nav className="space-y-1.5 p-4 flex-1 overflow-y-auto">
               {[
                 { id: "dashboard", label: "Dashboard Utama", icon: Compass }, { id: "petugas", label: "Petugas Sholat", icon: Calendar },
                 { id: "jamaah", label: "Data Warga", icon: Users }, { id: "fitrah", label: "Zakat Fitrah", icon: Gift },
@@ -992,12 +1001,25 @@ export default function App() {
                 );
               })}
             </nav>
+
+            {/* Sidebar Footer: User Info & Logout */}
+            <div className="p-4 border-t border-slate-200 bg-slate-50">
+              <div className="bg-white p-3 rounded-xl border border-slate-200 mb-3 shadow-xs">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Login Sebagai:</p>
+                <p className="text-sm font-black text-slate-800 truncate leading-tight">{String(currentUserLabel)}</p>
+                <p className="text-[10px] font-bold text-emerald-600 truncate">{rolesConfig[currentRole]?.label || currentRole}</p>
+              </div>
+              <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 p-2.5 bg-rose-100 text-rose-700 hover:bg-rose-200 hover:text-rose-800 rounded-xl font-bold transition-all text-xs">
+                <LogOut size={16} /> Keluar Aplikasi
+              </button>
+            </div>
+
           </div>
           <div className="flex-1" onClick={() => setIsMenuOpen(false)} />
         </div>
       )}
 
-      <main className="flex-1 p-4 sm:p-6 overflow-y-auto w-full max-w-7xl mx-auto">
+      <main className="flex-1 p-4 sm:p-6 overflow-y-auto w-full max-w-7xl mx-auto pb-8">
         
         {/* ======================= TAB: DASHBOARD ======================= */}
         {activeTab === "dashboard" && (
@@ -1180,7 +1202,7 @@ export default function App() {
         {activeTab === "jamaah" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Database Jama'ah & Warga</h2>
+              <h2 className="text-xl font-bold">Database Jemaah & Warga</h2>
               {canEditJamaah && <button onClick={() => { setEditingJamaah(null); setShowJamaahModal(true); }} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold">{currentRole === "Amil" || currentRole === "RT" ? "Usul Warga" : "Tambah Warga"}</button>}
             </div>
 
@@ -1494,12 +1516,13 @@ export default function App() {
 
       </main>
 
-      <footer className="bg-white border-t border-slate-200 px-4 py-3 text-center text-xs text-slate-500 z-10">
+      {/* Bagian Footer */}
+      <footer className="bg-white border-t border-slate-200 px-4 py-3 text-center text-xs text-slate-500 z-10 w-full mt-auto">
         &copy; {new Date().getFullYear()} {String(masjidName)} - developed by Misbahul Munir
       </footer>
 
       {printIframeData && (
-         <div className="fixed inset-0 z-[99999] bg-slate-100 flex flex-col h-screen w-screen overflow-hidden">
+         <div className="fixed inset-0 z-[99999] bg-slate-100 flex flex-col h-screen w-screen overflow-hidden animate-fadeIn">
            <iframe title="Print" srcDoc={printIframeData} className="w-full h-full border-0 bg-transparent flex-1" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-downloads allow-modals" />
          </div>
       )}
