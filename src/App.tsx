@@ -152,11 +152,6 @@ function getJumlahJiwaPerKategoriZuru(list, kategori) {
   return list.filter(item => item.zuru === kategori && item.approvedByTakmir).reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
 }
 
-function createWAShareLink(masjidName, title, rtTitle, summaryText) {
-  const message = `*${String(masjidName)}*\n\n📝 *${title}*\nWilayah: ${rtTitle}\nTanggal: ${new Date().toLocaleDateString('id-ID')}\n\n${summaryText}\n\n_Dokumen cetak tersedia di pengurus._`;
-  return `https://wa.me/?text=${encodeURIComponent(message)}`;
-}
-
 // ====================================================================
 // MAIN COMPONENT APP
 // ====================================================================
@@ -739,6 +734,13 @@ export default function App() {
     if (window.confirm("Hapus akun?")) { setUserDatabase(prev => { const copy = { ...prev }; delete copy[usernameKey]; return copy; }); addNotification("Akun dihapus.", "warning"); }
   };
 
+  const handleSaveNewPassword = (e) => {
+    e.preventDefault();
+    if (!newPasswordValue.trim()) return;
+    setUserDatabase(prev => ({ ...prev, [editingAccountPassword]: { ...prev[editingAccountPassword], password: newPasswordValue.trim() } }));
+    addNotification("Password diganti!", "success"); setEditingAccountPassword(null); setNewPasswordValue("");
+  };
+
   const handlePrepareNotification = (fridayData, type) => {
     setNotificationType(type);
     let msg = type === "WA" ? `Yth. *${fridayData.petugas.khatib}*, besok Jumat ${fridayData.pasaran} jadwal bertugas Khatib. Mohon hadir tepat waktu.` : `[MASJID] Yth ${fridayData.petugas.khatib}, besok Jumat ${fridayData.pasaran} jadwal tugas.`;
@@ -749,7 +751,7 @@ export default function App() {
     setIsSendingMessage(true);
     setTimeout(() => {
       setIsSendingMessage(false);
-      addNotification(`Notifikasi ${notificationType} H-1 pengingat sukses terkirim ke ${activeNotificationSim.petugas.khatib}!`, "success");
+      addNotification(`Notifikasi ${notificationType} sukses terkirim ke ${activeNotificationSim.petugas.khatib}!`, "success");
       setActiveNotificationSim(null);
     }, 1500);
   };
@@ -791,23 +793,21 @@ export default function App() {
       rtTitle = `RT ${filterRt} / RW ${filterRw}`;
     }
 
-    let docTitle = ""; let tableHeaderHTML = ""; let tableRowsHTML = ""; let summaryHTML = ""; let waSummaryText = "";
+    let docTitle = ""; let tableHeaderHTML = ""; let tableRowsHTML = ""; let summaryHTML = "";
 
     if (reportType === "jamaah") {
-      docTitle = `Laporan Database Jamaah`; waSummaryText = `Total Warga: ${filteredWarga.length} KK.`;
+      docTitle = `Laporan Database Jamaah`;
       tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 30%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 15%;">RT / RW</th><th style="width: 35%;">Alamat Lengkap</th><th class="text-center" style="width: 15%;">Jumlah Jiwa</th></tr>`;
       tableRowsHTML = filteredWarga.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)} ${j.isGuruNgaji ? '(Guru Ngaji)' : ''}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center">${String(j.anggota)} Orang</td></tr>`).join('');
     } else if (reportType === "fitrah") {
       docTitle = `Penyaluran Zakat Fitrah`;
       const mustahikList = filteredWarga.filter(j => j.fitrah !== "Muzakki" || j.isGuruNgaji);
-      waSummaryText = `✔️ Penerima: ${mustahikList.length} KK`;
       summaryHTML = `<div style="margin-bottom:15px;padding:12px;background:#ecfdf5;">Penerima: ${mustahikList.length} KK</div>`;
       tableHeaderHTML = `<tr><th class="text-center" style="width: 8%;">No</th><th style="width: 42%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 25%;">Kriteria Mustahik</th><th class="text-center" style="width: 25%;">Paraf</th></tr>`;
       tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">${j.fitrah !== "Muzakki" ? `Mustahik ${String(j.fitrah)}` : ""}${j.isGuruNgaji ? " + Guru Ngaji" : ""}</td><td style="height:38px;"></td></tr>`).join('') : `<tr><td colspan="4" class="text-center">Kosong</td></tr>`;
     } else if (reportType === "zuru") {
       docTitle = `Penyaluran Zakat Zuru'`;
       const mustahikList = filteredWarga.filter(j => j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
-      waSummaryText = `✔️ Penerima: ${mustahikList.length} KK`;
       summaryHTML = `<div style="margin-bottom:15px;padding:12px;background:#f0fdfa;">Penerima: ${mustahikList.length} KK</div>`;
       tableHeaderHTML = `<tr><th class="text-center" style="width: 8%;">No</th><th style="width: 42%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 25%;">Kriteria Mustahik</th><th class="text-center" style="width: 25%;">Paraf</th></tr>`;
       tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">${j.zuru !== "Bukan Mustahik" ? `Mustahik ${String(j.zuru)}` : ""}${j.isGuruNgaji ? " + Guru Ngaji" : ""}</td><td style="height:38px;"></td></tr>`).join('') : `<tr><td colspan="4" class="text-center">Kosong</td></tr>`;
@@ -817,7 +817,6 @@ export default function App() {
       if (qurbanHanyaMustahik) {
         qurbanList = qurbanList.filter(warga => warga.fitrah !== "Muzakki" || warga.zuru !== "Bukan Mustahik" || warga.isGuruNgaji);
       }
-      waSummaryText = `🥩 Penerima Qurban: ${qurbanList.length} KK`;
       
       const sapiKg = jatahDagingSapiPerKK;
       const kambingKg = jatahDagingKambingPerKK;
@@ -828,15 +827,13 @@ export default function App() {
     } else if (reportType === "terpadu") {
       docTitle = `Rekap Zakat Terpadu`;
       const mustahikList = filteredWarga.filter(j => j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
-      waSummaryText = `Rekap Terpadu ${rtTitle}`;
       tableHeaderHTML = `<tr><th class="text-center">No</th><th>Nama</th><th class="text-center">Fitrah</th><th class="text-center">Zuru'</th><th class="text-center">Paraf</th></tr>`;
       tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">${j.fitrah !== "Muzakki" ? String(j.fitrah) : "-"}${j.isGuruNgaji?"+Guru":""}</td><td class="text-center">${j.zuru !== "Bukan Mustahik" ? String(j.zuru) : "-"}${j.isGuruNgaji?"+Guru":""}</td><td style="height:35px;"></td></tr>`).join('') : `<tr><td colspan="5" class="text-center">Kosong</td></tr>`;
     }
 
     const printDate = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
-    const waLink = createWAShareLink(masjidName, docTitle, rtTitle, waSummaryText);
     
-    // SCRIPT HTML2PDF YANG RAMAH APK
+    // SCRIPT HTML2PDF YANG RAMAH APK DENGAN 2 TOMBOL SINGKAT
     const html = `<!DOCTYPE html>
     <html lang="id">
     <head>
@@ -849,7 +846,6 @@ export default function App() {
         .control-panel { max-width: 100%; margin: 0 auto 15px; background: white; padding: 12px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-x: auto; gap: 10px; }
         .btn { padding: 8px 12px; border-radius: 6px; cursor: pointer; border: none; text-decoration: none; font-weight: bold; font-size: 12px; white-space: nowrap; }
         .btn-close { background: #ef4444; color: white; }
-        .btn-wa { background: #25D366; color: white; }
         .btn-pdf { background: #0f172a; color: white; display: flex; align-items: center; gap: 5px; }
         .btn-pdf-browser { background: #334155; color: white; }
         .print-container { width: 100%; max-width: 215mm; background: white; padding: 5%; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); box-sizing: border-box; }
@@ -887,9 +883,14 @@ export default function App() {
             };
             
             html2pdf().set(opt).from(element).save().then(function() {
-                btn.innerHTML = "⬇️ Unduh PDF Laporan (Khusus HP/APK)";
+                btn.innerHTML = "⬇️ Unduh PDF";
             });
         }
+        window.onload = function() {
+           setTimeout(function() { 
+              try { window.print(); } catch(e) {} 
+           }, 800);
+        };
       </script>
     </head>
     <body>
@@ -897,9 +898,8 @@ export default function App() {
         <div class="control-panel">
           <button onclick="window.parent.postMessage('CLOSE_PRINT_FRAME', '*')" class="btn btn-close">Kembali</button>
           <div style="display:flex; gap:8px;">
-            <a href="${waLink}" target="_blank" class="btn btn-wa">Bagikan WA</a>
-            <button onclick="doPrintBrowser()" class="btn btn-pdf-browser">🖨️ Cetak (Laptop)</button>
-            <button id="dl-btn" onclick="doDownloadPDF()" class="btn btn-pdf">⬇️ Unduh PDF Laporan (Khusus HP/APK)</button>
+            <button onclick="doPrintBrowser()" class="btn btn-pdf-browser">🖨️ Cetak</button>
+            <button id="dl-btn" onclick="doDownloadPDF()" class="btn btn-pdf">⬇️ Unduh PDF</button>
           </div>
         </div>
         <div class="print-container">
@@ -995,7 +995,6 @@ export default function App() {
         </div>
         
         <div className="flex items-center gap-2">
-          {/* User profile info header - dimunculkan juga di tampilan Mobile/HP */}
           <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 pl-3 pr-2 py-1.5 rounded-2xl mr-1">
             <div className="text-left block">
               <span className="text-[8px] sm:text-[9px] text-emerald-600 font-extrabold block uppercase leading-tight">{currentUserRoles.map(r => rolesConfig[r]?.label || r).join(', ')}</span>
@@ -1007,7 +1006,6 @@ export default function App() {
             <div className="flex items-center justify-center p-2 rounded-xl bg-slate-50 border border-slate-200" title={`Status Database: ${syncStatus}`}>
                 <div className={`w-2.5 h-2.5 rounded-full ${isSyncing ? 'bg-amber-400 animate-pulse' : syncStatus.includes('Gagal') ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
             </div>
-            {/* Tombol Logout - Tampil utuh di HP bersisian dengan nama profil */}
             <button onClick={handleLogout} title="Keluar / Logout" className="block p-2 bg-rose-100 text-rose-600 hover:bg-rose-200 rounded-xl transition-all"><LogOut size={16} /></button>
           </div>
         </div>
@@ -1111,10 +1109,12 @@ export default function App() {
               </div>
             )}
 
-            <div className="bg-slate-100 border rounded-2xl p-4 flex justify-between items-center">
-              <div className="text-xs"><p className="font-extrabold text-slate-800">🛠️ Mode Uji Pengingat H-1</p></div>
-              <button onClick={() => { setIsSimulatedThursday(!isSimulatedThursday); setIsDutyDismissed(false); }} className="px-4 py-2 rounded-xl text-xs font-bold border bg-white text-slate-700">{isSimulatedThursday ? "Matikan Simulator" : "Simulasikan Hari Kamis"}</button>
-            </div>
+            {currentUserRoles.includes("Petugas") && (
+              <div className="bg-slate-100 border rounded-2xl p-4 flex justify-between items-center">
+                <div className="text-xs"><p className="font-extrabold text-slate-800">🛠️ Mode Uji Pengingat H-1</p></div>
+                <button onClick={() => { setIsSimulatedThursday(!isSimulatedThursday); setIsDutyDismissed(false); }} className="px-4 py-2 rounded-xl text-xs font-bold border bg-white text-slate-700">{isSimulatedThursday ? "Matikan Simulator" : "Simulasikan Hari Kamis"}</button>
+              </div>
+            )}
 
             <div className="bg-emerald-700 text-white rounded-2xl p-5 shadow-md flex justify-between items-center">
               <div>
@@ -1201,7 +1201,7 @@ export default function App() {
                       <p><span className="block text-[10px] text-slate-400">Bilal</span>{data.bilal || "-"}</p>
                       {data.telp && <p className="pt-2 mt-2 border-t font-mono text-[10px] text-slate-500">📞 {data.telp}</p>}
                     </div>
-                    {data.khatib && (
+                    {currentUserRoles.includes("Petugas") && data.khatib && (
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         <button onClick={() => handlePrepareNotification({ petugas: data, pasaran, formattedDate: "Jumat" }, "WA")} className="bg-[#128c7e] text-white py-1 rounded text-[10px] font-bold">Kirim WA</button>
                         <button onClick={() => handlePrepareNotification({ petugas: data, pasaran, formattedDate: "Jumat" }, "SMS")} className="bg-blue-600 text-white py-1 rounded text-[10px] font-bold">Kirim SMS</button>
@@ -1231,7 +1231,7 @@ export default function App() {
               </div>
             )}
             
-            {activeNotificationSim && (
+            {activeNotificationSim && currentUserRoles.includes("Petugas") && (
               <div className="fixed inset-0 bg-slate-900/60 z-50 flex justify-center items-center p-4">
                 <div className="bg-white p-5 rounded-2xl w-full max-w-sm">
                   <h3 className="font-bold mb-2">Simulasi Pesan {notificationType}</h3>
@@ -1670,7 +1670,7 @@ export default function App() {
 
       {/* Bagian Footer */}
       <footer className="bg-white border-t border-slate-200 px-4 py-3 text-center text-xs text-slate-500 z-10 w-full mt-auto">
-        &copy; {new Date().getFullYear()} {String(masjidName)} - Sistem Manajemen Masjid Terpadu
+        &copy; {new Date().getFullYear()} {String(masjidName)} - developed by Misbahul Munir
       </footer>
 
       {printIframeData && (
