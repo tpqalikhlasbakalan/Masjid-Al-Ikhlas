@@ -23,8 +23,8 @@ const PASARAN_LIST = ["Legi", "Pahing", "Pon", "Wage", "Kliwon"];
 const INITIAL_ROLES = {
   Admin: { label: "Super Admin", access: { dashboard: "edit", petugas: "edit", jamaah: "edit", fitrah: "edit", zuru: "edit", qurban: "edit", rbac: "edit" } },
   Takmir: { label: "Takmir Masjid", access: { dashboard: "view", petugas: "edit", jamaah: "edit", fitrah: "edit", zuru: "edit", qurban: "view", rbac: "none" } },
-  Amil: { label: "Amil Zakat", access: { dashboard: "view", petugas: "none", jamaah: "edit", fitrah: "edit", zuru: "edit", qurban: "edit", rbac: "none" } },
   RT: { label: "Ketua RT", access: { dashboard: "view", petugas: "none", jamaah: "edit", fitrah: "edit", zuru: "edit", qurban: "edit", rbac: "none" } },
+  Amil: { label: "Amil Zakat", access: { dashboard: "view", petugas: "none", jamaah: "edit", fitrah: "edit", zuru: "edit", qurban: "edit", rbac: "none" } },
   Petugas: { label: "Petugas Jumat", access: { dashboard: "view", petugas: "view", jamaah: "none", fitrah: "none", zuru: "none", qurban: "none", rbac: "none" } },
   Jamaah: { label: "Jama'ah / Warga", access: { dashboard: "view", petugas: "view", jamaah: "none", fitrah: "view", zuru: "view", qurban: "view", rbac: "none" } }
 };
@@ -57,7 +57,7 @@ const INITIAL_PETUGAS_ABADI = {
 };
 
 // ====================================================================
-// GLOBAL STABLE HELPERS (Mencegah ReferenceError)
+// GLOBAL STABLE PURE FUNCTIONS (Aman dari referensi error)
 // ====================================================================
 function KubahMasjidIcon({ className }) {
   return (
@@ -84,7 +84,7 @@ function getLocalStorageData(key, fallbackValue) {
     if (!saved || saved === "undefined" || saved === "null") return fallbackValue;
     try { 
       const parsed = JSON.parse(saved); 
-      // Mencegah parsing object React dari cache sisa percobaan yang lalu
+      // Proteksi anti-crash jika JSON malah menyimpan Objek React
       if (parsed !== null && typeof parsed === 'object') {
         if (parsed.$$typeof || (!Array.isArray(parsed) && (key === "masjidName" || key === "masjidLogoUrl"))) {
           localStorage.removeItem(key);
@@ -243,7 +243,6 @@ export default function App() {
   const [tempBeratQurbanSapi, setTempBeratQurbanSapi] = useState("");
   const [tempBeratQurbanKambing, setTempBeratQurbanKambing] = useState("");
   
-  // State Filter Spesifik Qurban
   const [filterWilayahQurban, setFilterWilayahQurban] = useState("Semua");
   const [selectedPrintWilayahQurban, setSelectedPrintWilayahQurban] = useState("Semua");
   const [qurbanHanyaMustahik, setQurbanHanyaMustahik] = useState(false);
@@ -262,14 +261,14 @@ export default function App() {
   const [jadwalSholat, setJadwalSholat] = useState(() => getLocalStorageData("jadwalSholatAktif", getMockJadwal(lokasi.kabupaten, lokasi.latitude, lokasi.longitude)));
 
 
-  // === 2. INNER HELPERS ===
-  const addNotification = (message, type = "success") => {
+  // === 2. DECLARATIONS & EVENT HANDLERS (Terstruktur di tingkat atas komponen) ===
+  function addNotification(message, type = "success") {
     const id = Date.now();
     setNotifications(prev => [...prev, { id, message: String(message), type }]);
     setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 4000);
-  };
+  }
 
-  const playAlarmSound = () => {
+  function playAlarmSound() {
     try {
       const ctx = audioContext || new (window.AudioContext || window.webkitAudioContext)();
       if (!audioContext) setAudioContext(ctx);
@@ -289,47 +288,41 @@ export default function App() {
       playBeep(0.0, 0.25, 880); playBeep(0.3, 0.25, 880); playBeep(0.6, 0.25, 880); playBeep(1.0, 0.40, 1100);
       addNotification("🔊 Bunyi alarm disimulasikan!", "success");
     } catch (e) { console.warn("Audio Context diblokir peramban."); }
-  };
+  }
 
-  const renderMasjidLogo = (imgClassName, fallbackClassName) => {
+  function renderMasjidLogo(imgClassName, fallbackClassName) {
     if (typeof masjidLogoUrl === 'string' && masjidLogoUrl.trim() !== "") {
       return ( 
         <img src={masjidLogoUrl} alt="Logo Masjid" className={imgClassName} onError={() => { addNotification("Logo kustom gagal dimuat!", "error"); setMasjidLogoUrl(""); }} /> 
       );
     }
     return <KubahMasjidIcon className={fallbackClassName} />;
-  };
+  }
 
-  const hasAccess = (tabName) => {
+  function hasAccess(tabName) {
     if (!rolesConfig || !rolesConfig[currentRole]) return false;
     const acc = rolesConfig[currentRole]?.access?.[tabName];
     return acc === "view" || acc === "edit" || currentRole === "Admin";
-  };
+  }
 
-  const canEditPetugas = currentRole === "Admin" || rolesConfig[currentRole]?.access?.petugas === "edit";
-  const canEditJamaah = currentRole === "Admin" || rolesConfig[currentRole]?.access?.jamaah === "edit";
-  const canEditFitrah = currentRole === "Admin" || rolesConfig[currentRole]?.access?.fitrah === "edit";
-  const canEditZuru = currentRole === "Admin" || rolesConfig[currentRole]?.access?.zuru === "edit";
-  const canEditQurban = currentRole === "Admin" || rolesConfig[currentRole]?.access?.qurban === "edit";
-
-  const updateRoleAccess = (role, menuId, newAccess) => {
+  function updateRoleAccess(role, menuId, newAccess) {
     setRolesConfig(prev => ({ ...prev, [role]: { ...prev[role], access: { ...prev[role].access, [menuId]: newAccess } } }));
     addNotification(`Hak akses diubah.`, "success");
-  };
+  }
 
-  const navigateTo = (tabName) => {
+  function navigateTo(tabName) {
     if (hasAccess(tabName)) { setActiveTab(tabName); setIsMenuOpen(false); } 
     else { addNotification(`Akses Ditolak! Peran Anda tidak memiliki hak.`, "error"); }
-  };
+  }
 
-  const getNextSholat = () => {
+  function getNextSholat() {
     const nowStr = currentTime.toTimeString().split(' ')[0].substring(0, 5); 
     const sholatTimes = Object.entries(jadwalSholat).filter(([k]) => k !== 'Terbit');
     for (let [name, time] of sholatTimes) { if (String(time) > nowStr) return { name: String(name), time: String(time) }; }
     return { name: "Subuh (Besok)", time: String(sholatTimes[0][1]) };
-  };
+  }
 
-  const getPetugasTugasBesok = () => {
+  function getPetugasTugasBesok() {
     const isKamis = currentTime.getDay() === 4;
     let targetDate = null;
     if (isKamis) {
@@ -353,38 +346,7 @@ export default function App() {
       if (peranan.length > 0) return { pasaran: pasaranBesok, tanggal: targetDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), peran: peranan.join(" & ") };
     }
     return null;
-  };
-
-  const handleFetchFromGoogleSheets = async () => {
-    if (!googleSheetsUrl) { setIsDataFetched(true); return; }
-    setIsDataFetched(false); setIsSyncing(true); setSyncStatus("Mengunduh Server...");
-    try {
-      const response = await fetch(`${googleSheetsUrl}?action=getData`);
-      const resData = await response.json();
-      if (resData && resData.status === "success" && Object.keys(resData.data).length > 0) {
-        const payload = resData.data;
-        if (payload.masjidName !== undefined) setMasjidName(payload.masjidName);
-        if (payload.masjidLogoUrl !== undefined) setMasjidLogoUrl(payload.masjidLogoUrl);
-        if (payload.petugasAbadi !== undefined) setPetugasAbadi(payload.petugasAbadi);
-        if (payload.jamaahList !== undefined) setJamaahList(payload.jamaahList);
-        if (payload.timbanganFitrah !== undefined) setTimbanganFitrah(payload.timbanganFitrah);
-        if (payload.alokasiFitrah !== undefined) setAlokasiFitrah(payload.alokasiFitrah);
-        if (payload.timbanganZuru !== undefined) setTimbanganZuru(payload.timbanganZuru);
-        if (payload.alokasiZuru !== undefined) setAlokasiZuru(payload.alokasiZuru);
-        if (payload.timbanganQurbanSapi !== undefined) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
-        if (payload.timbanganQurbanKambing !== undefined) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
-        if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
-        setSyncStatus("Tersinkronisasi");
-        addNotification("Data berhasil diperbarui dari Server Pusat!", "success");
-      } else { setSyncStatus("Tersinkronisasi Lokal"); }
-    } catch (err) {
-      setSyncStatus("Gagal Sinkron");
-      addNotification("Gagal menarik data dari Google Sheets.", "error");
-    } finally {
-      setIsSyncing(false); setIsDataFetched(true); 
-    }
-  };
-
+  }
 
   // === 3. EFFECTS ===
   useEffect(() => {
@@ -454,6 +416,36 @@ export default function App() {
     };
     fetchJadwalRealTime();
   }, [lokasi.latitude, lokasi.longitude, currentDay]);
+
+  const handleFetchFromGoogleSheets = async () => {
+    if (!googleSheetsUrl) { setIsDataFetched(true); return; }
+    setIsDataFetched(false); setIsSyncing(true); setSyncStatus("Mengunduh Server...");
+    try {
+      const response = await fetch(`${googleSheetsUrl}?action=getData`);
+      const resData = await response.json();
+      if (resData && resData.status === "success" && Object.keys(resData.data).length > 0) {
+        const payload = resData.data;
+        if (payload.masjidName !== undefined) setMasjidName(payload.masjidName);
+        if (payload.masjidLogoUrl !== undefined) setMasjidLogoUrl(payload.masjidLogoUrl);
+        if (payload.petugasAbadi !== undefined) setPetugasAbadi(payload.petugasAbadi);
+        if (payload.jamaahList !== undefined) setJamaahList(payload.jamaahList);
+        if (payload.timbanganFitrah !== undefined) setTimbanganFitrah(payload.timbanganFitrah);
+        if (payload.alokasiFitrah !== undefined) setAlokasiFitrah(payload.alokasiFitrah);
+        if (payload.timbanganZuru !== undefined) setTimbanganZuru(payload.timbanganZuru);
+        if (payload.alokasiZuru !== undefined) setAlokasiZuru(payload.alokasiZuru);
+        if (payload.timbanganQurbanSapi !== undefined) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
+        if (payload.timbanganQurbanKambing !== undefined) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
+        if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
+        setSyncStatus("Tersinkronisasi");
+        addNotification("Data berhasil diperbarui dari Server Pusat!", "success");
+      } else { setSyncStatus("Tersinkronisasi Lokal"); }
+    } catch (err) {
+      setSyncStatus("Gagal Sinkron");
+      addNotification("Gagal menarik data dari Google Sheets.", "error");
+    } finally {
+      setIsSyncing(false); setIsDataFetched(true); 
+    }
+  };
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -536,11 +528,31 @@ export default function App() {
   const jatahDagingSapiPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanSapiValue / totalPenerimaKK).toFixed(2) : 0;
   const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanKambingValue / totalPenerimaKK).toFixed(2) : 0;
 
+  const canEditPetugas = currentRole === "Admin" || rolesConfig[currentRole]?.access?.petugas === "edit";
+  const canEditJamaah = currentRole === "Admin" || rolesConfig[currentRole]?.access?.jamaah === "edit";
+  const canEditFitrah = currentRole === "Admin" || rolesConfig[currentRole]?.access?.fitrah === "edit";
+  const canEditZuru = currentRole === "Admin" || rolesConfig[currentRole]?.access?.zuru === "edit";
+  const canEditQurban = currentRole === "Admin" || rolesConfig[currentRole]?.access?.qurban === "edit";
+
   // === 5. EVENT HANDLERS ACTIONS ===
   const handleLogin = (e) => {
     e.preventDefault();
     const cleanUser = inputUsername.trim().toLowerCase();
-    const userAccount = userDatabase[cleanUser];
+    
+    // Fallback: Pastikan membaca dari LocalStorage jika state memori terputus
+    let currentDB = userDatabase;
+    try {
+      const localDB = JSON.parse(localStorage.getItem("userDatabase"));
+      if (localDB) currentDB = localDB;
+    } catch(err) {}
+
+    let userAccount = currentDB[cleanUser];
+
+    // --- PROTEKSI ANTI-TERKUNCI UNTUK SUPER ADMIN ---
+    if (!userAccount && cleanUser === "admin" && inputPassword === "admin123") {
+      userAccount = INITIAL_USER_DATABASE["admin"];
+      setUserDatabase(prev => ({ ...prev, admin: INITIAL_USER_DATABASE["admin"] }));
+    }
 
     if (userAccount) {
       if (!userAccount.approved) { addNotification("Pendaftaran akun masih diproses/menunggu ACC.", "error"); return; }
@@ -591,15 +603,17 @@ export default function App() {
   const handleSaveJamaah = (e) => {
     e.preventDefault();
     if (!jamaahForm.nama.trim() || !jamaahForm.alamat.trim()) return;
-    const isAmilRole = currentRole === "Amil" || currentRole === "RT";
+    
+    // Khusus Role Amil ATAU RT usulannya membutuhkan ACC
+    const butuhAcc = currentRole === "Amil" || currentRole === "RT";
 
     if (editingJamaah) {
-      setJamaahList(prev => prev.map(item => item.id === editingJamaah.id ? { ...jamaahForm, id: item.id, approvedByTakmir: isAmilRole ? false : item.approvedByTakmir, usulanOleh: isAmilRole ? currentUserLabel : item.usulanOleh } : item));
-      addNotification(isAmilRole ? "Usulan diperbarui & menunggu ACC Takmir" : "Data warga diperbarui");
+      setJamaahList(prev => prev.map(item => item.id === editingJamaah.id ? { ...jamaahForm, id: item.id, approvedByTakmir: butuhAcc ? false : item.approvedByTakmir, usulanOleh: butuhAcc ? currentUserLabel : item.usulanOleh } : item));
+      addNotification(butuhAcc ? "Usulan diperbarui & menunggu ACC Takmir" : "Data warga berhasil diperbarui");
     } else {
-      const newJamaah = { ...jamaahForm, id: Date.now().toString(), approvedByTakmir: isAmilRole ? false : true, usulanOleh: isAmilRole ? currentUserLabel : "Takmir/Admin" };
+      const newJamaah = { ...jamaahForm, id: Date.now().toString(), approvedByTakmir: butuhAcc ? false : true, usulanOleh: butuhAcc ? currentUserLabel : "Takmir/Admin" };
       setJamaahList(prev => [...prev, newJamaah]);
-      addNotification(isAmilRole ? "Usulan penerima bantuan terkirim! Menunggu ACC Takmir" : "Warga didaftarkan");
+      addNotification(butuhAcc ? "Usulan penerima bantuan terkirim! Menunggu ACC Takmir" : "Warga didaftarkan");
     }
     setShowJamaahModal(false); setEditingJamaah(null);
     setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", isGuruNgaji: false });
@@ -619,30 +633,73 @@ export default function App() {
   const handleSaveAlokasiZuru = () => { setAlokasiZuru(tempAlokasiZuru); addNotification("Jatah Zuru' disimpan!", "success"); };
 
   const addTimbangan = (tipe) => {
-    if (tipe === 'fitrah') { const val = parseFloat(tempBeratFitrah); if (isNaN(val) || val <= 0) return; setTimbanganFitrah([...timbanganFitrah, val]); setTempBeratFitrah(""); } 
-    else if (tipe === 'zuru') { const val = parseFloat(tempBeratZuru); if (isNaN(val) || val <= 0) return; setTimbanganZuru([...timbanganZuru, val]); setTempBeratZuru(""); } 
-    else if (tipe === 'qurbanSapi') { const val = parseFloat(tempBeratQurbanSapi); if (isNaN(val) || val <= 0) return; setTimbanganQurbanSapi([...timbanganQurbanSapi, val]); setTempBeratQurbanSapi(""); } 
-    else if (tipe === 'qurbanKambing') { const val = parseFloat(tempBeratQurbanKambing); if (isNaN(val) || val <= 0) return; setTimbanganQurbanKambing([...timbanganQurbanKambing, val]); setTempBeratQurbanKambing(""); }
-    addNotification("Timbangan berhasil ditambahkan");
+    if (tipe === 'fitrah') {
+      const val = parseFloat(tempBeratFitrah);
+      if (isNaN(val) || val <= 0) return;
+      setTimbanganFitrah([...timbanganFitrah, val]);
+      setTempBeratFitrah("");
+      addNotification("Timbangan Zakat Fitrah berhasil ditambahkan");
+    } else if (tipe === 'zuru') {
+      const val = parseFloat(tempBeratZuru);
+      if (isNaN(val) || val <= 0) return;
+      setTimbanganZuru([...timbanganZuru, val]);
+      setTempBeratZuru("");
+      addNotification("Timbangan Zuru' berhasil ditambahkan");
+    } else if (tipe === 'qurbanSapi') {
+      const val = parseFloat(tempBeratQurbanSapi);
+      if (isNaN(val) || val <= 0) return;
+      setTimbanganQurbanSapi([...timbanganQurbanSapi, val]);
+      setTempBeratQurbanSapi("");
+      addNotification("Timbangan perolehan Sapi ditambahkan");
+    } else if (tipe === 'qurbanKambing') {
+      const val = parseFloat(tempBeratQurbanKambing);
+      if (isNaN(val) || val <= 0) return;
+      setTimbanganQurbanKambing([...timbanganQurbanKambing, val]);
+      setTempBeratQurbanKambing("");
+      addNotification("Timbangan perolehan Kambing ditambahkan");
+    }
   };
 
   const deleteTimbangan = (tipe, index) => {
-    if (tipe === 'fitrah') setTimbanganFitrah(timbanganFitrah.filter((_, i) => i !== index));
-    else if (tipe === 'zuru') setTimbanganZuru(timbanganZuru.filter((_, i) => i !== index));
-    else if (tipe === 'qurbanSapi') setTimbanganQurbanSapi(timbanganQurbanSapi.filter((_, i) => i !== index));
-    else if (tipe === 'qurbanKambing') setTimbanganQurbanKambing(timbanganQurbanKambing.filter((_, i) => i !== index));
-    addNotification("Timbangan dihapus", "warning");
+    if (tipe === 'fitrah') {
+      setTimbanganFitrah(timbanganFitrah.filter((_, i) => i !== index));
+      addNotification("Timbangan Fitrah dihapus", "warning");
+    } else if (tipe === 'zuru') {
+      setTimbanganZuru(timbanganZuru.filter((_, i) => i !== index));
+      addNotification("Timbangan Zuru' diurungkan", "warning");
+    } else if (tipe === 'qurbanSapi') {
+      setTimbanganQurbanSapi(timbanganQurbanSapi.filter((_, i) => i !== index));
+      addNotification("Timbangan daging Sapi berhasil dihapus", "warning");
+    } else if (tipe === 'qurbanKambing') {
+      setTimbanganQurbanKambing(timbanganQurbanKambing.filter((_, i) => i !== index));
+      addNotification("Timbangan daging Kambing berhasil dihapus", "warning");
+    }
   };
 
   const handleSaveNewIdentity = () => {
-    if (!tempMasjidName.trim()) { addNotification("Nama Masjid kosong!", "error"); return; }
-    setMasjidName(tempMasjidName); setMasjidLogoUrl(tempMasjidLogoUrl); addNotification("Identitas disimpan!", "success");
+    if (!tempMasjidName.trim()) { addNotification("Nama Masjid tidak boleh kosong!", "error"); return; }
+    setMasjidName(tempMasjidName);
+    setMasjidLogoUrl(tempMasjidLogoUrl);
+    addNotification("Identitas dan Logo Masjid berhasil diperbarui!", "success");
   };
 
-  const handleCancelNewIdentity = () => { setTempMasjidName(masjidName); setTempMasjidLogoUrl(masjidLogoUrl); addNotification("Dibatalkan.", "warning"); };
+  const handleCancelNewIdentity = () => {
+    setTempMasjidName(masjidName);
+    setTempMasjidLogoUrl(masjidLogoUrl);
+    addNotification("Perubahan identitas dibatalkan.", "warning");
+  };
 
-  const handleEditPasaran = (pasaranKey) => { setEditingPasaran(pasaranKey); setPasaranForm(petugasAbadi[pasaranKey] || {}); };
-  const handleSavePasaran = (e) => { e.preventDefault(); setPetugasAbadi(prev => ({ ...prev, [editingPasaran]: pasaranForm })); addNotification(`Tersimpan!`); setEditingPasaran(null); };
+  const handleEditPasaran = (pasaranKey) => {
+    setEditingPasaran(pasaranKey);
+    setPasaranForm(petugasAbadi[pasaranKey]);
+  };
+
+  const handleSavePasaran = (e) => {
+    e.preventDefault();
+    setPetugasAbadi(prev => ({ ...prev, [editingPasaran]: pasaranForm }));
+    addNotification(`Template Petugas Jumat ${editingPasaran} berhasil diperbarui!`);
+    setEditingPasaran(null);
+  };
 
   const handleCreateAccount = (e) => {
     e.preventDefault();
@@ -673,15 +730,30 @@ export default function App() {
 
   const handleSendSimMessage = () => {
     setIsSendingMessage(true);
-    setTimeout(() => { setIsSendingMessage(false); addNotification("Notifikasi sukses terkirim!", "success"); setActiveNotificationSim(null); }, 1500);
+    setTimeout(() => {
+      setIsSendingMessage(false);
+      addNotification(`Notifikasi ${notificationType} H-1 pengingat sukses terkirim ke ${activeNotificationSim.petugas.khatib}!`, "success");
+      setActiveNotificationSim(null);
+    }, 1500);
   };
 
   const handleGetGPSLocation = () => {
-    if (!navigator.geolocation) { addNotification("Browser tidak mendukung fitur penunjuk GPS.", "error"); return; }
-    addNotification("Mencari titik GPS...", "info");
+    if (!navigator.geolocation) {
+      addNotification("Browser tidak mendukung fitur penunjuk GPS.", "error");
+      return;
+    }
+    addNotification("Mencari titik GPS... Harap izinkan akses Lokasi.", "info");
     navigator.geolocation.getCurrentPosition(
-      (position) => { setTempLokasi(prev => ({ ...prev, latitude: position.coords.latitude, longitude: position.coords.longitude })); addNotification("GPS Ditemukan!", "success"); },
-      () => { addNotification("Gagal mengambil GPS.", "error"); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        setTempLokasi(prev => ({ ...prev, latitude: lat, longitude: lon }));
+        addNotification(`GPS Ditemukan! ${lat.toFixed(5)}, ${lon.toFixed(5)}.`, "success");
+      },
+      (error) => {
+        addNotification("Gagal mengambil GPS. Pastikan GPS menyala.", "error");
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
 
@@ -741,7 +813,12 @@ export default function App() {
     setPrintIframeData(html);
   };
 
-  // === RENDER PENGANTAR LOGIN / REGISTER ===
+  const handlePrintQurbanRT = () => {
+    handlePrintSelectedReport("qurban");
+  };
+
+
+  // === 6. RENDER PENGANTAR LOGIN / REGISTER ===
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 relative font-sans">
@@ -787,7 +864,7 @@ export default function App() {
     );
   }
 
-  // === RENDER MAIN DASHBOARD LAYOUT ===
+  // === 7. RENDER MAIN DASHBOARD LAYOUT ===
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col relative">
       <div className="fixed top-4 right-4 z-50 space-y-2 pointer-events-none">
@@ -810,7 +887,13 @@ export default function App() {
               <span className="text-[9px] text-emerald-600 font-extrabold block uppercase">{rolesConfig[currentRole]?.label || currentRole}</span>
               <span className="text-xs font-black text-emerald-900 truncate block">{String(currentUserLabel)}</span>
             </div>
-            <button onClick={handleLogout} className="p-1.5 bg-rose-100 text-rose-600 rounded-xl ml-1"><LogOut size={14} /></button>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center p-2 rounded-xl bg-slate-50 border border-slate-200" title={`Status Database: ${syncStatus}`}>
+                <div className={`w-3 h-3 rounded-full ${isSyncing ? 'bg-amber-400 animate-pulse' : syncStatus.includes('Gagal') ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
+            </div>
+            <button onClick={handleLogout} title="Keluar / Logout" className="p-2 bg-rose-100 text-rose-600 hover:bg-rose-200 rounded-xl transition-all"><LogOut size={16} /></button>
           </div>
         </div>
       </header>
@@ -855,15 +938,6 @@ export default function App() {
         {activeTab === "dashboard" && (
           <div className="space-y-4">
             
-            {/* Status Sync Server */}
-            <div className="bg-white border rounded-2xl p-4 shadow-xs flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                    <Database className={isSyncing ? "text-emerald-500 animate-pulse" : "text-slate-400"} />
-                    <div><p className="text-[10px] font-bold text-slate-500 uppercase">Status Database Cloud</p><p className="text-xs font-black">{syncStatus}</p></div>
-                </div>
-                <button onClick={handleFetchFromGoogleSheets} disabled={isSyncing} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-bold flex gap-2"><RefreshCw size={14} className={isSyncing ? "animate-spin" : ""}/> Refresh Server</button>
-            </div>
-
             {(currentRole === "Takmir" || currentRole === "Admin") && usulanWargaList.length > 0 && (
               <div className="bg-white border-2 border-emerald-500 rounded-3xl p-5 shadow-lg space-y-4">
                 <div className="flex items-center gap-2 border-b pb-3"><Check className="text-emerald-600 w-5 h-5 animate-bounce" /><div><h3 className="font-extrabold text-sm">Persetujuan Usulan Warga Baru dari RT/Amil</h3><p className="text-[10px] text-slate-500">Amil atau RT telah mengajukan data. Berikan validasi.</p></div></div>
