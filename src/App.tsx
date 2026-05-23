@@ -436,30 +436,30 @@ export default function App() {
         if (payload.timbanganQurbanSapi !== undefined) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
         if (payload.timbanganQurbanKambing !== undefined) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
         if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
+        if (payload.rolesConfig !== undefined) setRolesConfig(payload.rolesConfig);
         setSyncStatus("Tersinkronisasi");
         addNotification("Data berhasil diperbarui dari Server Pusat!", "success");
       } else { setSyncStatus("Tersinkronisasi Lokal"); }
     } catch (err) {
       setSyncStatus("Gagal Sinkron");
-      addNotification("Gagal menarik data dari Google Sheets.", "error");
     } finally {
       setIsSyncing(false); setIsDataFetched(true); 
     }
   };
 
+  // Sync: Tarik data pertama kali terlepas dari status login agar login bisa mendeteksi akun baru
   useEffect(() => {
-    if (isLoggedIn) {
-      if (googleSheetsUrl) handleFetchFromGoogleSheets();
-      else setIsDataFetched(true);
-    }
-  }, [isLoggedIn, googleSheetsUrl]);
+    if (googleSheetsUrl) handleFetchFromGoogleSheets();
+    else setIsDataFetched(true);
+  }, [googleSheetsUrl]);
 
+  // Sync: Simpan ke cloud setiap ada perubahan jika cloud aktif
   useEffect(() => {
-    if (!isLoggedIn || !googleSheetsUrl || !isDataFetched) return;
+    if (!googleSheetsUrl || !isDataFetched) return;
     const payload = {
       masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
       timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
-      timbanganQurbanSapi, timbanganQurbanKambing, userDatabase
+      timbanganQurbanSapi, timbanganQurbanKambing, userDatabase, rolesConfig
     };
     setSyncStatus("Menyimpan Otomatis...");
     const timeoutId = setTimeout(async () => {
@@ -469,7 +469,7 @@ export default function App() {
       } catch (err) { setSyncStatus("Gagal Menyimpan"); }
     }, 3000); 
     return () => clearTimeout(timeoutId);
-  }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, userDatabase, isLoggedIn, googleSheetsUrl, isDataFetched]);
+  }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, userDatabase, rolesConfig, googleSheetsUrl, isDataFetched]);
 
 
   // === 4. DERIVED CALCULATIONS ===
@@ -838,6 +838,11 @@ export default function App() {
 
           {!isRegisterMode ? (
             <form onSubmit={handleLogin} className="space-y-4">
+              {!isDataFetched && isSyncing && (
+                <div className="bg-amber-50 border border-amber-100 text-amber-600 text-[10px] font-bold p-2 text-center rounded-xl animate-pulse">
+                   Tunggu sebentar... Menyinkronkan dari server awan...
+                </div>
+              )}
               <div><input type="text" required placeholder="Masukkan username" value={inputUsername} onChange={(e) => setInputUsername(e.target.value)} className="w-full text-sm border p-3 rounded-xl outline-none" /></div>
               <div>
                 <div className="relative">
