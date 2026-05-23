@@ -243,8 +243,11 @@ export default function App() {
   const [tempBeratQurbanSapi, setTempBeratQurbanSapi] = useState("");
   const [tempBeratQurbanKambing, setTempBeratQurbanKambing] = useState("");
   
+  // State Filter Spesifik Laporan per tab
   const [filterWilayahQurban, setFilterWilayahQurban] = useState("Semua");
   const [selectedPrintWilayahQurban, setSelectedPrintWilayahQurban] = useState("Semua");
+  const [selectedPrintWilayahFitrah, setSelectedPrintWilayahFitrah] = useState("Semua");
+  const [selectedPrintWilayahZuru, setSelectedPrintWilayahZuru] = useState("Semua");
   const [qurbanHanyaMustahik, setQurbanHanyaMustahik] = useState(false);
 
   const [selectedPrintWilayah, setSelectedPrintWilayah] = useState("Semua");
@@ -760,8 +763,12 @@ export default function App() {
     let filteredWarga = Array.isArray(jamaahList) ? jamaahList.filter(j => j.approvedByTakmir) : []; 
     let rtTitle = "Seluruh Wilayah (Semua RT & RW)";
 
-    // Khusus Qurban jika menggunakan filter cetak khusus Qurban
-    const appliedPrintWilayah = reportType === "qurban" ? selectedPrintWilayahQurban : selectedPrintWilayah;
+    // Menggunakan filter cetak sesuai tab
+    let appliedPrintWilayah = "Semua";
+    if (reportType === "qurban") appliedPrintWilayah = selectedPrintWilayahQurban;
+    else if (reportType === "fitrah") appliedPrintWilayah = selectedPrintWilayahFitrah;
+    else if (reportType === "zuru") appliedPrintWilayah = selectedPrintWilayahZuru;
+    else appliedPrintWilayah = selectedPrintWilayah; // untuk jamaah/terpadu
 
     if (appliedPrintWilayah !== "Semua") {
       const [filterRt, filterRw] = appliedPrintWilayah.split('_');
@@ -810,7 +817,7 @@ export default function App() {
     const printDate = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
     const waLink = createWAShareLink(masjidName, docTitle, rtTitle, waSummaryText);
     
-    // PENAMBAHAN SCRIPT AUTO PRINT DALAM IFRAME AGAR OTOMATIS BUKA DIALOG CETAK
+    // PENAMBAHAN SCRIPT AUTO PRINT DALAM IFRAME AGAR OTOMATIS BUKA DIALOG CETAK PADA APK WEBVIEW
     const html = `<!DOCTYPE html>
     <html lang="id">
     <head>
@@ -843,7 +850,9 @@ export default function App() {
       </style>
       <script>
         window.onload = function() {
-           setTimeout(function() { window.print(); }, 500);
+           setTimeout(function() { 
+              try { window.print(); } catch(e) {} 
+           }, 800);
         };
       </script>
     </head>
@@ -879,11 +888,6 @@ export default function App() {
     </html>`;
     setPrintIframeData(html);
   };
-
-  const handlePrintQurbanRT = () => {
-    handlePrintSelectedReport("qurban");
-  };
-
 
   // === 6. RENDER PENGANTAR LOGIN / REGISTER ===
   if (!isLoggedIn) {
@@ -953,7 +957,7 @@ export default function App() {
         </div>
         
         <div className="flex items-center gap-2">
-          {/* User profile info header - shown on mobile too */}
+          {/* User profile info header - dimunculkan juga di tampilan Mobile/HP */}
           <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 pl-3 pr-2 py-1.5 rounded-2xl mr-1">
             <div className="text-left block">
               <span className="text-[8px] sm:text-[9px] text-emerald-600 font-extrabold block uppercase leading-tight">{rolesConfig[currentRole]?.label || currentRole}</span>
@@ -965,8 +969,8 @@ export default function App() {
             <div className="flex items-center justify-center p-2 rounded-xl bg-slate-50 border border-slate-200" title={`Status Database: ${syncStatus}`}>
                 <div className={`w-2.5 h-2.5 rounded-full ${isSyncing ? 'bg-amber-400 animate-pulse' : syncStatus.includes('Gagal') ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
             </div>
-            {/* Logout button hidden on mobile header, moved to sidebar */}
-            <button onClick={handleLogout} title="Keluar / Logout" className="hidden sm:block p-2 bg-rose-100 text-rose-600 hover:bg-rose-200 rounded-xl transition-all"><LogOut size={16} /></button>
+            {/* Tombol Logout - Tampil utuh di HP bersisian dengan nama profil */}
+            <button onClick={handleLogout} title="Keluar / Logout" className="block p-2 bg-rose-100 text-rose-600 hover:bg-rose-200 rounded-xl transition-all"><LogOut size={16} /></button>
           </div>
         </div>
       </header>
@@ -1294,7 +1298,16 @@ export default function App() {
         {/* ======================= TAB: FITRAH ======================= */}
         {activeTab === "fitrah" && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Kalkulator Zakat Fitrah</h2><button onClick={() => handlePrintSelectedReport("fitrah")} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex gap-2"><Printer size={14}/> Cetak PDF</button></div>
+            <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold">Kalkulator Zakat Fitrah</h2>
+                <div className="flex gap-2">
+                    <select value={selectedPrintWilayahFitrah} onChange={e => setSelectedPrintWilayahFitrah(e.target.value)} className="text-xs border p-2 rounded-xl outline-none">
+                        <option value="Semua">Semua RT & RW</option>
+                        {WILAYAH_OPTIONS.map((w) => <option key={w.label} value={`${w.rt}_${w.rw}`}>{w.label}</option>)}
+                    </select>
+                    <button onClick={() => handlePrintSelectedReport("fitrah")} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex gap-2 items-center"><Printer size={14}/> Cetak PDF</button>
+                </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white border rounded-2xl p-5 shadow-xs">
                 <p className="text-xs font-bold text-slate-500 mb-2">Timbangan Total Beras Masuk</p><p className="text-3xl font-black text-emerald-600 mb-4">{totalTimbanganFitrahValue.toFixed(1)} Kg</p>
@@ -1340,7 +1353,16 @@ export default function App() {
         {/* ======================= TAB: ZURU ======================= */}
         {activeTab === "zuru" && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center"><h2 className="text-xl font-bold">Kalkulator Zakat Zuru'</h2><button onClick={() => handlePrintSelectedReport("zuru")} className="bg-teal-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex gap-2"><Printer size={14}/> Cetak PDF</button></div>
+            <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold">Kalkulator Zakat Zuru'</h2>
+                <div className="flex gap-2">
+                    <select value={selectedPrintWilayahZuru} onChange={e => setSelectedPrintWilayahZuru(e.target.value)} className="text-xs border p-2 rounded-xl outline-none">
+                        <option value="Semua">Semua RT & RW</option>
+                        {WILAYAH_OPTIONS.map((w) => <option key={w.label} value={`${w.rt}_${w.rw}`}>{w.label}</option>)}
+                    </select>
+                    <button onClick={() => handlePrintSelectedReport("zuru")} className="bg-teal-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex gap-2 items-center"><Printer size={14}/> Cetak PDF</button>
+                </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white border rounded-2xl p-5 shadow-xs">
                 <p className="text-xs font-bold text-slate-500 mb-2">Timbangan Total Panen Masuk</p><p className="text-3xl font-black text-teal-600 mb-4">{totalTimbanganZuruValue.toFixed(1)} Kg</p>
@@ -1518,7 +1540,7 @@ export default function App() {
 
       {/* Bagian Footer */}
       <footer className="bg-white border-t border-slate-200 px-4 py-3 text-center text-xs text-slate-500 z-10 w-full mt-auto">
-        &copy; {new Date().getFullYear()} {String(masjidName)} - developed by Misbahul Munir
+        &copy; {new Date().getFullYear()} {String(masjidName)} - Sistem Manajemen Masjid Terpadu
       </footer>
 
       {printIframeData && (
