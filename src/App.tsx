@@ -3,7 +3,7 @@ import {
   Compass, Users, Gift, Heart, UserCheck, Settings, 
   Trash2, Plus, Edit2, Check, X, AlertTriangle, 
   MapPin, Printer, UsersRound, Calendar, Coins,
-  LogOut, Lock, KeyRound, User, Eye, EyeOff, UserPlus, FileText,
+  LogOut, KeyRound, User, Eye, EyeOff, UserPlus, FileText,
   Phone, Send, BellRing, Smartphone, Menu, RefreshCw, Database, Download
 } from 'lucide-react';
 
@@ -30,15 +30,15 @@ const INITIAL_ROLES = {
 };
 
 const INITIAL_USER_DATABASE = {
-  "admin": { password: "admin123", role: "Admin", label: "Super Admin", approved: true },
-  "takmir": { password: "takmir123", role: "Takmir", label: "Takmir Masjid", approved: true },
-  "rt01": { password: "rt123", role: "RT", label: "Ketua RT 01", approved: true },
-  "amil": { password: "amil123", role: "Amil", label: "Amil Zakat", approved: true },
-  "jamaah": { password: "jamaah123", role: "Jamaah", label: "Jama'ah / Warga", approved: true },
-  "khsyukron": { password: "petugas123", role: "Petugas", label: "KH. Syukron Ma'mun", approved: true },
-  "ahmadhafiz": { password: "petugas123", role: "Petugas", label: "Ustadz Ahmad Al-Hafiz", approved: true },
-  "bilalhanafi": { password: "petugas123", role: "Petugas", label: "Bilal Hanafi", approved: true },
-  "soleh": { password: "petugas123", role: "Petugas", label: "Soleh", approved: true }
+  "admin": { password: "admin123", roles: ["Admin"], label: "Super Admin", approved: true },
+  "takmir": { password: "takmir123", roles: ["Takmir"], label: "Takmir Masjid", approved: true },
+  "rt01": { password: "rt123", roles: ["RT"], label: "Ketua RT 01", approved: true },
+  "amil": { password: "amil123", roles: ["Amil"], label: "Amil Zakat", approved: true },
+  "jamaah": { password: "jamaah123", roles: ["Jamaah"], label: "Jama'ah / Warga", approved: true },
+  "khsyukron": { password: "petugas123", roles: ["Petugas"], label: "KH. Syukron Ma'mun", approved: true },
+  "ahmadhafiz": { password: "petugas123", roles: ["Petugas"], label: "Ustadz Ahmad Al-Hafiz", approved: true },
+  "bilalhanafi": { password: "petugas123", roles: ["Petugas"], label: "Bilal Hanafi", approved: true },
+  "soleh": { password: "petugas123", roles: ["Petugas"], label: "Soleh", approved: true }
 };
 
 const INITIAL_JAMAAH = [
@@ -57,7 +57,7 @@ const INITIAL_PETUGAS_ABADI = {
 };
 
 // ====================================================================
-// GLOBAL STABLE PURE FUNCTIONS (Aman dari referensi error)
+// GLOBAL STABLE PURE FUNCTIONS
 // ====================================================================
 function KubahMasjidIcon({ className }) {
   return (
@@ -84,7 +84,6 @@ function getLocalStorageData(key, fallbackValue) {
     if (!saved || saved === "undefined" || saved === "null") return fallbackValue;
     try { 
       const parsed = JSON.parse(saved); 
-      // Proteksi anti-crash jika JSON malah menyimpan Objek React
       if (parsed !== null && typeof parsed === 'object') {
         if (parsed.$$typeof || (!Array.isArray(parsed) && (key === "masjidName" || key === "masjidLogoUrl"))) {
           localStorage.removeItem(key);
@@ -170,7 +169,8 @@ export default function App() {
   const [tempMasjidLogoUrl, setTempMasjidLogoUrl] = useState(masjidLogoUrl);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentRole, setCurrentRole] = useState("Admin");
+  // Multi-role state
+  const [currentUserRoles, setCurrentUserRoles] = useState(["Admin"]);
   const [currentUserLabel, setCurrentUserLabel] = useState("");
   const [currentUserUsername, setCurrentUserUsername] = useState("");
   
@@ -196,7 +196,7 @@ export default function App() {
   const [newAccRole, setNewAccRole] = useState("Jamaah");
   const [newAccLabel, setNewAccLabel] = useState("");
 
-  const [editingAccountPassword, setEditingAccountPassword] = useState(null); 
+  const [editingUserRoles, setEditingUserRoles] = useState(null); 
   const [newPasswordValue, setNewPasswordValue] = useState("");
 
   const [lokasi, setLokasi] = useState(() => getLocalStorageData("lokasi", INITIAL_LOKASI));
@@ -242,10 +242,6 @@ export default function App() {
   const [timbanganQurbanKambing, setTimbanganQurbanKambing] = useState(() => getLocalStorageData("timbanganQurbanKambing", [22.0, 18.5, 25.0]));
   const [tempBeratQurbanSapi, setTempBeratQurbanSapi] = useState("");
   const [tempBeratQurbanKambing, setTempBeratQurbanKambing] = useState("");
-  
-  // Alokasi per KK untuk Qurban agar bisa deteksi Surplus/Kurang
-  const [alokasiQurban, setAlokasiQurban] = useState(() => getLocalStorageData("alokasiQurban", { Sapi: 1.0, Kambing: 0.5 }));
-  const [tempAlokasiQurban, setTempAlokasiQurban] = useState(alokasiQurban);
   
   // State Filter Spesifik Laporan per tab
   const [filterWilayahQurban, setFilterWilayahQurban] = useState("Semua");
@@ -306,10 +302,14 @@ export default function App() {
     return <KubahMasjidIcon className={fallbackClassName} />;
   }
 
+  // Multi-role logic
   function hasAccess(tabName) {
-    if (!rolesConfig || !rolesConfig[currentRole]) return false;
-    const acc = rolesConfig[currentRole]?.access?.[tabName];
-    return acc === "view" || acc === "edit" || currentRole === "Admin";
+    if (!rolesConfig || !currentUserRoles || currentUserRoles.length === 0) return false;
+    if (currentUserRoles.includes("Admin")) return true;
+    return currentUserRoles.some(role => {
+      const acc = rolesConfig[role]?.access?.[tabName];
+      return acc === "view" || acc === "edit";
+    });
   }
 
   function updateRoleAccess(role, menuId, newAccess) {
@@ -375,7 +375,6 @@ export default function App() {
   useEffect(() => { localStorage.setItem("alokasiZuru", JSON.stringify(alokasiZuru)); }, [alokasiZuru]);
   useEffect(() => { localStorage.setItem("timbanganQurbanSapi", JSON.stringify(timbanganQurbanSapi)); }, [timbanganQurbanSapi]);
   useEffect(() => { localStorage.setItem("timbanganQurbanKambing", JSON.stringify(timbanganQurbanKambing)); }, [timbanganQurbanKambing]);
-  useEffect(() => { localStorage.setItem("alokasiQurban", JSON.stringify(alokasiQurban)); }, [alokasiQurban]);
 
   useEffect(() => { setTempMasjidName(masjidName); }, [masjidName]);
   useEffect(() => { setTempMasjidLogoUrl(masjidLogoUrl); }, [masjidLogoUrl]);
@@ -445,7 +444,6 @@ export default function App() {
         if (payload.timbanganQurbanKambing !== undefined) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
         if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
         if (payload.rolesConfig !== undefined) setRolesConfig(payload.rolesConfig);
-        if (payload.alokasiQurban !== undefined) setAlokasiQurban(payload.alokasiQurban);
         setSyncStatus("Tersinkronisasi");
       } else { setSyncStatus("Tersinkronisasi Lokal"); }
     } catch (err) {
@@ -467,7 +465,7 @@ export default function App() {
     const payload = {
       masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
       timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
-      timbanganQurbanSapi, timbanganQurbanKambing, alokasiQurban, userDatabase, rolesConfig
+      timbanganQurbanSapi, timbanganQurbanKambing, userDatabase, rolesConfig
     };
     setSyncStatus("Menyimpan Otomatis...");
     const timeoutId = setTimeout(async () => {
@@ -477,7 +475,7 @@ export default function App() {
       } catch (err) { setSyncStatus("Gagal Menyimpan"); }
     }, 3000); 
     return () => clearTimeout(timeoutId);
-  }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, alokasiQurban, userDatabase, rolesConfig, googleSheetsUrl, isDataFetched]);
+  }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, userDatabase, rolesConfig, googleSheetsUrl, isDataFetched]);
 
 
   // === 4. DERIVED CALCULATIONS ===
@@ -527,32 +525,29 @@ export default function App() {
         const [filterRt, filterRw] = filterWilayahQurban.split('_');
         if (warga.rt !== filterRt || warga.rw !== filterRw) return false;
       }
-      if (qurbanHanyaMustahik) {
-        return (warga.fitrah !== "Muzakki" || warga.zuru !== "Bukan Mustahik" || warga.isGuruNgaji);
-      }
       return true;
     });
   };
 
   const wargaPenerimaQurban = getWargaPenerimaQurban();
   const totalPenerimaKK = wargaPenerimaQurban.length;
-  
-  const totalButuhSapi = totalPenerimaKK * (alokasiQurban.Sapi || 0);
-  const totalButuhKambing = totalPenerimaKK * (alokasiQurban.Kambing || 0);
-  const surplusSapi = totalTimbanganQurbanSapiValue - totalButuhSapi;
-  const surplusKambing = totalTimbanganQurbanKambingValue - totalButuhKambing;
+  const jatahDagingSapiPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanSapiValue / totalPenerimaKK).toFixed(2) : 0;
+  const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanKambingValue / totalPenerimaKK).toFixed(2) : 0;
 
-  const canEditPetugas = currentRole === "Admin" || rolesConfig[currentRole]?.access?.petugas === "edit";
-  const canEditJamaah = currentRole === "Admin" || rolesConfig[currentRole]?.access?.jamaah === "edit";
-  const canEditFitrah = currentRole === "Admin" || rolesConfig[currentRole]?.access?.fitrah === "edit";
-  const canEditZuru = currentRole === "Admin" || rolesConfig[currentRole]?.access?.zuru === "edit";
-  const canEditQurban = currentRole === "Admin" || rolesConfig[currentRole]?.access?.qurban === "edit";
+  // Edit Permissions logic checking across multiple roles
+  const checkEditAccess = (tab) => currentUserRoles.includes("Admin") || currentUserRoles.some(r => rolesConfig[r]?.access?.[tab] === "edit");
+  const canEditPetugas = checkEditAccess('petugas');
+  const canEditJamaah = checkEditAccess('jamaah');
+  const canEditFitrah = checkEditAccess('fitrah');
+  const canEditZuru = checkEditAccess('zuru');
+  const canEditQurban = checkEditAccess('qurban');
 
   // === 5. EVENT HANDLERS ACTIONS ===
   const handleLogin = (e) => {
     e.preventDefault();
     const cleanUser = inputUsername.trim().toLowerCase();
     
+    // Fallback: Pastikan membaca dari LocalStorage jika state memori terputus
     let currentDB = userDatabase;
     try {
       const localDB = JSON.parse(localStorage.getItem("userDatabase"));
@@ -561,6 +556,7 @@ export default function App() {
 
     let userAccount = currentDB[cleanUser];
 
+    // --- PROTEKSI ANTI-TERKUNCI UNTUK SUPER ADMIN ---
     if (!userAccount && cleanUser === "admin" && inputPassword === "admin123") {
       userAccount = INITIAL_USER_DATABASE["admin"];
       setUserDatabase(prev => ({ ...prev, admin: INITIAL_USER_DATABASE["admin"] }));
@@ -569,12 +565,20 @@ export default function App() {
     if (userAccount) {
       if (!userAccount.approved) { addNotification("Pendaftaran akun masih diproses/menunggu ACC.", "error"); return; }
       if (inputPassword === userAccount.password) {
-        setCurrentRole(userAccount.role); setCurrentUserLabel(userAccount.label); setCurrentUserUsername(cleanUser);
+        // Multi-role initialization
+        const userRoles = userAccount.roles || (userAccount.role ? [userAccount.role] : ["Jamaah"]);
+        
+        setCurrentUserRoles(userRoles); 
+        setCurrentUserLabel(userAccount.label); 
+        setCurrentUserUsername(cleanUser);
         setIsLoggedIn(true); setIsDutyDismissed(false); 
         
-        const allowedAccessObj = rolesConfig[userAccount.role]?.access || {};
+        // Find default tab to open based on first role's access
+        let primaryRole = userRoles.includes("Admin") ? "Admin" : userRoles[0];
+        const allowedAccessObj = rolesConfig[primaryRole]?.access || {};
         const allowedTabs = Object.keys(allowedAccessObj).filter(k => allowedAccessObj[k] !== "none");
         if (!allowedTabs.includes(activeTab)) setActiveTab(allowedTabs[0] || "dashboard");
+        
         addNotification(`Selamat datang kembali, ${userAccount.label}!`, "success");
         setInputUsername(""); setInputPassword("");
       } else { addNotification("Kata Sandi salah!", "error"); }
@@ -585,6 +589,7 @@ export default function App() {
     setIsLoggedIn(false);
     setCurrentUserUsername("");
     setCurrentUserLabel("");
+    setCurrentUserRoles(["Admin"]);
     addNotification("Berhasil keluar dari sistem.", "warning");
   };
 
@@ -595,13 +600,13 @@ export default function App() {
     if (regPassword !== regConfirmPassword) { addNotification("Sandi konfirmasi tidak cocok!", "error"); return; }
     if (userDatabase[cleanUsername]) { addNotification("Username terdaftar! Pilih yang lain.", "error"); return; }
 
-    setUserDatabase(prev => ({ ...prev, [cleanUsername]: { password: regPassword, role: "Jamaah", label: regLabel.trim(), approved: false } }));
+    setUserDatabase(prev => ({ ...prev, [cleanUsername]: { password: regPassword, roles: ["Jamaah"], label: regLabel.trim(), approved: false } }));
     addNotification("Pendaftaran Sukses! Menunggu ACC Admin.", "success");
     setIsRegisterMode(false); setRegLabel(""); setRegUsername(""); setRegPassword(""); setRegConfirmPassword("");
   };
 
   const handleApproveAccount = (usernameKey, assignedRole) => {
-    setUserDatabase(prev => ({ ...prev, [usernameKey]: { ...prev[usernameKey], role: assignedRole, approved: true } }));
+    setUserDatabase(prev => ({ ...prev, [usernameKey]: { ...prev[usernameKey], roles: [assignedRole], approved: true } }));
     addNotification(`Akun @${usernameKey} di-ACC!`, "success");
   };
 
@@ -616,12 +621,13 @@ export default function App() {
     e.preventDefault();
     if (!jamaahForm.nama.trim() || !jamaahForm.alamat.trim()) return;
     
-    // Khusus Role RT, form lebih ringkas dan otomatis mengusulkan sebagai penerima bantuan
-    const isRtRole = currentRole === "RT";
-    const butuhAcc = currentRole === "Amil" || isRtRole;
+    // Amil or RT proposals need ACC unless they are also Admin or Takmir
+    const isSuper = currentUserRoles.includes("Admin") || currentUserRoles.includes("Takmir");
+    const isRtRole = currentUserRoles.includes("RT");
+    const butuhAcc = !isSuper && (currentUserRoles.includes("Amil") || isRtRole);
     
     let finalData = { ...jamaahForm };
-    if (isRtRole) {
+    if (isRtRole && !isSuper && !currentUserRoles.includes("Amil")) {
       finalData.qurban = "Penerima"; // Pasang status qurban default untuk RT
     }
 
@@ -649,7 +655,6 @@ export default function App() {
 
   const handleSaveAlokasiFitrah = () => { setAlokasiFitrah(tempAlokasiFitrah); addNotification("Jatah Fitrah disimpan!", "success"); };
   const handleSaveAlokasiZuru = () => { setAlokasiZuru(tempAlokasiZuru); addNotification("Jatah Zuru' disimpan!", "success"); };
-  const handleSaveAlokasiQurban = () => { setAlokasiQurban(tempAlokasiQurban); addNotification("Target Jatah Qurban disimpan!", "success"); };
 
   const addTimbangan = (tipe) => {
     if (tipe === 'fitrah') {
@@ -725,20 +730,13 @@ export default function App() {
     const cleanUsername = newAccUsername.trim().toLowerCase();
     if (!cleanUsername || !newAccPassword.trim() || !newAccLabel.trim()) return;
     if (userDatabase[cleanUsername]) { addNotification("Username terdaftar!", "error"); return; }
-    setUserDatabase(prev => ({ ...prev, [cleanUsername]: { password: newAccPassword, role: newAccRole, label: newAccLabel, approved: true } }));
+    setUserDatabase(prev => ({ ...prev, [cleanUsername]: { password: newAccPassword, roles: [newAccRole], label: newAccLabel, approved: true } }));
     addNotification("Akun dibuat!"); setNewAccUsername(""); setNewAccPassword(""); setNewAccLabel(""); setNewAccRole("Jamaah");
   };
 
   const handleDeleteAccount = (usernameKey) => {
     if (["admin", "takmir", "rt01", "jamaah"].includes(usernameKey)) { addNotification("Akun bawaan sistem tidak boleh dihapus!", "error"); return; }
     if (window.confirm("Hapus akun?")) { setUserDatabase(prev => { const copy = { ...prev }; delete copy[usernameKey]; return copy; }); addNotification("Akun dihapus.", "warning"); }
-  };
-
-  const handleSaveNewPassword = (e) => {
-    e.preventDefault();
-    if (!newPasswordValue.trim()) return;
-    setUserDatabase(prev => ({ ...prev, [editingAccountPassword]: { ...prev[editingAccountPassword], password: newPasswordValue.trim() } }));
-    addNotification("Password diganti!", "success"); setEditingAccountPassword(null); setNewPasswordValue("");
   };
 
   const handlePrepareNotification = (fridayData, type) => {
@@ -1000,7 +998,7 @@ export default function App() {
           {/* User profile info header - dimunculkan juga di tampilan Mobile/HP */}
           <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 pl-3 pr-2 py-1.5 rounded-2xl mr-1">
             <div className="text-left block">
-              <span className="text-[8px] sm:text-[9px] text-emerald-600 font-extrabold block uppercase leading-tight">{rolesConfig[currentRole]?.label || currentRole}</span>
+              <span className="text-[8px] sm:text-[9px] text-emerald-600 font-extrabold block uppercase leading-tight">{currentUserRoles.map(r => rolesConfig[r]?.label || r).join(', ')}</span>
               <span className="text-[10px] sm:text-xs font-black text-emerald-900 truncate block max-w-[80px] sm:max-w-[150px] leading-tight">{String(currentUserLabel)}</span>
             </div>
           </div>
@@ -1038,7 +1036,7 @@ export default function App() {
                 const allowed = hasAccess(item.id);
                 const isActive = activeTab === item.id;
                 return (
-                  <button key={item.id} onClick={() => navigateTo(item.id)} disabled={!allowed && currentRole !== 'Admin'} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-xs font-black transition-all ${isActive ? 'bg-emerald-50 text-emerald-800 border-l-4 border-emerald-600' : !allowed ? 'text-slate-300 bg-slate-50' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <button key={item.id} onClick={() => navigateTo(item.id)} disabled={!allowed && !currentUserRoles.includes('Admin')} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-xs font-black transition-all ${isActive ? 'bg-emerald-50 text-emerald-800 border-l-4 border-emerald-600' : !allowed ? 'text-slate-300 bg-slate-50' : 'text-slate-600 hover:bg-slate-50'}`}>
                     <item.icon className="w-4 h-4 shrink-0" /> <span className="text-left flex-1">{item.label}</span>
                     {!allowed && <span className="text-[8px] bg-slate-200 text-slate-500 px-1 py-0.5 rounded-md">Kunci</span>}
                   </button>
@@ -1051,7 +1049,7 @@ export default function App() {
               <div className="bg-white p-3 rounded-xl border border-slate-200 mb-3 shadow-xs">
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Login Sebagai:</p>
                 <p className="text-sm font-black text-slate-800 truncate leading-tight">{String(currentUserLabel)}</p>
-                <p className="text-[10px] font-bold text-emerald-600 truncate">{rolesConfig[currentRole]?.label || currentRole}</p>
+                <p className="text-[10px] font-bold text-emerald-600 truncate">{currentUserRoles.map(r => rolesConfig[r]?.label || r).join(', ')}</p>
               </div>
               <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 p-2.5 bg-rose-100 text-rose-700 hover:bg-rose-200 hover:text-rose-800 rounded-xl font-bold transition-all text-xs">
                 <LogOut size={16} /> Keluar Aplikasi
@@ -1069,16 +1067,22 @@ export default function App() {
         {activeTab === "dashboard" && (
           <div className="space-y-4">
             
-            {(currentRole === "Takmir" || currentRole === "Admin") && usulanWargaList.length > 0 && (
+            {(currentUserRoles.includes("Takmir") || currentUserRoles.includes("Admin")) && usulanWargaList.length > 0 && (
               <div className="bg-white border-2 border-emerald-500 rounded-3xl p-5 shadow-lg space-y-4">
                 <div className="flex items-center gap-2 border-b pb-3"><Check className="text-emerald-600 w-5 h-5 animate-bounce" /><div><h3 className="font-extrabold text-sm">Persetujuan Usulan Warga Baru dari RT/Amil</h3><p className="text-[10px] text-slate-500">Amil atau RT telah mengajukan data. Berikan validasi.</p></div></div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
-                    <thead><tr className="bg-slate-50 text-slate-600 font-bold uppercase text-[9px]"><th className="p-3">Pengusul</th><th className="p-3">Warga</th><th className="p-3">RT/RW</th><th className="p-3 text-right">Aksi</th></tr></thead>
+                    <thead><tr className="bg-slate-50 text-slate-600 font-bold uppercase text-[9px]"><th className="p-3">Pengusul</th><th className="p-3">Warga</th><th className="p-3">RT/RW</th><th className="p-3">Usulan Bantuan</th><th className="p-3 text-right">Aksi</th></tr></thead>
                     <tbody>
                       {usulanWargaList.map(w => (
-                        <tr key={w.id} className="border-b">
+                        <tr key={w.id} className="border-b hover:bg-slate-50">
                           <td className="p-3 font-bold">{String(w.usulanOleh)}</td><td className="p-3 font-bold">{String(w.nama)}</td><td className="p-3">RT {String(w.rt)}/{String(w.rw)}</td>
+                          <td className="p-3 text-[10px]">
+                            Fitrah: <strong>{String(w.fitrah)}</strong><br/>
+                            Zuru': <strong>{String(w.zuru)}</strong><br/>
+                            Qurban: <strong>{String(w.qurban)}</strong>
+                            {w.isGuruNgaji && <span className="text-emerald-600 font-bold block mt-0.5">+ Guru Ngaji</span>}
+                          </td>
                           <td className="p-3 text-right">
                             <button onClick={() => handleApproveWarga(w.id)} className="px-3 py-1.5 bg-emerald-600 text-white text-[10px] rounded-lg mr-2">ACC</button>
                             <button onClick={() => handleRejectWarga(w.id)} className="px-3 py-1.5 bg-rose-50 text-rose-600 text-[10px] rounded-lg">Tolak</button>
@@ -1247,7 +1251,7 @@ export default function App() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-bold">Database Jemaah & Warga</h2>
-              {canEditJamaah && <button onClick={() => { setEditingJamaah(null); setShowJamaahModal(true); }} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold">{currentRole === "Amil" || currentRole === "RT" ? "Usul Warga" : "Tambah Warga"}</button>}
+              {canEditJamaah && <button onClick={() => { setEditingJamaah(null); setShowJamaahModal(true); }} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold">{currentUserRoles.includes("Amil") || currentUserRoles.includes("RT") ? "Usul Warga" : "Tambah Warga"}</button>}
             </div>
 
             <div className="bg-slate-50 border p-4 rounded-2xl shadow-xs">
@@ -1309,7 +1313,7 @@ export default function App() {
                     </div>
                     <div><label className="text-[10px] font-bold text-slate-500">Alamat</label><textarea required value={jamaahForm.alamat} onChange={e => setJamaahForm({...jamaahForm, alamat: e.target.value})} className="w-full border p-2.5 rounded-xl text-sm resize-none" rows="2"/></div>
                     
-                    {currentRole !== "RT" && (
+                    {!currentUserRoles.includes("RT") && (
                       <div><label className="text-[10px] font-bold text-slate-500">Status Ekonomi</label>
                         <div className="flex gap-2 text-xs">
                           {["Mampu", "Kurang Mampu", "Sangat Kurang"].map((opsi) => (
@@ -1319,7 +1323,7 @@ export default function App() {
                       </div>
                     )}
                     
-                    {currentRole !== "RT" && (
+                    {!currentUserRoles.includes("RT") && (
                       <div className="flex items-center gap-2 border p-3 rounded-xl bg-slate-50">
                         <input type="checkbox" checked={jamaahForm.isGuruNgaji} onChange={e => setJamaahForm({...jamaahForm, isGuruNgaji: e.target.checked})} className="w-4 h-4 accent-emerald-600" />
                         <span className="text-xs font-bold">Warga ini berstatus Guru Ngaji (Bantuan Khusus)</span>
@@ -1331,12 +1335,12 @@ export default function App() {
                       <div><label className="text-[10px] font-bold text-teal-600">Zakat Zuru'</label><select value={jamaahForm.zuru} onChange={e => setJamaahForm({...jamaahForm, zuru: e.target.value})} className="w-full border p-2 rounded-xl text-xs font-bold"><option value="Bukan Mustahik">Bukan Penerima</option><option value="Berat">Mustahik Berat</option><option value="Sedang">Mustahik Sedang</option><option value="Ringan">Mustahik Ringan</option></select></div>
                     </div>
                     
-                    {currentRole !== "RT" && (
+                    {!(currentUserRoles.includes("RT") && !currentUserRoles.includes("Admin") && !currentUserRoles.includes("Takmir") && !currentUserRoles.includes("Amil")) && (
                       <div><label className="text-[10px] font-bold text-rose-600">Status Qurban</label><select value={jamaahForm.qurban} onChange={e => setJamaahForm({...jamaahForm, qurban: e.target.value})} className="w-full border p-2 rounded-xl text-xs font-bold"><option value="Penerima">Penerima Daging</option><option value="Sahibul Qurban - Sapi">Sahibul Qurban Sapi</option><option value="Sahibul Qurban - Kambing">Sahibul Qurban Kambing</option></select></div>
                     )}
                     <div className="flex justify-end gap-2 pt-4 border-t">
                       <button type="button" onClick={() => setShowJamaahModal(false)} className="px-5 py-2.5 border rounded-xl text-xs font-bold">Batal</button>
-                      <button type="submit" className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold">{(currentRole === "Amil" || currentRole === "RT") ? "Usulkan Data" : "Simpan"}</button>
+                      <button type="submit" className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold">{(currentUserRoles.includes("Amil") || currentUserRoles.includes("RT")) ? "Usulkan Data" : "Simpan"}</button>
                     </div>
                   </form>
                 </div>
@@ -1481,17 +1485,6 @@ export default function App() {
                 </div>
             </div>
             
-            <div className="bg-white border rounded-2xl p-4 shadow-xs mb-4 flex items-center justify-between">
-                <div>
-                    <h3 className="text-xs font-bold text-slate-500 uppercase mb-1">Target Jatah Pembagian Daging (Per KK)</h3>
-                    <div className="flex gap-4">
-                        <div className="flex items-center gap-2"><span className="text-sm font-black text-rose-600">SAPI:</span><input type="number" step="0.1" value={tempAlokasiQurban.Sapi} onChange={e => setTempAlokasiQurban({...tempAlokasiQurban, Sapi: parseFloat(e.target.value) || 0})} className="w-16 border rounded text-sm text-center outline-none" /> <span className="text-xs">Kg</span></div>
-                        <div className="flex items-center gap-2"><span className="text-sm font-black text-amber-600">KAMBING:</span><input type="number" step="0.1" value={tempAlokasiQurban.Kambing} onChange={e => setTempAlokasiQurban({...tempAlokasiQurban, Kambing: parseFloat(e.target.value) || 0})} className="w-16 border rounded text-sm text-center outline-none" /> <span className="text-xs">Kg</span></div>
-                    </div>
-                </div>
-                {canEditQurban && <button onClick={handleSaveAlokasiQurban} className="bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold">Simpan Target</button>}
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                 <div>
@@ -1499,13 +1492,9 @@ export default function App() {
                   {canEditQurban && (
                     <div className="flex gap-2"><input type="number" step="0.1" placeholder="Berat Daging Sapi (kg)" value={tempBeratQurbanSapi} onChange={e => setTempBeratQurbanSapi(e.target.value)} className="border p-2 rounded flex-1 text-sm outline-none" /><button onClick={() => addTimbangan('qurbanSapi')} className="bg-slate-800 text-white px-3 font-bold text-xs rounded">Tambah</button></div>
                   )}
-                  <div className="mt-3 max-h-24 overflow-y-auto space-y-1">
+                  <div className="mt-3 max-h-32 overflow-y-auto space-y-1">
                     {Array.isArray(timbanganQurbanSapi) && timbanganQurbanSapi.map((b, i) => (<div key={i} className="flex justify-between bg-rose-50 p-2 text-xs border border-rose-100 rounded text-rose-900"><span className="font-bold">{b} Kg</span>{canEditQurban && <button onClick={() => deleteTimbangan('qurbanSapi', i)} className="text-rose-500"><Trash2 size={14}/></button>}</div>))}
                   </div>
-                </div>
-                <div className={`mt-4 p-3 rounded-lg border flex justify-between items-center ${surplusSapi >= 0 ? 'bg-emerald-100 border-emerald-200 text-emerald-800' : 'bg-rose-100 border-rose-200 text-rose-800'}`}>
-                  <span className="text-[10px] font-bold uppercase">{surplusSapi >= 0 ? 'Surplus Sapi' : 'Kekurangan Sapi'}</span>
-                  <span className="text-lg font-black">{Math.abs(surplusSapi).toFixed(1)} Kg</span>
                 </div>
               </div>
               
@@ -1515,27 +1504,23 @@ export default function App() {
                   {canEditQurban && (
                     <div className="flex gap-2"><input type="number" step="0.1" placeholder="Berat Daging Kambing (kg)" value={tempBeratQurbanKambing} onChange={e => setTempBeratQurbanKambing(e.target.value)} className="border p-2 rounded flex-1 text-sm outline-none" /><button onClick={() => addTimbangan('qurbanKambing')} className="bg-slate-800 text-white px-3 font-bold text-xs rounded">Tambah</button></div>
                   )}
-                  <div className="mt-3 max-h-24 overflow-y-auto space-y-1">
+                  <div className="mt-3 max-h-32 overflow-y-auto space-y-1">
                     {Array.isArray(timbanganQurbanKambing) && timbanganQurbanKambing.map((b, i) => (<div key={i} className="flex justify-between bg-amber-50 p-2 text-xs border border-amber-100 rounded text-amber-900"><span className="font-bold">{b} Kg</span>{canEditQurban && <button onClick={() => deleteTimbangan('qurbanKambing', i)} className="text-amber-500"><Trash2 size={14}/></button>}</div>))}
                   </div>
-                </div>
-                <div className={`mt-4 p-3 rounded-lg border flex justify-between items-center ${surplusKambing >= 0 ? 'bg-emerald-100 border-emerald-200 text-emerald-800' : 'bg-rose-100 border-rose-200 text-rose-800'}`}>
-                  <span className="text-[10px] font-bold uppercase">{surplusKambing >= 0 ? 'Surplus Kambing' : 'Kekurangan Kambing'}</span>
-                  <span className="text-lg font-black">{Math.abs(surplusKambing).toFixed(1)} Kg</span>
                 </div>
               </div>
             </div>
             
             <div className="bg-slate-900 text-white border rounded-3xl p-5 shadow-lg grid grid-cols-3 gap-4">
               <div className="text-center"><p className="text-[10px] text-slate-400 uppercase font-bold">Total Penerima Qurban</p><p className="text-3xl font-black mt-1">{totalPenerimaKK} KK</p></div>
-              <div className="text-center border-l border-slate-700"><p className="text-[10px] text-rose-400 uppercase font-bold">Butuh Daging Sapi</p><p className="text-3xl font-black mt-1">{totalButuhSapi.toFixed(1)} Kg</p></div>
-              <div className="text-center border-l border-slate-700"><p className="text-[10px] text-amber-400 uppercase font-bold">Butuh Daging Kambing</p><p className="text-3xl font-black mt-1">{totalButuhKambing.toFixed(1)} Kg</p></div>
+              <div className="text-center border-l border-slate-700"><p className="text-[10px] text-rose-400 uppercase font-bold">Jatah Sapi / KK</p><p className="text-3xl font-black mt-1">{jatahDagingSapiPerKK} Kg</p></div>
+              <div className="text-center border-l border-slate-700"><p className="text-[10px] text-amber-400 uppercase font-bold">Jatah Kambing / KK</p><p className="text-3xl font-black mt-1">{jatahDagingKambingPerKK} Kg</p></div>
             </div>
           </div>
         )}
 
         {/* ======================= TAB: RBAC ======================= */}
-        {activeTab === "rbac" && currentRole === "Admin" && (
+        {activeTab === "rbac" && currentUserRoles.includes("Admin") && (
           <div className="space-y-6">
             
             {pendingAccounts.length > 0 && (
@@ -1587,12 +1572,69 @@ export default function App() {
                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                  {Object.keys(userDatabase).filter(k => userDatabase[k].approved).map(k => (
                     <div key={k} className="border rounded-xl p-3 flex justify-between items-center bg-white">
-                      <div><p className="font-bold text-xs">{userDatabase[k].label}</p><p className="text-[10px] text-slate-500 font-mono">@{k} | Pass: {userDatabase[k].password}</p><span className="text-[8px] bg-slate-100 border px-1 rounded font-bold">{userDatabase[k].role}</span></div>
-                      {!["admin","takmir","amil","rt01","jamaah"].includes(k) && <button onClick={() => handleDeleteAccount(k)} className="text-rose-500 bg-rose-50 p-1.5 rounded hover:bg-rose-100"><Trash2 size={14}/></button>}
+                      <div className="w-full max-w-[70%]">
+                        <p className="font-bold text-xs truncate">{userDatabase[k].label}</p>
+                        <p className="text-[10px] text-slate-500 font-mono">@{k} | Pass: {userDatabase[k].password}</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {(userDatabase[k].roles || [userDatabase[k].role]).map((r, i) => (
+                             <span key={i} className="text-[8px] bg-slate-100 border px-1 rounded font-bold">{r}</span>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {k !== "admin" && (
+                          <div className="flex gap-1">
+                            <button onClick={() => setEditingUserRoles({ username: k, roles: userDatabase[k].roles || [userDatabase[k].role] })} className="text-blue-500 bg-blue-50 p-1.5 rounded hover:bg-blue-100" title="Edit Peran"><Edit2 size={14}/></button>
+                            <button onClick={() => handleDeleteAccount(k)} className="text-rose-500 bg-rose-50 p-1.5 rounded hover:bg-rose-100" title="Hapus Akun"><Trash2 size={14}/></button>
+                          </div>
+                      )}
                     </div>
                  ))}
                </div>
             </div>
+
+            {/* MODAL EDIT MULTI ROLE UNTUK ADMIN */}
+            {editingUserRoles && (
+              <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
+                <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6">
+                   <h3 className="font-bold mb-1">Atur Peran Akun</h3>
+                   <p className="text-xs text-slate-500 font-mono mb-4">@{editingUserRoles.username}</p>
+                   
+                   <div className="space-y-2 mb-6">
+                     {Object.keys(rolesConfig).map(roleKey => (
+                       <label key={roleKey} className="flex items-center gap-3 text-sm border p-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                         <input 
+                           type="checkbox" 
+                           checked={editingUserRoles.roles.includes(roleKey)}
+                           onChange={(e) => {
+                             const newRoles = e.target.checked 
+                               ? [...editingUserRoles.roles, roleKey] 
+                               : editingUserRoles.roles.filter(r => r !== roleKey);
+                             setEditingUserRoles({...editingUserRoles, roles: newRoles});
+                           }}
+                           className="w-4 h-4 accent-emerald-600 cursor-pointer"
+                         />
+                         <span className="font-bold text-slate-700">{rolesConfig[roleKey].label}</span>
+                       </label>
+                     ))}
+                   </div>
+                   <div className="flex justify-end gap-2">
+                     <button onClick={() => setEditingUserRoles(null)} className="px-4 py-2 border rounded-xl text-xs font-bold">Batal</button>
+                     <button onClick={() => {
+                        if(editingUserRoles.roles.length === 0) {
+                            addNotification("Minimal harus ada 1 peran!", "error"); return;
+                        }
+                        setUserDatabase(prev => ({
+                          ...prev,
+                          [editingUserRoles.username]: { ...prev[editingUserRoles.username], roles: editingUserRoles.roles }
+                        }));
+                        addNotification("Peran akun berhasil diperbarui!", "success");
+                        setEditingUserRoles(null);
+                     }} className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm">Simpan Peran</button>
+                   </div>
+                </div>
+              </div>
+            )}
 
             <div className="bg-white p-5 rounded-2xl shadow-xs border overflow-x-auto">
               <h3 className="font-bold text-sm mb-4">Matriks Akses (RBAC)</h3>
