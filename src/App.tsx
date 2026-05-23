@@ -57,33 +57,32 @@ const INITIAL_PETUGAS_ABADI = {
 };
 
 // ====================================================================
-// GLOBAL STABLE PURE FUNCTIONS
+// STATIC COMPONENTS & HELPERS
 // ====================================================================
-function KubahMasjidIcon({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="46" fill="#f0fdf4" stroke="#10b981" strokeWidth="3" />
-      <path d="M50 15C42 28 32 35 32 55C32 65 35 72 50 72C65 72 68 65 68 55C68 35 58 28 50 15Z" fill="#10b981" />
-      <path d="M50 10V15" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round" />
-      <circle cx="50" cy="8" r="2.5" fill="#f59e0b" />
-      <path d="M48 6C49 5 52 5 53 6" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" />
-      <text x="50" y="58" fill="#ffffff" fontSize="13" fontWeight="900" textAnchor="middle" fontFamily="sans-serif">M I</text>
-      <path d="M45 72V64C45 61.5 47.5 59 50 59C52.5 59 55 61.5 55 64V72" fill="#047857" />
-    </svg>
-  );
-}
+const KubahMasjidIcon = ({ className }) => (
+  <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="46" fill="#f0fdf4" stroke="#10b981" strokeWidth="3" />
+    <path d="M50 15C42 28 32 35 32 55C32 65 35 72 50 72C65 72 68 65 68 55C68 35 58 28 50 15Z" fill="#10b981" />
+    <path d="M50 10V15" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round" />
+    <circle cx="50" cy="8" r="2.5" fill="#f59e0b" />
+    <path d="M48 6C49 5 52 5 53 6" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" />
+    <text x="50" y="58" fill="#ffffff" fontSize="13" fontWeight="900" textAnchor="middle" fontFamily="sans-serif">M I</text>
+    <path d="M45 72V64C45 61.5 47.5 59 50 59C52.5 59 55 61.5 55 64V72" fill="#047857" />
+  </svg>
+);
 
-function migrateRolesConfig(savedConfig) {
+const migrateRolesConfig = (savedConfig) => {
   if (!savedConfig || typeof savedConfig !== 'object' || !savedConfig.Admin || Array.isArray(savedConfig.Admin.access)) return INITIAL_ROLES;
   return savedConfig;
-}
+};
 
-function getLocalStorageData(key, fallbackValue) {
+const getLocalStorageData = (key, fallbackValue) => {
   try {
     const saved = localStorage.getItem(key);
     if (!saved || saved === "undefined" || saved === "null") return fallbackValue;
     try { 
       const parsed = JSON.parse(saved); 
+      // Proteksi anti-crash dari injeksi Objek React
       if (parsed !== null && typeof parsed === 'object') {
         if (parsed.$$typeof || (!Array.isArray(parsed) && (key === "masjidName" || key === "masjidLogoUrl"))) {
           localStorage.removeItem(key);
@@ -98,7 +97,7 @@ function getLocalStorageData(key, fallbackValue) {
   } catch (error) { 
     return fallbackValue; 
   }
-}
+};
 
 function getMockJadwal(kab, lat, lon) {
   let offset = 0;
@@ -142,35 +141,41 @@ function getUpcomingFridays(currentTime, petugasAbadi, count = 5) {
   return fridays;
 }
 
-function getJumlahJiwaPerKategoriFitrah(list, kategori) {
-  if (!Array.isArray(list)) return 0;
-  return list.filter(item => item.fitrah === kategori && item.approvedByTakmir).reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
-}
-
-function getJumlahJiwaPerKategoriZuru(list, kategori) {
-  if (!Array.isArray(list)) return 0;
-  return list.filter(item => item.zuru === kategori && item.approvedByTakmir).reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
+function createWAShareLink(masjidName, title, rtTitle, summaryText) {
+  const message = `*${String(masjidName)}*\n\n📝 *${title}*\nWilayah: ${rtTitle}\nTanggal: ${new Date().toLocaleDateString('id-ID')}\n\n${summaryText}\n\n_Dokumen cetak tersedia di pengurus._`;
+  return `https://wa.me/?text=${encodeURIComponent(message)}`;
 }
 
 // ====================================================================
 // MAIN COMPONENT APP
 // ====================================================================
 export default function App() {
-  // === 1. STATES INITIALIZATION ===
-  const [masjidName, setMasjidName] = useState(() => getLocalStorageData("masjidName", "Masjid Al-Ikhlas Bakalan"));
-  const [masjidLogoUrl, setMasjidLogoUrl] = useState(() => getLocalStorageData("masjidLogoUrl", ""));
+  // === 1. STATES INITIALIZATION DENGAN VALIDASI TIPE KETAT ===
+  const [masjidName, setMasjidName] = useState(() => {
+    const d = getLocalStorageData("masjidName", "Masjid Al-Ikhlas Bakalan");
+    return typeof d === 'string' ? d : "Masjid Al-Ikhlas Bakalan";
+  });
+  const [masjidLogoUrl, setMasjidLogoUrl] = useState(() => {
+    const d = getLocalStorageData("masjidLogoUrl", "");
+    return typeof d === 'string' ? d : "";
+  });
 
   const [tempMasjidName, setTempMasjidName] = useState(masjidName);
   const [tempMasjidLogoUrl, setTempMasjidLogoUrl] = useState(masjidLogoUrl);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  // Multi-role state
   const [currentUserRoles, setCurrentUserRoles] = useState(["Admin"]);
   const [currentUserLabel, setCurrentUserLabel] = useState("");
   const [currentUserUsername, setCurrentUserUsername] = useState("");
   
-  const [rolesConfig, setRolesConfig] = useState(() => getLocalStorageData("rolesConfig", INITIAL_ROLES));
-  const [userDatabase, setUserDatabase] = useState(() => getLocalStorageData("userDatabase", INITIAL_USER_DATABASE));
+  const [rolesConfig, setRolesConfig] = useState(() => {
+    const d = getLocalStorageData("rolesConfig", INITIAL_ROLES);
+    return d && typeof d === 'object' && !Array.isArray(d) ? migrateRolesConfig(d) : INITIAL_ROLES;
+  });
+  const [userDatabase, setUserDatabase] = useState(() => {
+    const d = getLocalStorageData("userDatabase", INITIAL_USER_DATABASE);
+    return d && typeof d === 'object' && !Array.isArray(d) ? d : INITIAL_USER_DATABASE;
+  });
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [notifications, setNotifications] = useState([]);
@@ -194,12 +199,18 @@ export default function App() {
   const [editingUserRoles, setEditingUserRoles] = useState(null); 
   const [newPasswordValue, setNewPasswordValue] = useState("");
 
-  const [lokasi, setLokasi] = useState(() => getLocalStorageData("lokasi", INITIAL_LOKASI));
+  const [lokasi, setLokasi] = useState(() => {
+    const d = getLocalStorageData("lokasi", INITIAL_LOKASI);
+    return d && typeof d === 'object' && !Array.isArray(d) ? d : INITIAL_LOKASI;
+  });
   const [isSettingLokasi, setIsSettingLokasi] = useState(false);
   const [tempLokasi, setTempLokasi] = useState(lokasi);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const [petugasAbadi, setPetugasAbadi] = useState(() => getLocalStorageData("petugasAbadi", INITIAL_PETUGAS_ABADI));
+  const [petugasAbadi, setPetugasAbadi] = useState(() => {
+    const d = getLocalStorageData("petugasAbadi", INITIAL_PETUGAS_ABADI);
+    return d && typeof d === 'object' && !Array.isArray(d) ? d : INITIAL_PETUGAS_ABADI;
+  });
   const [editingPasaran, setEditingPasaran] = useState(null);
   const [pasaranForm, setPasaranForm] = useState({ khatib: "", imam: "", muadzin: "", bilal: "", telp: "" });
 
@@ -212,33 +223,60 @@ export default function App() {
   const [isDutyDismissed, setIsDutyDismissed] = useState(false);
   const [audioContext, setAudioContext] = useState(null);
 
-  const [jamaahList, setJamaahList] = useState(() => getLocalStorageData("jamaahList", INITIAL_JAMAAH));
+  const [jamaahList, setJamaahList] = useState(() => {
+    const d = getLocalStorageData("jamaahList", INITIAL_JAMAAH);
+    return Array.isArray(d) ? d : INITIAL_JAMAAH;
+  });
   const [filterWilayahJamaah, setFilterWilayahJamaah] = useState("Semua");
 
-  const [timbanganFitrah, setTimbanganFitrah] = useState(() => getLocalStorageData("timbanganFitrah", [25, 50, 15, 30]));
+  const [timbanganFitrah, setTimbanganFitrah] = useState(() => {
+    const d = getLocalStorageData("timbanganFitrah", [25, 50, 15, 30]);
+    return Array.isArray(d) ? d : [25, 50, 15, 30];
+  });
   const [tempBeratFitrah, setTempBeratFitrah] = useState("");
   const [alokasiFitrah, setAlokasiFitrah] = useState(() => {
-    const saved = getLocalStorageData("alokasiFitrah", { "Berat": 5.0, "Sedang": 3.0, "Ringan": 1.5, "Muzakki": 0.0, "GuruNgaji": 5.0 });
-    if(saved.GuruNgaji === undefined) saved.GuruNgaji = 5.0;
-    return saved;
+    const def = { "Berat": 5.0, "Sedang": 3.0, "Ringan": 1.5, "Muzakki": 0.0, "GuruNgaji": 5.0 };
+    const d = getLocalStorageData("alokasiFitrah", def);
+    return d && typeof d === 'object' && !Array.isArray(d) ? { ...def, ...d } : def;
   });
   const [tempAlokasiFitrah, setTempAlokasiFitrah] = useState(alokasiFitrah);
 
-  const [timbanganZuru, setTimbanganZuru] = useState(() => getLocalStorageData("timbanganZuru", [120, 250, 80]));
+  const [timbanganZuru, setTimbanganZuru] = useState(() => {
+    const d = getLocalStorageData("timbanganZuru", [120, 250, 80]);
+    return Array.isArray(d) ? d : [120, 250, 80];
+  });
   const [tempBeratZuru, setTempBeratZuru] = useState("");
   const [alokasiZuru, setAlokasiZuru] = useState(() => {
-    const saved = getLocalStorageData("alokasiZuru", { "Berat": 15.0, "Sedang": 10.0, "Ringan": 5.0, "Bukan Mustahik": 0.0, "GuruNgaji": 15.0 });
-    if(saved.GuruNgaji === undefined) saved.GuruNgaji = 15.0;
-    return saved;
+    const def = { "Berat": 15.0, "Sedang": 10.0, "Ringan": 5.0, "Bukan Mustahik": 0.0, "GuruNgaji": 15.0 };
+    const d = getLocalStorageData("alokasiZuru", def);
+    return d && typeof d === 'object' && !Array.isArray(d) ? { ...def, ...d } : def;
   });
   const [tempAlokasiZuru, setTempAlokasiZuru] = useState(alokasiZuru);
 
-  const [timbanganQurbanSapi, setTimbanganQurbanSapi] = useState(() => getLocalStorageData("timbanganQurbanSapi", [85.5, 120.0, 95.0, 65.5]));
-  const [timbanganQurbanKambing, setTimbanganQurbanKambing] = useState(() => getLocalStorageData("timbanganQurbanKambing", [22.0, 18.5, 25.0]));
+  const [timbanganQurbanSapi, setTimbanganQurbanSapi] = useState(() => {
+    const d = getLocalStorageData("timbanganQurbanSapi", [85.5, 120.0, 95.0, 65.5]);
+    return Array.isArray(d) ? d : [85.5, 120.0, 95.0, 65.5];
+  });
+  const [timbanganQurbanKambing, setTimbanganQurbanKambing] = useState(() => {
+    const d = getLocalStorageData("timbanganQurbanKambing", [22.0, 18.5, 25.0]);
+    return Array.isArray(d) ? d : [22.0, 18.5, 25.0];
+  });
   const [tempBeratQurbanSapi, setTempBeratQurbanSapi] = useState("");
   const [tempBeratQurbanKambing, setTempBeratQurbanKambing] = useState("");
   
-  // State Filter Spesifik Laporan per tab
+  const [qurbanTamu, setQurbanTamu] = useState(() => {
+    const def = { jumlah: 0, jatahSapi: 0.0, jatahKambing: 0.0 };
+    const d = getLocalStorageData("qurbanTamu", def);
+    return d && typeof d === 'object' && !Array.isArray(d) ? { ...def, ...d } : def;
+  });
+  const [qurbanSahibul, setQurbanSahibul] = useState(() => {
+    const def = { sapi: 0.0, kambing: 0.0 };
+    const d = getLocalStorageData("qurbanSahibul", def);
+    return d && typeof d === 'object' && !Array.isArray(d) ? { ...def, ...d } : def;
+  });
+  const [tempQurbanTamu, setTempQurbanTamu] = useState(qurbanTamu);
+  const [tempQurbanSahibul, setTempQurbanSahibul] = useState(qurbanSahibul);
+  
   const [filterWilayahQurban, setFilterWilayahQurban] = useState("Semua");
   const [selectedPrintWilayahQurban, setSelectedPrintWilayahQurban] = useState("Semua");
   const [selectedPrintWilayahFitrah, setSelectedPrintWilayahFitrah] = useState("Semua");
@@ -256,17 +294,60 @@ export default function App() {
   const [isDataFetched, setIsDataFetched] = useState(false);
 
   const [printIframeData, setPrintIframeData] = useState(null);
-  const [jadwalSholat, setJadwalSholat] = useState(() => getLocalStorageData("jadwalSholatAktif", getMockJadwal(lokasi.kabupaten, lokasi.latitude, lokasi.longitude)));
+  
+  const [jadwalSholat, setJadwalSholat] = useState(() => {
+    const def = { Subuh: "04:15", Terbit: "05:30", Dzuhur: "11:35", Ashar: "14:55", Maghrib: "17:30", Isya: "18:45" };
+    const d = getLocalStorageData("jadwalSholatAktif", def);
+    return d && typeof d === 'object' && !Array.isArray(d) ? d : def;
+  });
 
 
-  // === 2. DECLARATIONS & EVENT HANDLERS (Terstruktur di tingkat atas komponen) ===
-  function addNotification(message, type = "success") {
+  // === 2. HELPER FUNCTIONS INSIDE COMPONENT ===
+  const addNotification = (message, type = "success") => {
     const id = Date.now();
     setNotifications(prev => [...prev, { id, message: String(message), type }]);
     setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 4000);
-  }
+  };
 
-  function playAlarmSound() {
+  const getJumlahJiwaPerKategoriFitrah = (list, kategori) => {
+    if (!Array.isArray(list)) return 0;
+    return list.filter(item => item.fitrah === kategori && item.approvedByTakmir).reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
+  };
+
+  const getJumlahJiwaPerKategoriZuru = (list, kategori) => {
+    if (!Array.isArray(list)) return 0;
+    return list.filter(item => item.zuru === kategori && item.approvedByTakmir).reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
+  };
+
+  const getPasaranJawaLocal = (date) => {
+    const dateUTC = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+    const diffDays = Math.floor(dateUTC / (24 * 60 * 60 * 1000));
+    let pasaranIndex = (diffDays + 3) % 5;
+    if (pasaranIndex < 0) pasaranIndex += 5;
+    return PASARAN_LIST[pasaranIndex];
+  };
+
+  const getUpcomingFridaysLocal = (currTime, pAbadi, count = 5) => {
+    const fridays = [];
+    const tempDate = new Date(currTime);
+    const dayOfWeek = tempDate.getDay();
+    let daysToFriday = (5 - dayOfWeek + 7) % 7;
+    if (daysToFriday === 0 && tempDate.getHours() >= 18) daysToFriday = 7;
+    tempDate.setDate(tempDate.getDate() + daysToFriday);
+    
+    for (let i = 0; i < count; i++) {
+      const target = new Date(tempDate);
+      const pasaran = getPasaranJawaLocal(target);
+      fridays.push({
+        formattedDate: target.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        rawDate: new Date(target), pasaran: pasaran, petugas: pAbadi[pasaran] || {}
+      });
+      tempDate.setDate(tempDate.getDate() + 7);
+    }
+    return fridays;
+  };
+
+  const playAlarmSound = () => {
     try {
       const ctx = audioContext || new (window.AudioContext || window.webkitAudioContext)();
       if (!audioContext) setAudioContext(ctx);
@@ -286,45 +367,44 @@ export default function App() {
       playBeep(0.0, 0.25, 880); playBeep(0.3, 0.25, 880); playBeep(0.6, 0.25, 880); playBeep(1.0, 0.40, 1100);
       addNotification("🔊 Bunyi alarm disimulasikan!", "success");
     } catch (e) { console.warn("Audio Context diblokir peramban."); }
-  }
+  };
 
-  function renderMasjidLogo(imgClassName, fallbackClassName) {
+  const renderMasjidLogo = (imgClassName, fallbackClassName) => {
     if (typeof masjidLogoUrl === 'string' && masjidLogoUrl.trim() !== "") {
       return ( 
         <img src={masjidLogoUrl} alt="Logo Masjid" className={imgClassName} onError={() => { addNotification("Logo kustom gagal dimuat!", "error"); setMasjidLogoUrl(""); }} /> 
       );
     }
     return <KubahMasjidIcon className={fallbackClassName} />;
-  }
+  };
 
-  // Multi-role logic
-  function hasAccess(tabName) {
+  const hasAccess = (tabName) => {
     if (!rolesConfig || !currentUserRoles || currentUserRoles.length === 0) return false;
     if (currentUserRoles.includes("Admin")) return true;
     return currentUserRoles.some(role => {
       const acc = rolesConfig[role]?.access?.[tabName];
       return acc === "view" || acc === "edit";
     });
-  }
+  };
 
-  function updateRoleAccess(role, menuId, newAccess) {
+  const updateRoleAccess = (role, menuId, newAccess) => {
     setRolesConfig(prev => ({ ...prev, [role]: { ...prev[role], access: { ...prev[role].access, [menuId]: newAccess } } }));
     addNotification(`Hak akses diubah.`, "success");
-  }
+  };
 
-  function navigateTo(tabName) {
+  const navigateTo = (tabName) => {
     if (hasAccess(tabName)) { setActiveTab(tabName); setIsMenuOpen(false); } 
     else { addNotification(`Akses Ditolak! Peran Anda tidak memiliki hak.`, "error"); }
-  }
+  };
 
-  function getNextSholat() {
+  const getNextSholat = () => {
     const nowStr = currentTime.toTimeString().split(' ')[0].substring(0, 5); 
     const sholatTimes = Object.entries(jadwalSholat).filter(([k]) => k !== 'Terbit');
     for (let [name, time] of sholatTimes) { if (String(time) > nowStr) return { name: String(name), time: String(time) }; }
-    return { name: "Subuh (Besok)", time: String(sholatTimes[0][1]) };
-  }
+    return { name: "Subuh (Besok)", time: String(sholatTimes[0][1] || "04:15") };
+  };
 
-  function getPetugasTugasBesok() {
+  const getPetugasTugasBesok = () => {
     const isKamis = currentTime.getDay() === 4;
     let targetDate = null;
     if (isKamis) {
@@ -336,7 +416,7 @@ export default function App() {
     }
     if (!targetDate || isDutyDismissed) return null;
 
-    const pasaranBesok = getPasaranJawa(targetDate);
+    const pasaranBesok = getPasaranJawaLocal(targetDate);
     const petugasBesok = petugasAbadi[pasaranBesok];
 
     if (petugasBesok && currentUserLabel) {
@@ -348,7 +428,7 @@ export default function App() {
       if (peranan.length > 0) return { pasaran: pasaranBesok, tanggal: targetDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), peran: peranan.join(" & ") };
     }
     return null;
-  }
+  };
 
   // === 3. EFFECTS ===
   useEffect(() => {
@@ -370,6 +450,8 @@ export default function App() {
   useEffect(() => { localStorage.setItem("alokasiZuru", JSON.stringify(alokasiZuru)); }, [alokasiZuru]);
   useEffect(() => { localStorage.setItem("timbanganQurbanSapi", JSON.stringify(timbanganQurbanSapi)); }, [timbanganQurbanSapi]);
   useEffect(() => { localStorage.setItem("timbanganQurbanKambing", JSON.stringify(timbanganQurbanKambing)); }, [timbanganQurbanKambing]);
+  useEffect(() => { localStorage.setItem("qurbanTamu", JSON.stringify(qurbanTamu)); }, [qurbanTamu]);
+  useEffect(() => { localStorage.setItem("qurbanSahibul", JSON.stringify(qurbanSahibul)); }, [qurbanSahibul]);
 
   useEffect(() => { setTempMasjidName(masjidName); }, [masjidName]);
   useEffect(() => { setTempMasjidLogoUrl(masjidLogoUrl); }, [masjidLogoUrl]);
@@ -389,30 +471,15 @@ export default function App() {
   useEffect(() => {
     const fetchJadwalRealTime = async () => {
       if (!lokasi.latitude || !lokasi.longitude) return;
-      const todayStr = new Date().toLocaleDateString('id-ID');
-      const cacheKey = `jadwal_${lokasi.latitude}_${lokasi.longitude}_${todayStr}`;
-      const cached = localStorage.getItem(cacheKey);
-      
-      if (cached && cached !== "undefined") {
-        try { 
-          const parsed = JSON.parse(cached);
-          if (parsed && typeof parsed === 'object' && !parsed.$$typeof) {
-             setJadwalSholat(parsed); 
-             return;
-          }
-        } catch(e){}
-      }
       try {
         const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lokasi.latitude}&longitude=${lokasi.longitude}&method=20`);
         const result = await res.json();
         if (result && result.code === 200) {
           const t = result.data.timings;
-          const realJadwal = {
+          setJadwalSholat({
             Subuh: String(t.Fajr), Terbit: String(t.Sunrise), Dzuhur: String(t.Dhuhr),
             Ashar: String(t.Asr), Maghrib: String(t.Maghrib), Isya: String(t.Isha)
-          };
-          setJadwalSholat(realJadwal);
-          localStorage.setItem(cacheKey, JSON.stringify(realJadwal));
+          });
         }
       } catch (err) { console.warn("Gagal fetch jadwal sholat."); }
     };
@@ -437,6 +504,8 @@ export default function App() {
         if (payload.alokasiZuru !== undefined) setAlokasiZuru(payload.alokasiZuru);
         if (payload.timbanganQurbanSapi !== undefined) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
         if (payload.timbanganQurbanKambing !== undefined) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
+        if (payload.qurbanTamu !== undefined) setQurbanTamu(payload.qurbanTamu);
+        if (payload.qurbanSahibul !== undefined) setQurbanSahibul(payload.qurbanSahibul);
         if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
         if (payload.rolesConfig !== undefined) setRolesConfig(payload.rolesConfig);
         setSyncStatus("Tersinkronisasi");
@@ -448,19 +517,17 @@ export default function App() {
     }
   };
 
-  // Sync: Tarik data pertama kali terlepas dari status login agar login bisa mendeteksi akun baru
   useEffect(() => {
     if (googleSheetsUrl) handleFetchFromGoogleSheets();
     else setIsDataFetched(true);
   }, [googleSheetsUrl]);
 
-  // Sync: Simpan ke cloud setiap ada perubahan jika cloud aktif
   useEffect(() => {
     if (!googleSheetsUrl || !isDataFetched) return;
     const payload = {
       masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
       timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
-      timbanganQurbanSapi, timbanganQurbanKambing, userDatabase, rolesConfig
+      timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig
     };
     setSyncStatus("Menyimpan Otomatis...");
     const timeoutId = setTimeout(async () => {
@@ -470,55 +537,63 @@ export default function App() {
       } catch (err) { setSyncStatus("Gagal Menyimpan"); }
     }, 3000); 
     return () => clearTimeout(timeoutId);
-  }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, userDatabase, rolesConfig, googleSheetsUrl, isDataFetched]);
+  }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig, googleSheetsUrl, isDataFetched]);
 
 
   // === 4. DERIVED CALCULATIONS ===
-  const usulanWargaList = Array.isArray(jamaahList) ? jamaahList.filter(w => !w.approvedByTakmir) : [];
-  const pendingAccounts = Object.keys(userDatabase).filter(un => !userDatabase[un].approved);
+  const usulanWargaList = Array.isArray(jamaahList) ? jamaahList.filter(w => !w.approvedByTakmir || w.hasUsulanEdit) : [];
+  const pendingAccounts = userDatabase && typeof userDatabase === 'object' ? Object.keys(userDatabase).filter(un => userDatabase[un] && !userDatabase[un].approved) : [];
 
   const nextSholat = getNextSholat();
-  const upcomingFridaysList = getUpcomingFridays(currentTime, petugasAbadi, 5);
+  const upcomingFridaysList = getUpcomingFridaysLocal(currentTime, petugasAbadi, 5);
   const infoTugasBesok = getPetugasTugasBesok();
 
+  const currentWargaCount = Array.isArray(jamaahList) ? jamaahList.filter(j => (filterWilayahJamaah === "Semua" || `${j.rt}_${j.rw}` === filterWilayahJamaah) && j.approvedByTakmir && !j.hasUsulanEdit).length : 0;
+
   // FITRAH
-  const totalTimbanganFitrahValue = Array.isArray(timbanganFitrah) ? timbanganFitrah.reduce((a, b) => a + b, 0) : 0;
+  const totalTimbanganFitrahValue = Array.isArray(timbanganFitrah) ? timbanganFitrah.reduce((a, b) => Number(a) + Number(b), 0) : 0;
   const rincianKebutuhanFitrahData = [];
   ["Berat", "Sedang", "Ringan"].forEach(kat => {
-      const list = Array.isArray(jamaahList) ? jamaahList.filter(j => j.fitrah === kat && j.approvedByTakmir) : [];
+      const list = Array.isArray(jamaahList) ? jamaahList.filter(j => j.fitrah === kat && j.approvedByTakmir && !j.hasUsulanEdit) : [];
       const jiwa = list.reduce((s, j) => s + (parseInt(j.anggota)||0), 0);
-      if(jiwa > 0) rincianKebutuhanFitrahData.push({ kategori: `Mustahik ${kat}`, jiwa: `${jiwa} Org`, jatah: `${alokasiFitrah[kat]} Kg/Jiwa`, totalButuh: jiwa * (alokasiFitrah[kat] || 0) });
+      if(jiwa > 0) rincianKebutuhanFitrahData.push({ kategori: `Mustahik ${kat}`, jiwa: `${jiwa}`, jatah: `${alokasiFitrah[kat]}`, totalButuh: jiwa * (Number(alokasiFitrah[kat]) || 0) });
   });
-  const listGuruFitrah = Array.isArray(jamaahList) ? jamaahList.filter(j => j.isGuruNgaji && j.approvedByTakmir) : [];
-  if(listGuruFitrah.length > 0) rincianKebutuhanFitrahData.push({ kategori: `Tambahan Guru Ngaji`, jiwa: `${listGuruFitrah.length} KK`, jatah: `${alokasiFitrah.GuruNgaji} Kg/KK`, totalButuh: listGuruFitrah.length * (alokasiFitrah.GuruNgaji || 0) });
-  const totalButuhFitrahValue = rincianKebutuhanFitrahData.reduce((sum, item) => sum + item.totalButuh, 0);
+  const listGuruFitrah = Array.isArray(jamaahList) ? jamaahList.filter(j => j.isGuruNgaji && j.approvedByTakmir && !j.hasUsulanEdit) : [];
+  if(listGuruFitrah.length > 0) rincianKebutuhanFitrahData.push({ kategori: `Guru Ngaji`, jiwa: `${listGuruFitrah.length}`, jatah: `${alokasiFitrah.GuruNgaji}`, totalButuh: listGuruFitrah.length * (Number(alokasiFitrah.GuruNgaji) || 0) });
+  const totalButuhFitrahValue = rincianKebutuhanFitrahData.reduce((sum, item) => sum + Number(item.totalButuh), 0);
   const statusFitrahValue = totalTimbanganFitrahValue - totalButuhFitrahValue;
 
   // ZURU'
-  const totalTimbanganZuruValue = Array.isArray(timbanganZuru) ? timbanganZuru.reduce((a, b) => a + b, 0) : 0;
+  const totalTimbanganZuruValue = Array.isArray(timbanganZuru) ? timbanganZuru.reduce((a, b) => Number(a) + Number(b), 0) : 0;
   const rincianKebutuhanZuruData = [];
   ["Berat", "Sedang", "Ringan"].forEach(kat => {
-      const list = Array.isArray(jamaahList) ? jamaahList.filter(j => j.zuru === kat && j.approvedByTakmir) : [];
+      const list = Array.isArray(jamaahList) ? jamaahList.filter(j => j.zuru === kat && j.approvedByTakmir && !j.hasUsulanEdit) : [];
       const jiwa = list.reduce((s, j) => s + (parseInt(j.anggota)||0), 0);
-      if(jiwa > 0) rincianKebutuhanZuruData.push({ kategori: `Mustahik ${kat}`, jiwa: `${jiwa} Org`, jatah: `${alokasiZuru[kat]} Kg/Jiwa`, totalButuh: jiwa * (alokasiZuru[kat] || 0) });
+      if(jiwa > 0) rincianKebutuhanZuruData.push({ kategori: `Mustahik ${kat}`, jiwa: `${jiwa}`, jatah: `${alokasiZuru[kat]}`, totalButuh: jiwa * (Number(alokasiZuru[kat]) || 0) });
   });
-  const listGuruZuru = Array.isArray(jamaahList) ? jamaahList.filter(j => j.isGuruNgaji && j.approvedByTakmir) : [];
-  if(listGuruZuru.length > 0) rincianKebutuhanZuruData.push({ kategori: `Tambahan Guru Ngaji`, jiwa: `${listGuruZuru.length} KK`, jatah: `${alokasiZuru.GuruNgaji} Kg/KK`, totalButuh: listGuruZuru.length * (alokasiZuru.GuruNgaji || 0) });
-  const totalButuruValue = rincianKebutuhanZuruData.reduce((sum, item) => sum + item.totalButuh, 0);
+  const listGuruZuru = Array.isArray(jamaahList) ? jamaahList.filter(j => j.isGuruNgaji && j.approvedByTakmir && !j.hasUsulanEdit) : [];
+  if(listGuruZuru.length > 0) rincianKebutuhanZuruData.push({ kategori: `Guru Ngaji`, jiwa: `${listGuruZuru.length}`, jatah: `${alokasiZuru.GuruNgaji}`, totalButuh: listGuruZuru.length * (Number(alokasiZuru.GuruNgaji) || 0) });
+  const totalButuruValue = rincianKebutuhanZuruData.reduce((sum, item) => sum + Number(item.totalButuh), 0);
   const statusZuruValue = totalTimbanganZuruValue - totalButuruValue;
 
   // QURBAN
-  const totalTimbanganQurbanSapiValue = Array.isArray(timbanganQurbanSapi) ? timbanganQurbanSapi.reduce((a, b) => a + b, 0) : 0;
-  const totalTimbanganQurbanKambingValue = Array.isArray(timbanganQurbanKambing) ? timbanganQurbanKambing.reduce((a, b) => a + b, 0) : 0;
+  const totalTimbanganQurbanSapiValue = Array.isArray(timbanganQurbanSapi) ? timbanganQurbanSapi.reduce((a, b) => Number(a) + Number(b), 0) : 0;
+  const totalTimbanganQurbanKambingValue = Array.isArray(timbanganQurbanKambing) ? timbanganQurbanKambing.reduce((a, b) => Number(a) + Number(b), 0) : 0;
+
+  const totalSapiDikurangiTamu = Math.max(0, totalTimbanganQurbanSapiValue - (Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahSapi)));
+  const totalKambingDikurangiTamu = Math.max(0, totalTimbanganQurbanKambingValue - (Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahKambing)));
 
   const getWargaPenerimaQurban = () => {
     if (!Array.isArray(jamaahList)) return [];
     return jamaahList.filter(warga => {
-      if (!warga.approvedByTakmir) return false;
-      if (warga.qurban && warga.qurban.startsWith("Sahibul Qurban")) return false;
+      if (!warga.approvedByTakmir || warga.hasUsulanEdit) return false;
+      if (warga.qurban && String(warga.qurban).startsWith("Sahibul Qurban")) return false;
       if (filterWilayahQurban !== "Semua") {
         const [filterRt, filterRw] = filterWilayahQurban.split('_');
         if (warga.rt !== filterRt || warga.rw !== filterRw) return false;
+      }
+      if (qurbanHanyaMustahik) {
+        return (warga.fitrah !== "Muzakki" || warga.zuru !== "Bukan Mustahik" || warga.isGuruNgaji);
       }
       return true;
     });
@@ -526,11 +601,13 @@ export default function App() {
 
   const wargaPenerimaQurban = getWargaPenerimaQurban();
   const totalPenerimaKK = wargaPenerimaQurban.length;
-  const jatahDagingSapiPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanSapiValue / totalPenerimaKK).toFixed(2) : 0;
-  const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalTimbanganQurbanKambingValue / totalPenerimaKK).toFixed(2) : 0;
+  const jatahDagingSapiPerKK = totalPenerimaKK > 0 ? (totalSapiDikurangiTamu / totalPenerimaKK).toFixed(2) : 0;
+  const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalKambingDikurangiTamu / totalPenerimaKK).toFixed(2) : 0;
 
-  // Edit Permissions logic checking across multiple roles
-  const checkEditAccess = (tab) => currentUserRoles.includes("Admin") || currentUserRoles.some(r => rolesConfig[r]?.access?.[tab] === "edit");
+  const checkEditAccess = (tab) => {
+     if(!Array.isArray(currentUserRoles)) return false;
+     return currentUserRoles.includes("Admin") || currentUserRoles.some(r => rolesConfig[r]?.access?.[tab] === "edit");
+  };
   const canEditPetugas = checkEditAccess('petugas');
   const canEditJamaah = checkEditAccess('jamaah');
   const canEditFitrah = checkEditAccess('fitrah');
@@ -542,7 +619,6 @@ export default function App() {
     e.preventDefault();
     const cleanUser = inputUsername.trim().toLowerCase();
     
-    // Fallback: Pastikan membaca dari LocalStorage jika state memori terputus
     let currentDB = userDatabase;
     try {
       const localDB = JSON.parse(localStorage.getItem("userDatabase"));
@@ -551,7 +627,6 @@ export default function App() {
 
     let userAccount = currentDB[cleanUser];
 
-    // --- PROTEKSI ANTI-TERKUNCI UNTUK SUPER ADMIN ---
     if (!userAccount && cleanUser === "admin" && inputPassword === "admin123") {
       userAccount = INITIAL_USER_DATABASE["admin"];
       setUserDatabase(prev => ({ ...prev, admin: INITIAL_USER_DATABASE["admin"] }));
@@ -560,15 +635,13 @@ export default function App() {
     if (userAccount) {
       if (!userAccount.approved) { addNotification("Pendaftaran akun masih diproses/menunggu ACC.", "error"); return; }
       if (inputPassword === userAccount.password) {
-        // Multi-role initialization
-        const userRoles = userAccount.roles || (userAccount.role ? [userAccount.role] : ["Jamaah"]);
+        const userRoles = Array.isArray(userAccount.roles) ? userAccount.roles : (userAccount.role ? [userAccount.role] : ["Jamaah"]);
         
         setCurrentUserRoles(userRoles); 
         setCurrentUserLabel(userAccount.label); 
         setCurrentUserUsername(cleanUser);
         setIsLoggedIn(true); setIsDutyDismissed(false); 
         
-        // Find default tab to open based on first role's access
         let primaryRole = userRoles.includes("Admin") ? "Admin" : userRoles[0];
         const allowedAccessObj = rolesConfig[primaryRole]?.access || {};
         const allowedTabs = Object.keys(allowedAccessObj).filter(k => allowedAccessObj[k] !== "none");
@@ -616,30 +689,87 @@ export default function App() {
     e.preventDefault();
     if (!jamaahForm.nama.trim() || !jamaahForm.alamat.trim()) return;
     
-    // Amil or RT proposals need ACC unless they are also Admin or Takmir
     const isSuper = currentUserRoles.includes("Admin") || currentUserRoles.includes("Takmir");
     const isRtRole = currentUserRoles.includes("RT");
     const butuhAcc = !isSuper && (currentUserRoles.includes("Amil") || isRtRole);
     
     let finalData = { ...jamaahForm };
     if (isRtRole && !isSuper && !currentUserRoles.includes("Amil")) {
-      finalData.qurban = "Penerima"; // Pasang status qurban default untuk RT
+      finalData.qurban = "Penerima"; 
     }
 
     if (editingJamaah) {
-      setJamaahList(prev => prev.map(item => item.id === editingJamaah.id ? { ...finalData, id: item.id, approvedByTakmir: butuhAcc ? false : item.approvedByTakmir, usulanOleh: butuhAcc ? currentUserLabel : item.usulanOleh } : item));
-      addNotification(butuhAcc ? "Usulan diperbarui & menunggu ACC Takmir" : "Data warga berhasil diperbarui");
+      if (butuhAcc) {
+          // Deteksi Perubahan untuk Log Usulan Edit
+          let diffNotes = [];
+          if (editingJamaah.fitrah !== finalData.fitrah) diffNotes.push(`Fitrah: ${editingJamaah.fitrah} ➔ ${finalData.fitrah}`);
+          if (editingJamaah.zuru !== finalData.zuru) diffNotes.push(`Zuru': ${editingJamaah.zuru} ➔ ${finalData.zuru}`);
+          if (editingJamaah.qurban !== finalData.qurban) diffNotes.push(`Qurban: ${editingJamaah.qurban} ➔ ${finalData.qurban}`);
+          if (editingJamaah.ekonomi !== finalData.ekonomi) diffNotes.push(`Ekonomi: ${editingJamaah.ekonomi} ➔ ${finalData.ekonomi}`);
+          if (String(editingJamaah.anggota) !== String(finalData.anggota)) diffNotes.push(`Jiwa: ${editingJamaah.anggota} ➔ ${finalData.anggota}`);
+          if (editingJamaah.isGuruNgaji !== finalData.isGuruNgaji) diffNotes.push(`Guru Ngaji: ${editingJamaah.isGuruNgaji ? 'Ya' : 'Tidak'} ➔ ${finalData.isGuruNgaji ? 'Ya' : 'Tidak'}`);
+
+          if (diffNotes.length === 0) {
+             addNotification("Tidak ada data yang diubah.", "warning");
+             return;
+          }
+
+          setJamaahList(prev => prev.map(item => item.id === editingJamaah.id ? { 
+            ...item, 
+            hasUsulanEdit: true, 
+            usulanOleh: currentUserLabel, 
+            usulanEditData: finalData,
+            keteranganUsulan: diffNotes.join(' | ')
+          } : item));
+          addNotification("Usulan perubahan terkirim & menunggu ACC Takmir", "success");
+      } else {
+          // Takmir/Admin mengubah langsung, menimpa dan menghapus info usulan edit (jika ada)
+          setJamaahList(prev => prev.map(item => item.id === editingJamaah.id ? { ...finalData, id: item.id, approvedByTakmir: true, hasUsulanEdit: false, usulanEditData: null, keteranganUsulan: "" } : item));
+          addNotification("Data warga berhasil diperbarui", "success");
+      }
     } else {
-      const newJamaah = { ...finalData, id: Date.now().toString(), approvedByTakmir: butuhAcc ? false : true, usulanOleh: butuhAcc ? currentUserLabel : "Takmir/Admin" };
+      const newJamaah = { 
+          ...finalData, 
+          id: Date.now().toString(), 
+          approvedByTakmir: !butuhAcc, 
+          hasUsulanEdit: false,
+          usulanOleh: butuhAcc ? currentUserLabel : "Takmir/Admin",
+          keteranganUsulan: "Warga Baru Ditambahkan"
+      };
       setJamaahList(prev => [...prev, newJamaah]);
-      addNotification(butuhAcc ? "Usulan penerima bantuan terkirim! Menunggu ACC Takmir" : "Warga didaftarkan");
+      addNotification(butuhAcc ? "Usulan warga baru terkirim! Menunggu ACC" : "Warga didaftarkan", "success");
     }
     setShowJamaahModal(false); setEditingJamaah(null);
     setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", isGuruNgaji: false });
   };
 
-  const handleApproveWarga = (wargaId) => { setJamaahList(prev => prev.map(w => w.id === wargaId ? { ...w, approvedByTakmir: true } : w)); addNotification("Usulan bantuan disetujui (ACC)!", "success"); };
-  const handleRejectWarga = (wargaId) => { if (window.confirm("Tolak usulan?")) { setJamaahList(prev => prev.filter(w => w.id !== wargaId)); addNotification("Usulan ditolak.", "warning"); } };
+  const handleApproveWarga = (wargaId) => { 
+      setJamaahList(prev => prev.map(w => {
+          if (w.id === wargaId) {
+              if (w.hasUsulanEdit) {
+                  return { ...w.usulanEditData, id: w.id, approvedByTakmir: true, hasUsulanEdit: false, usulanEditData: null, keteranganUsulan: "" };
+              }
+              return { ...w, approvedByTakmir: true };
+          }
+          return w;
+      })); 
+      addNotification("Usulan bantuan disetujui (ACC)!", "success"); 
+  };
+  
+  const handleRejectWarga = (wargaId) => { 
+      if (window.confirm("Tolak usulan ini?")) { 
+          setJamaahList(prev => {
+              const target = prev.find(w => w.id === wargaId);
+              if (target && target.hasUsulanEdit) {
+                  // Revert the edit
+                  return prev.map(w => w.id === wargaId ? { ...w, hasUsulanEdit: false, usulanEditData: null, keteranganUsulan: "" } : w);
+              }
+              // Delete the new citizen
+              return prev.filter(w => w.id !== wargaId);
+          }); 
+          addNotification("Usulan ditolak.", "warning"); 
+      } 
+  };
 
   const handleEditJamaah = (jamaah) => { setEditingJamaah(jamaah); setJamaahForm({ ...jamaah, qurban: jamaah.qurban || "Penerima" }); setShowJamaahModal(true); };
   const handleDeleteJamaah = (id) => {
@@ -650,6 +780,12 @@ export default function App() {
 
   const handleSaveAlokasiFitrah = () => { setAlokasiFitrah(tempAlokasiFitrah); addNotification("Jatah Fitrah disimpan!", "success"); };
   const handleSaveAlokasiZuru = () => { setAlokasiZuru(tempAlokasiZuru); addNotification("Jatah Zuru' disimpan!", "success"); };
+  
+  const handleSaveQurbanTambahan = () => {
+     setQurbanTamu(tempQurbanTamu);
+     setQurbanSahibul(tempQurbanSahibul);
+     addNotification("Konfigurasi Tamu & Sahibul Qurban disimpan!", "success");
+  };
 
   const addTimbangan = (tipe) => {
     if (tipe === 'fitrah') {
@@ -743,7 +879,7 @@ export default function App() {
 
   const handlePrepareNotification = (fridayData, type) => {
     setNotificationType(type);
-    let msg = type === "WA" ? `Yth. *${fridayData.petugas.khatib}*, besok Jumat ${fridayData.pasaran} jadwal bertugas Khatib. Mohon hadir tepat waktu.` : `[MASJID] Yth ${fridayData.petugas.khatib}, besok Jumat ${fridayData.pasaran} jadwal tugas.`;
+    let msg = type === "WA" ? `Yth. *${String(fridayData.petugas.khatib)}*, besok Jumat ${String(fridayData.pasaran)} jadwal bertugas Khatib. Mohon hadir tepat waktu.` : `[MASJID] Yth ${String(fridayData.petugas.khatib)}, besok Jumat ${String(fridayData.pasaran)} jadwal tugas.`;
     setSimulatedMessageText(msg); setActiveNotificationSim(fridayData);
   };
 
@@ -777,15 +913,14 @@ export default function App() {
   };
 
   const handlePrintSelectedReport = (reportType) => {
-    let filteredWarga = Array.isArray(jamaahList) ? jamaahList.filter(j => j.approvedByTakmir) : []; 
+    let filteredWarga = Array.isArray(jamaahList) ? jamaahList.filter(j => j.approvedByTakmir && !j.hasUsulanEdit) : []; 
     let rtTitle = "Seluruh Wilayah (Semua RT & RW)";
 
-    // Menggunakan filter cetak sesuai tab
     let appliedPrintWilayah = "Semua";
     if (reportType === "qurban") appliedPrintWilayah = selectedPrintWilayahQurban;
     else if (reportType === "fitrah") appliedPrintWilayah = selectedPrintWilayahFitrah;
     else if (reportType === "zuru") appliedPrintWilayah = selectedPrintWilayahZuru;
-    else appliedPrintWilayah = selectedPrintWilayah; // untuk jamaah/terpadu
+    else appliedPrintWilayah = selectedPrintWilayah; 
 
     if (appliedPrintWilayah !== "Semua") {
       const [filterRt, filterRw] = appliedPrintWilayah.split('_');
@@ -795,22 +930,78 @@ export default function App() {
 
     let docTitle = ""; let tableHeaderHTML = ""; let tableRowsHTML = ""; let summaryHTML = "";
 
+    const fallbackSVG = `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%;"><circle cx="50" cy="50" r="46" fill="#f0fdf4" stroke="#10b981" stroke-width="3" /><path d="M50 15C42 28 32 35 32 55C32 65 35 72 50 72C65 72 68 65 68 55C68 35 58 28 50 15Z" fill="#10b981" /><path d="M50 10V15" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" /><circle cx="50" cy="8" r="2.5" fill="#f59e0b" /><path d="M48 6C49 5 52 5 53 6" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" /><text x="50" y="58" fill="#ffffff" font-size="13" font-weight="900" text-anchor="middle" font-family="sans-serif">M I</text><path d="M45 72V64C45 61.5 47.5 59 50 59C52.5 59 55 61.5 55 64V72" fill="#047857" /></svg>`;
+    const logoHTML = masjidLogoUrl && typeof masjidLogoUrl === 'string' && masjidLogoUrl.trim() !== "" ? `<img src="${masjidLogoUrl}" alt="Logo" style="max-width:65px; max-height:65px; object-fit:contain;" />` : `<div style="width:60px; height:60px;">${fallbackSVG}</div>`;
+
+    const kopMasjidHTML = `
+      <div class="kop-masjid">
+        ${logoHTML}
+        <div>
+          <h1>${String(masjidName)}</h1>
+          <p>Desa ${String(lokasi.desa)}, Kec. ${String(lokasi.kecamatan)}, Kab. ${String(lokasi.kabupaten)}, Prov. ${String(lokasi.provinsi)}</p>
+        </div>
+      </div>
+    `;
+
     if (reportType === "jamaah") {
       docTitle = `Laporan Database Jamaah`;
+      summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#f8fafc;border:1px solid #cbd5e1;text-align:center;"><strong>Total Warga:</strong> ${filteredWarga.length} KK</div>`;
       tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 30%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 15%;">RT / RW</th><th style="width: 35%;">Alamat Lengkap</th><th class="text-center" style="width: 15%;">Jumlah Jiwa</th></tr>`;
       tableRowsHTML = filteredWarga.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)} ${j.isGuruNgaji ? '(Guru Ngaji)' : ''}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center">${String(j.anggota)} Orang</td></tr>`).join('');
     } else if (reportType === "fitrah") {
-      docTitle = `Penyaluran Zakat Fitrah`;
-      const mustahikList = filteredWarga.filter(j => j.fitrah !== "Muzakki" || j.isGuruNgaji);
-      summaryHTML = `<div style="margin-bottom:15px;padding:12px;background:#ecfdf5;">Penerima: ${mustahikList.length} KK</div>`;
+      docTitle = `Rekapitulasi Penyaluran Zakat Fitrah`;
+      
+      let muzakkiPerRT = {};
+      WILAYAH_OPTIONS.forEach(w => {
+         let count = Array.isArray(jamaahList) ? jamaahList.filter(j => j.fitrah === "Muzakki" && j.rt === w.rt && j.rw === w.rw && j.approvedByTakmir && !j.hasUsulanEdit).reduce((acc, curr) => acc + parseInt(curr.anggota||0), 0) : 0;
+         if(count > 0) muzakkiPerRT[w.label] = count;
+      });
+      let mzRows = Object.keys(muzakkiPerRT).map(k => `<tr><td>${k}</td><td class="text-center">${muzakkiPerRT[k]} Jiwa</td></tr>`).join('');
+      let mustahikRows = rincianKebutuhanFitrahData.map(r => `<tr><td>${String(r.kategori)}</td><td class="text-center">${String(r.jiwa)}</td><td class="text-center">${String(r.jatah)} Kg</td><td class="text-right">${String(r.totalButuh)} Kg</td></tr>`).join('');
+      
+      summaryHTML = `
+        <div style="margin-bottom:15px; display:flex; gap:10px;">
+           <div style="flex:1; padding:8px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center;"><strong>Total Beras Diterima:</strong><br/>${Number(totalTimbanganFitrahValue).toFixed(1)} Kg</div>
+           <div style="flex:1; padding:8px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center;"><strong>Total Kebutuhan:</strong><br/>${Number(totalButuhFitrahValue).toFixed(1)} Kg</div>
+           <div style="flex:1; padding:8px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center;"><strong>Status:</strong><br/>${statusFitrahValue >= 0 ? `Surplus ${Number(statusFitrahValue).toFixed(1)} Kg` : `Kurang ${Math.abs(Number(statusFitrahValue)).toFixed(1)} Kg`}</div>
+        </div>
+        <h4>Rekap Jiwa Muzakki (Pemberi Zakat)</h4>
+        <table style="margin-bottom:15px;">
+           <thead><tr><th>Wilayah</th><th class="text-center">Total Jiwa</th></tr></thead>
+           <tbody>${mzRows || `<tr><td colspan="2" class="text-center">Tidak ada data</td></tr>`}</tbody>
+        </table>
+        <h4>Rekap Kebutuhan Mustahik (Penerima)</h4>
+      `;
       tableHeaderHTML = `<tr><th class="text-center" style="width: 8%;">No</th><th style="width: 42%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 25%;">Kriteria Mustahik</th><th class="text-center" style="width: 25%;">Paraf</th></tr>`;
-      tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">${j.fitrah !== "Muzakki" ? `Mustahik ${String(j.fitrah)}` : ""}${j.isGuruNgaji ? " + Guru Ngaji" : ""}</td><td style="height:38px;"></td></tr>`).join('') : `<tr><td colspan="4" class="text-center">Kosong</td></tr>`;
+      tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">${j.fitrah !== "Muzakki" ? `Mustahik ${String(j.fitrah)}` : ""}${j.isGuruNgaji ? " + Guru Ngaji" : ""}</td><td style="height:22px;"></td></tr>`).join('') : `<tr><td colspan="4" class="text-center">Kosong</td></tr>`;
+      
     } else if (reportType === "zuru") {
-      docTitle = `Penyaluran Zakat Zuru'`;
-      const mustahikList = filteredWarga.filter(j => j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
-      summaryHTML = `<div style="margin-bottom:15px;padding:12px;background:#f0fdfa;">Penerima: ${mustahikList.length} KK</div>`;
+      docTitle = `Rekapitulasi Penyaluran Zakat Zuru'`;
+      
+      let mzPerRT = {};
+      WILAYAH_OPTIONS.forEach(w => {
+         let count = Array.isArray(jamaahList) ? jamaahList.filter(j => j.zuru === "Bukan Mustahik" && j.rt === w.rt && j.rw === w.rw && j.approvedByTakmir && !j.hasUsulanEdit).reduce((acc, curr) => acc + parseInt(curr.anggota||0), 0) : 0;
+         if(count > 0) mzPerRT[w.label] = count;
+      });
+      let mzRows = Object.keys(mzPerRT).map(k => `<tr><td>${k}</td><td class="text-center">${mzPerRT[k]} Jiwa</td></tr>`).join('');
+      let mustahikRows = rincianKebutuhanZuruData.map(r => `<tr><td>${String(r.kategori)}</td><td class="text-center">${String(r.jiwa)}</td><td class="text-center">${String(r.jatah)} Kg</td><td class="text-right">${String(r.totalButuh)} Kg</td></tr>`).join('');
+      
+      summaryHTML = `
+        <div style="margin-bottom:15px; display:flex; gap:10px;">
+           <div style="flex:1; padding:8px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center;"><strong>Total Panen Diterima:</strong><br/>${Number(totalTimbanganZuruValue).toFixed(1)} Kg</div>
+           <div style="flex:1; padding:8px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center;"><strong>Total Kebutuhan:</strong><br/>${Number(totalButuruValue).toFixed(1)} Kg</div>
+           <div style="flex:1; padding:8px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center;"><strong>Status:</strong><br/>${statusZuruValue >= 0 ? `Surplus ${Number(statusZuruValue).toFixed(1)} Kg` : `Kurang ${Math.abs(Number(statusZuruValue)).toFixed(1)} Kg`}</div>
+        </div>
+        <h4>Rekap Pembayar Zakat Zuru' (Bukan Mustahik)</h4>
+        <table style="margin-bottom:15px;">
+           <thead><tr><th>Wilayah</th><th class="text-center">Total Jiwa</th></tr></thead>
+           <tbody>${mzRows || `<tr><td colspan="2" class="text-center">Tidak ada data</td></tr>`}</tbody>
+        </table>
+        <h4>Rekap Kebutuhan Mustahik (Penerima)</h4>
+      `;
       tableHeaderHTML = `<tr><th class="text-center" style="width: 8%;">No</th><th style="width: 42%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 25%;">Kriteria Mustahik</th><th class="text-center" style="width: 25%;">Paraf</th></tr>`;
-      tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">${j.zuru !== "Bukan Mustahik" ? `Mustahik ${String(j.zuru)}` : ""}${j.isGuruNgaji ? " + Guru Ngaji" : ""}</td><td style="height:38px;"></td></tr>`).join('') : `<tr><td colspan="4" class="text-center">Kosong</td></tr>`;
+      tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">${j.zuru !== "Bukan Mustahik" ? `Mustahik ${String(j.zuru)}` : ""}${j.isGuruNgaji ? " + Guru Ngaji" : ""}</td><td style="height:22px;"></td></tr>`).join('') : `<tr><td colspan="4" class="text-center">Kosong</td></tr>`;
+      
     } else if (reportType === "qurban") {
       docTitle = `Distribusi Daging Qurban`;
       let qurbanList = filteredWarga.filter(w => !w.qurban?.startsWith("Sahibul Qurban"));
@@ -818,22 +1009,47 @@ export default function App() {
         qurbanList = qurbanList.filter(warga => warga.fitrah !== "Muzakki" || warga.zuru !== "Bukan Mustahik" || warga.isGuruNgaji);
       }
       
-      const sapiKg = jatahDagingSapiPerKK;
-      const kambingKg = jatahDagingKambingPerKK;
+      let rtRowsData = [];
+      WILAYAH_OPTIONS.forEach(w => {
+         let count = getWargaPenerimaQurban().filter(j => j.rt === w.rt && j.rw === w.rw).length;
+         if(count > 0) rtRowsData.push(`<tr><td>${String(w.label)}</td><td class="text-center">${count} KK</td><td class="text-center">${jatahDagingSapiPerKK} Kg</td><td class="text-center">${jatahDagingKambingPerKK} Kg</td></tr>`);
+      });
       
-      summaryHTML = `<div style="margin-bottom:20px;padding:15px;background:#fff1f2;">Penerima: ${qurbanList.length} KK | Sapi: ${sapiKg} Kg/KK | Kambing: ${kambingKg} Kg/KK</div>`;
+      const sapiKg = Number(jatahDagingSapiPerKK) || 0;
+      const kambingKg = Number(jatahDagingKambingPerKK) || 0;
+      
+      summaryHTML = `
+        <div style="margin-bottom:10px; display:flex; gap:10px;">
+           <div style="flex:1; padding:6px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center; font-size: 10px;"><strong>Sapi Diterima:</strong><br/>${Number(totalTimbanganQurbanSapiValue).toFixed(1)} Kg</div>
+           <div style="flex:1; padding:6px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center; font-size: 10px;"><strong>Kambing Diterima:</strong><br/>${Number(totalTimbanganQurbanKambingValue).toFixed(1)} Kg</div>
+        </div>
+        <h4>Alokasi Sahibul Qurban & Tamu/Panitia</h4>
+        <table style="margin-bottom:10px;">
+           <thead><tr><th>Kategori Khusus</th><th class="text-center">Jatah Sapi (Kg)</th><th class="text-center">Jatah Kambing (Kg)</th><th class="text-center">Keterangan</th></tr></thead>
+           <tbody>
+             <tr><td>Sahibul Qurban</td><td class="text-center">${Number(qurbanSahibul.sapi) || 0} Kg</td><td class="text-center">${Number(qurbanSahibul.kambing) || 0} Kg</td><td class="text-center">Catatan Internal</td></tr>
+             <tr><td>Tamu (${Number(qurbanTamu.jumlah) || 0} Orang)</td><td class="text-center">${Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahSapi)} Kg</td><td class="text-center">${Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahKambing)} Kg</td><td class="text-center">Memotong Kuota Warga</td></tr>
+           </tbody>
+        </table>
+        <h4>Rekap Alokasi Warga Penerima (Total: ${totalPenerimaKK} KK)</h4>
+      `;
       tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 30%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 15%;">RT/RW</th><th style="width: 20%;">Alamat</th><th class="text-right" style="width: 10%;">Sapi</th><th class="text-right" style="width: 10%;">Kambing</th><th class="text-center" style="width: 10%;">Paraf</th></tr>`;
-      tableRowsHTML = qurbanList.length > 0 ? qurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-right font-bold text-rose-600">${sapiKg} Kg</td><td class="text-right font-bold text-amber-600">${kambingKg} Kg</td><td style="height:35px;"></td></tr>`).join('') : `<tr><td colspan="7" class="text-center">Kosong</td></tr>`;
+      tableRowsHTML = qurbanList.length > 0 ? qurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-right font-bold text-rose-600">${sapiKg} Kg</td><td class="text-right font-bold text-amber-600">${kambingKg} Kg</td><td style="height:22px;"></td></tr>`).join('') : `<tr><td colspan="7" class="text-center">Kosong</td></tr>`;
+    } else if (reportType === "pekurban") {
+      docTitle = `Daftar Sahibul Qurban (Pekurban)`;
+      const pekurbanList = filteredWarga.filter(j => j.qurban && j.qurban.startsWith("Sahibul Qurban"));
+      summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#fffbeb;border:1px solid #fde68a;text-align:center;"><strong>Total Pekurban:</strong> ${pekurbanList.length} Warga</div>`;
+      tableHeaderHTML = `<tr><th class="text-center" style="width: 8%;">No</th><th style="width: 35%;">Nama Pekurban</th><th class="text-center" style="width: 15%;">RT / RW</th><th style="width: 22%;">Alamat</th><th class="text-center" style="width: 20%;">Jenis Qurban</th></tr>`;
+      tableRowsHTML = pekurbanList.length > 0 ? pekurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center font-bold text-amber-700">${String(j.qurban).replace("Sahibul Qurban - ", "")}</td></tr>`).join('') : `<tr><td colspan="5" class="text-center">Belum ada pekurban.</td></tr>`;
     } else if (reportType === "terpadu") {
       docTitle = `Rekap Zakat Terpadu`;
       const mustahikList = filteredWarga.filter(j => j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
-      tableHeaderHTML = `<tr><th class="text-center">No</th><th>Nama</th><th class="text-center">Fitrah</th><th class="text-center">Zuru'</th><th class="text-center">Paraf</th></tr>`;
-      tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">${j.fitrah !== "Muzakki" ? String(j.fitrah) : "-"}${j.isGuruNgaji?"+Guru":""}</td><td class="text-center">${j.zuru !== "Bukan Mustahik" ? String(j.zuru) : "-"}${j.isGuruNgaji?"+Guru":""}</td><td style="height:35px;"></td></tr>`).join('') : `<tr><td colspan="5" class="text-center">Kosong</td></tr>`;
+      tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 35%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 15%;">RT / RW</th><th class="text-center" style="width: 15%;">Fitrah</th><th class="text-center" style="width: 15%;">Zuru'</th><th class="text-center" style="width: 15%;">Paraf</th></tr>`;
+      tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td class="text-center">${j.fitrah !== "Muzakki" ? String(j.fitrah) : "-"}${j.isGuruNgaji?" <span style='font-size:8px;'>(+Guru)</span>":""}</td><td class="text-center">${j.zuru !== "Bukan Mustahik" ? String(j.zuru) : "-"}${j.isGuruNgaji?" <span style='font-size:8px;'>(+Guru)</span>":""}</td><td style="height:22px;"></td></tr>`).join('') : `<tr><td colspan="6" class="text-center">Kosong</td></tr>`;
     }
 
     const printDate = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
     
-    // SCRIPT HTML2PDF YANG RAMAH APK DENGAN 2 TOMBOL SINGKAT
     const html = `<!DOCTYPE html>
     <html lang="id">
     <head>
@@ -848,32 +1064,33 @@ export default function App() {
         .btn-close { background: #ef4444; color: white; }
         .btn-pdf { background: #0f172a; color: white; display: flex; align-items: center; gap: 5px; }
         .btn-pdf-browser { background: #334155; color: white; }
-        .print-container { width: 100%; max-width: 215mm; background: white; padding: 5%; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); box-sizing: border-box; }
-        table { width: 100%; border-collapse: collapse; font-size: 10px; min-width: 100%; }
-        th, td { border: 1px solid #cbd5e1; padding: 6px; word-wrap: break-word; }
-        th { background: #f8fafc; }
+        .print-container { width: 100%; max-width: 215mm; background: white; padding: 20px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); box-sizing: border-box; }
+        .kop-masjid { display: flex; align-items: center; justify-content: center; gap: 15px; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 10px; text-align: left; }
+        .kop-masjid h1 { margin: 0; font-size: 18px; text-transform: uppercase; }
+        .kop-masjid p { margin: 2px 0 0; font-size: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 10px; min-width: 100%; margin-bottom: 10px; }
+        th, td { border: 1px solid #000; padding: 2px 4px; word-wrap: break-word; line-height: 1.1; }
+        th { background: #f8fafc; font-weight: bold; padding: 4px; }
+        h4 { margin: 0 0 4px 0; font-size: 11px; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
-        .header-info { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
-        .print-date { font-size: 9px; color: #64748b; text-align: right; }
+        .header-info { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
+        .print-date { font-size: 9px; color: #475569; text-align: right; }
         @media print {
           body { background: white; }
           .wrapper { padding: 0; }
           .control-panel { display: none !important; }
-          .print-container { max-width: none; width: 100%; box-shadow: none; margin: 0; padding: 0; }
-          @page { size: 215mm 330mm; margin: 15mm; }
+          .print-container { max-width: none; width: 100%; box-shadow: none; margin: 0; padding: 0; border: none; }
+          @page { size: 215mm 330mm; margin: 10mm; }
         }
       </style>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
       <script>
-        function doPrintBrowser() {
-           try { window.print(); } catch(e) {}
-        }
+        function doPrintBrowser() { try { window.print(); } catch(e) {} }
         function doDownloadPDF() {
             var element = document.querySelector('.print-container');
             var btn = document.getElementById('dl-btn');
             btn.innerHTML = "⏳ Memproses PDF...";
-            
             var opt = {
                 margin:       10,
                 filename:     '${docTitle.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf',
@@ -881,15 +1098,12 @@ export default function App() {
                 html2canvas:  { scale: 2 },
                 jsPDF:        { unit: 'mm', format: 'legal', orientation: 'portrait' }
             };
-            
             html2pdf().set(opt).from(element).save().then(function() {
                 btn.innerHTML = "⬇️ Unduh PDF";
             });
         }
         window.onload = function() {
-           setTimeout(function() { 
-              try { window.print(); } catch(e) {} 
-           }, 800);
+           setTimeout(function() { try { window.print(); } catch(e) {} }, 800);
         };
       </script>
     </head>
@@ -903,10 +1117,11 @@ export default function App() {
           </div>
         </div>
         <div class="print-container">
+          ${kopMasjidHTML}
           <div class="header-info">
             <div>
-              <h2 style="margin:0 0 5px 0; font-size: 16px;">${docTitle}</h2>
-              <p style="margin:0; font-size: 12px; color: #475569;">${rtTitle}</p>
+              <h2 style="margin:0 0 2px 0; font-size: 15px; text-transform: uppercase; text-decoration: underline;">${docTitle}</h2>
+              <p style="margin:0; font-size: 11px; font-weight: bold;">Wilayah: ${rtTitle}</p>
             </div>
             <div class="print-date">
               Dicetak pada:<br/><strong>${printDate}</strong>
@@ -997,7 +1212,7 @@ export default function App() {
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 pl-3 pr-2 py-1.5 rounded-2xl mr-1">
             <div className="text-left block">
-              <span className="text-[8px] sm:text-[9px] text-emerald-600 font-extrabold block uppercase leading-tight">{currentUserRoles.map(r => rolesConfig[r]?.label || r).join(', ')}</span>
+              <span className="text-[8px] sm:text-[9px] text-emerald-600 font-extrabold block uppercase leading-tight">{Array.isArray(currentUserRoles) ? currentUserRoles.map(r => rolesConfig[r]?.label || r).join(', ') : ''}</span>
               <span className="text-[10px] sm:text-xs font-black text-emerald-900 truncate block max-w-[80px] sm:max-w-[150px] leading-tight">{String(currentUserLabel)}</span>
             </div>
           </div>
@@ -1034,7 +1249,7 @@ export default function App() {
                 const allowed = hasAccess(item.id);
                 const isActive = activeTab === item.id;
                 return (
-                  <button key={item.id} onClick={() => navigateTo(item.id)} disabled={!allowed && !currentUserRoles.includes('Admin')} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-xs font-black transition-all ${isActive ? 'bg-emerald-50 text-emerald-800 border-l-4 border-emerald-600' : !allowed ? 'text-slate-300 bg-slate-50' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <button key={item.id} onClick={() => navigateTo(item.id)} disabled={!allowed && (!Array.isArray(currentUserRoles) || !currentUserRoles.includes('Admin'))} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-xs font-black transition-all ${isActive ? 'bg-emerald-50 text-emerald-800 border-l-4 border-emerald-600' : !allowed ? 'text-slate-300 bg-slate-50' : 'text-slate-600 hover:bg-slate-50'}`}>
                     <item.icon className="w-4 h-4 shrink-0" /> <span className="text-left flex-1">{item.label}</span>
                     {!allowed && <span className="text-[8px] bg-slate-200 text-slate-500 px-1 py-0.5 rounded-md">Kunci</span>}
                   </button>
@@ -1047,7 +1262,7 @@ export default function App() {
               <div className="bg-white p-3 rounded-xl border border-slate-200 mb-3 shadow-xs">
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Login Sebagai:</p>
                 <p className="text-sm font-black text-slate-800 truncate leading-tight">{String(currentUserLabel)}</p>
-                <p className="text-[10px] font-bold text-emerald-600 truncate">{currentUserRoles.map(r => rolesConfig[r]?.label || r).join(', ')}</p>
+                <p className="text-[10px] font-bold text-emerald-600 truncate">{Array.isArray(currentUserRoles) ? currentUserRoles.map(r => rolesConfig[r]?.label || r).join(', ') : ''}</p>
               </div>
               <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 p-2.5 bg-rose-100 text-rose-700 hover:bg-rose-200 hover:text-rose-800 rounded-xl font-bold transition-all text-xs">
                 <LogOut size={16} /> Keluar Aplikasi
@@ -1065,28 +1280,48 @@ export default function App() {
         {activeTab === "dashboard" && (
           <div className="space-y-4">
             
-            {(currentUserRoles.includes("Takmir") || currentUserRoles.includes("Admin")) && usulanWargaList.length > 0 && (
-              <div className="bg-white border-2 border-emerald-500 rounded-3xl p-5 shadow-lg space-y-4">
-                <div className="flex items-center gap-2 border-b pb-3"><Check className="text-emerald-600 w-5 h-5 animate-bounce" /><div><h3 className="font-extrabold text-sm">Persetujuan Usulan Warga Baru dari RT/Amil</h3><p className="text-[10px] text-slate-500">Amil atau RT telah mengajukan data. Berikan validasi.</p></div></div>
+            {(Array.isArray(currentUserRoles) && (currentUserRoles.includes("Takmir") || currentUserRoles.includes("Admin"))) && usulanWargaList.length > 0 && (
+              <div className="bg-white border-2 border-amber-500 rounded-3xl p-5 shadow-lg space-y-4">
+                <div className="flex items-center gap-2 border-b pb-3"><Check className="text-amber-600 w-5 h-5 animate-bounce" /><div><h3 className="font-extrabold text-sm">Persetujuan Usulan Edit/Warga Baru dari RT/Amil</h3><p className="text-[10px] text-slate-500">Amil atau RT telah mengajukan data/perubahan. Berikan validasi.</p></div></div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead><tr className="bg-slate-50 text-slate-600 font-bold uppercase text-[9px]"><th className="p-3">Pengusul</th><th className="p-3">Warga</th><th className="p-3">RT/RW</th><th className="p-3">Usulan Bantuan</th><th className="p-3 text-right">Aksi</th></tr></thead>
+                  <table className="w-full text-left text-xs border-collapse min-w-[700px]">
+                    <thead><tr className="bg-slate-50 text-slate-600 font-bold uppercase text-[9px]"><th className="p-3">Pengusul</th><th className="p-3">Warga</th><th className="p-3">RT/RW</th><th className="p-3">Data Diajukan</th><th className="p-3 text-right">Aksi</th></tr></thead>
                     <tbody>
-                      {usulanWargaList.map(w => (
-                        <tr key={w.id} className="border-b hover:bg-slate-50">
-                          <td className="p-3 font-bold">{String(w.usulanOleh)}</td><td className="p-3 font-bold">{String(w.nama)}</td><td className="p-3">RT {String(w.rt)}/{String(w.rw)}</td>
-                          <td className="p-3 text-[10px]">
-                            Fitrah: <strong>{String(w.fitrah)}</strong><br/>
-                            Zuru': <strong>{String(w.zuru)}</strong><br/>
-                            Qurban: <strong>{String(w.qurban)}</strong>
-                            {w.isGuruNgaji && <span className="text-emerald-600 font-bold block mt-0.5">+ Guru Ngaji</span>}
-                          </td>
-                          <td className="p-3 text-right">
-                            <button onClick={() => handleApproveWarga(w.id)} className="px-3 py-1.5 bg-emerald-600 text-white text-[10px] rounded-lg mr-2">ACC</button>
-                            <button onClick={() => handleRejectWarga(w.id)} className="px-3 py-1.5 bg-rose-50 text-rose-600 text-[10px] rounded-lg">Tolak</button>
-                          </td>
-                        </tr>
-                      ))}
+                      {usulanWargaList.map(w => {
+                        const isEdit = w.hasUsulanEdit;
+                        const d = isEdit ? w.usulanEditData : w;
+                        return (
+                          <tr key={w.id} className="border-b hover:bg-slate-50">
+                            <td className="p-3 align-top">
+                               <span className="font-bold text-slate-800">{String(w.usulanOleh)}</span>
+                               <span className={`block mt-1 w-max text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider ${isEdit ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>{isEdit ? "Edit Data" : "Warga Baru"}</span>
+                            </td>
+                            <td className="p-3 font-bold align-top">{String(d.nama)}</td>
+                            <td className="p-3 align-top">RT {String(d.rt)}/{String(d.rw)}</td>
+                            <td className="p-3 text-[10px] align-top">
+                              {isEdit ? (
+                                 <div className="bg-amber-50 border border-amber-200 text-amber-800 p-2 rounded-lg w-full">
+                                    <strong className="block text-[9px] uppercase mb-1 border-b border-amber-200 pb-1">Detail Perubahan:</strong>
+                                    <ul className="list-disc pl-3 space-y-0.5 mt-1">
+                                      {String(w.keteranganUsulan).split(' | ').map((ket, idx) => <li key={idx}>{ket}</li>)}
+                                    </ul>
+                                 </div>
+                              ) : (
+                                 <>
+                                   Fitrah: <strong>{String(d.fitrah)}</strong><br/>
+                                   Zuru': <strong>{String(d.zuru)}</strong><br/>
+                                   Qurban: <strong>{String(d.qurban)}</strong>
+                                   {d.isGuruNgaji && <span className="text-emerald-600 font-bold block mt-0.5">+ Guru Ngaji</span>}
+                                 </>
+                              )}
+                            </td>
+                            <td className="p-3 text-right whitespace-nowrap align-top">
+                              <button onClick={() => handleApproveWarga(w.id)} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] rounded-lg mr-1.5 font-bold shadow-sm transition-all">ACC</button>
+                              <button onClick={() => handleRejectWarga(w.id)} className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] rounded-lg font-bold transition-all border border-rose-200">Tolak</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1099,7 +1334,7 @@ export default function App() {
                   <div className="p-3 bg-white/15 rounded-2xl animate-pulse"><BellRing size={28} className="text-amber-300" /></div>
                   <div><span className="bg-white/20 text-[10px] px-2 py-1 rounded-full font-black">SIRENE H-1</span>
                     <h3 className="text-lg font-black mt-1.5">Anda Bertugas Besok!</h3>
-                    <p className="text-xs text-rose-100">Besok Jumat {infoTugasBesok.pasaran}. Peran Anda: <strong className="text-amber-300">{infoTugasBesok.peran}</strong>.</p>
+                    <p className="text-xs text-rose-100">Besok Jumat {String(infoTugasBesok.pasaran)}. Peran Anda: <strong className="text-amber-300">{String(infoTugasBesok.peran)}</strong>.</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -1109,7 +1344,7 @@ export default function App() {
               </div>
             )}
 
-            {currentUserRoles.includes("Petugas") && (
+            {Array.isArray(currentUserRoles) && currentUserRoles.includes("Petugas") && (
               <div className="bg-slate-100 border rounded-2xl p-4 flex justify-between items-center">
                 <div className="text-xs"><p className="font-extrabold text-slate-800">🛠️ Mode Uji Pengingat H-1</p></div>
                 <button onClick={() => { setIsSimulatedThursday(!isSimulatedThursday); setIsDutyDismissed(false); }} className="px-4 py-2 rounded-xl text-xs font-bold border bg-white text-slate-700">{isSimulatedThursday ? "Matikan Simulator" : "Simulasikan Hari Kamis"}</button>
@@ -1119,7 +1354,7 @@ export default function App() {
             <div className="bg-emerald-700 text-white rounded-2xl p-5 shadow-md flex justify-between items-center">
               <div>
                 <span className="text-[10px] uppercase font-extrabold text-emerald-200">Lokasi Jadwal Sholat</span>
-                <h2 className="text-xl font-extrabold">Desa {lokasi.desa}, Kec. {lokasi.kecamatan}</h2>
+                <h2 className="text-xl font-extrabold">Desa {String(lokasi.desa)}, Kec. {String(lokasi.kecamatan)}</h2>
               </div>
               {hasAccess("rbac") && <button onClick={() => setIsSettingLokasi(!isSettingLokasi)} className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-xs font-bold flex gap-2 transition-all"><Settings size={14} /> Atur Lokasi</button>}
             </div>
@@ -1155,12 +1390,12 @@ export default function App() {
                 <h3 className="font-bold flex items-center gap-2 text-sm"><Calendar className="text-emerald-600 w-5 h-5" /> Petugas Jumat Pekan Ini</h3>
                 {upcomingFridaysList.length > 0 ? (
                   <div className="mt-3 p-3 bg-slate-50 rounded-xl">
-                    <p className="text-xs font-bold text-slate-500 mb-2">Jumat {upcomingFridaysList[0].pasaran}</p>
+                    <p className="text-xs font-bold text-slate-500 mb-2">Jumat {String(upcomingFridaysList[0].pasaran)}</p>
                     <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div><p className="text-[10px] text-slate-400">Khatib Utama</p><p className="font-bold">{upcomingFridaysList[0].petugas.khatib || "-"}</p></div>
-                      <div><p className="text-[10px] text-slate-400">Imam Cadangan</p><p className="font-bold">{upcomingFridaysList[0].petugas.imam || "-"}</p></div>
-                      <div><p className="text-[10px] text-slate-400 mt-2">Muadzin</p><p className="font-bold">{upcomingFridaysList[0].petugas.muadzin || "-"}</p></div>
-                      <div><p className="text-[10px] text-slate-400 mt-2">Bilal / MC</p><p className="font-bold">{upcomingFridaysList[0].petugas.bilal || "-"}</p></div>
+                      <div><p className="text-[10px] text-slate-400">Khatib Utama</p><p className="font-bold">{String(upcomingFridaysList[0].petugas.khatib || "-")}</p></div>
+                      <div><p className="text-[10px] text-slate-400">Imam Cadangan</p><p className="font-bold">{String(upcomingFridaysList[0].petugas.imam || "-")}</p></div>
+                      <div><p className="text-[10px] text-slate-400 mt-2">Muadzin</p><p className="font-bold">{String(upcomingFridaysList[0].petugas.muadzin || "-")}</p></div>
+                      <div><p className="text-[10px] text-slate-400 mt-2">Bilal / MC</p><p className="font-bold">{String(upcomingFridaysList[0].petugas.bilal || "-")}</p></div>
                     </div>
                   </div>
                 ) : <p className="text-xs mt-2 text-slate-400">Belum ada agenda petugas.</p>}
@@ -1171,7 +1406,7 @@ export default function App() {
                 <div className="space-y-2 mt-3">
                   {["Berat", "Sedang", "Ringan"].map((asnaf) => (
                     <div key={asnaf} className="flex justify-between items-center text-xs p-2 bg-slate-50 rounded border">
-                      <span className="font-bold">{asnaf}</span>
+                      <span className="font-bold">{String(asnaf)}</span>
                       <span>Fitrah: <strong className="text-emerald-600">{getJumlahJiwaPerKategoriFitrah(jamaahList, asnaf)}</strong> | Zuru': <strong className="text-teal-600">{getJumlahJiwaPerKategoriZuru(jamaahList, asnaf)}</strong></span>
                     </div>
                   ))}
@@ -1191,22 +1426,16 @@ export default function App() {
                 return (
                   <div key={pasaran} className="bg-white border p-4 rounded-2xl shadow-xs">
                     <div className="flex justify-between items-center mb-3">
-                      <span className="font-black text-emerald-700 text-xs">JUMAT {pasaran.toUpperCase()}</span>
+                      <span className="font-black text-emerald-700 text-xs">JUMAT {String(pasaran).toUpperCase()}</span>
                       {canEditPetugas && <button onClick={() => handleEditPasaran(pasaran)} className="text-slate-400 hover:text-emerald-600"><Edit2 size={14}/></button>}
                     </div>
                     <div className="text-xs space-y-2">
-                      <p><span className="block text-[10px] text-slate-400">Khatib</span><strong className="text-slate-800">{data.khatib || "-"}</strong></p>
-                      <p><span className="block text-[10px] text-slate-400">Imam</span><strong className="text-slate-800">{data.imam || "-"}</strong></p>
-                      <p><span className="block text-[10px] text-slate-400">Muadzin</span>{data.muadzin || "-"}</p>
-                      <p><span className="block text-[10px] text-slate-400">Bilal</span>{data.bilal || "-"}</p>
-                      {data.telp && <p className="pt-2 mt-2 border-t font-mono text-[10px] text-slate-500">📞 {data.telp}</p>}
+                      <p><span className="block text-[10px] text-slate-400">Khatib</span><strong className="text-slate-800">{String(data.khatib || "-")}</strong></p>
+                      <p><span className="block text-[10px] text-slate-400">Imam</span><strong className="text-slate-800">{String(data.imam || "-")}</strong></p>
+                      <p><span className="block text-[10px] text-slate-400">Muadzin</span>{String(data.muadzin || "-")}</p>
+                      <p><span className="block text-[10px] text-slate-400">Bilal</span>{String(data.bilal || "-")}</p>
+                      {data.telp && <p className="pt-2 mt-2 border-t font-mono text-[10px] text-slate-500">📞 {String(data.telp)}</p>}
                     </div>
-                    {currentUserRoles.includes("Petugas") && data.khatib && (
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <button onClick={() => handlePrepareNotification({ petugas: data, pasaran, formattedDate: "Jumat" }, "WA")} className="bg-[#128c7e] text-white py-1 rounded text-[10px] font-bold">Kirim WA</button>
-                        <button onClick={() => handlePrepareNotification({ petugas: data, pasaran, formattedDate: "Jumat" }, "SMS")} className="bg-blue-600 text-white py-1 rounded text-[10px] font-bold">Kirim SMS</button>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -1215,7 +1444,7 @@ export default function App() {
             {editingPasaran && (
               <div className="fixed inset-0 bg-slate-900/40 z-50 flex justify-center items-center p-4">
                 <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl">
-                  <h3 className="font-bold mb-4 border-b pb-2">Ubah Petugas Jumat {editingPasaran}</h3>
+                  <h3 className="font-bold mb-4 border-b pb-2">Ubah Petugas Jumat {String(editingPasaran)}</h3>
                   <form onSubmit={handleSavePasaran} className="space-y-3">
                     <input type="text" required placeholder="Khatib Utama" value={pasaranForm.khatib} onChange={e => setPasaranForm({...pasaranForm, khatib: e.target.value})} className="w-full text-sm border p-2 rounded outline-none" />
                     <input type="text" required placeholder="No HP Khatib" value={pasaranForm.telp} onChange={e => setPasaranForm({...pasaranForm, telp: e.target.value})} className="w-full text-sm border p-2 rounded outline-none" />
@@ -1231,18 +1460,6 @@ export default function App() {
               </div>
             )}
             
-            {activeNotificationSim && currentUserRoles.includes("Petugas") && (
-              <div className="fixed inset-0 bg-slate-900/60 z-50 flex justify-center items-center p-4">
-                <div className="bg-white p-5 rounded-2xl w-full max-w-sm">
-                  <h3 className="font-bold mb-2">Simulasi Pesan {notificationType}</h3>
-                  <textarea value={simulatedMessageText} onChange={e => setSimulatedMessageText(e.target.value)} rows="5" className="w-full border p-2 text-xs rounded mb-3 outline-none" />
-                  <div className="flex gap-2">
-                    <button onClick={() => setActiveNotificationSim(null)} className="flex-1 border py-2 rounded text-xs font-bold">Tutup</button>
-                    <button onClick={handleSendSimMessage} className={`flex-1 text-white py-2 rounded text-xs font-bold ${notificationType === 'WA' ? 'bg-[#128c7e]' : 'bg-blue-600'}`}>Kirim Simulator</button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -1250,8 +1467,8 @@ export default function App() {
         {activeTab === "jamaah" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Database Jemaah & Warga</h2>
-              {canEditJamaah && <button onClick={() => { setEditingJamaah(null); setShowJamaahModal(true); }} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold">{currentUserRoles.includes("Amil") || currentUserRoles.includes("RT") ? "Usul Warga" : "Tambah Warga"}</button>}
+              <h2 className="text-xl font-bold">Database Jama'ah & Warga</h2>
+              {canEditJamaah && <button onClick={() => { setEditingJamaah(null); setShowJamaahModal(true); }} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold">{Array.isArray(currentUserRoles) && (currentUserRoles.includes("Amil") || currentUserRoles.includes("RT")) ? "Usul Warga" : "Tambah Warga"}</button>}
             </div>
 
             <div className="bg-slate-50 border p-4 rounded-2xl shadow-xs">
@@ -1259,20 +1476,23 @@ export default function App() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <select value={selectedPrintWilayah} onChange={e => setSelectedPrintWilayah(e.target.value)} className="text-xs border bg-white p-2 rounded-xl flex-1 max-w-xs outline-none">
                   <option value="Semua">Semua RT & RW</option>
-                  {WILAYAH_OPTIONS.map((w) => <option key={w.label} value={`${w.rt}_${w.rw}`}>{w.label}</option>)}
+                  {WILAYAH_OPTIONS.map((w) => <option key={w.label} value={`${w.rt}_${w.rw}`}>{String(w.label)}</option>)}
                 </select>
                 <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 text-white text-xs px-3 py-2 rounded-xl font-bold">Cetak Warga</button>
-                <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold">Cetak Pekurban</button>
+                <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold">Cetak Sahibul Qurban</button>
                 <button onClick={() => handlePrintSelectedReport("terpadu")} className="bg-teal-700 text-white text-xs px-3 py-2 rounded-xl font-bold">Cetak Zakat Terpadu</button>
               </div>
             </div>
 
             <div className="bg-white border rounded-2xl shadow-xs overflow-hidden">
-              <div className="p-3 bg-slate-50 border-b flex justify-between">
-                <select value={filterWilayahJamaah} onChange={e => setFilterWilayahJamaah(e.target.value)} className="text-xs border p-1.5 rounded outline-none">
-                  <option value="Semua">Semua Wilayah</option>
-                  {WILAYAH_OPTIONS.map((w) => <option key={w.label} value={`${w.rt}_${w.rw}`}>{w.label}</option>)}
-                </select>
+              <div className="p-3 bg-slate-50 border-b flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <select value={filterWilayahJamaah} onChange={e => setFilterWilayahJamaah(e.target.value)} className="text-xs border p-1.5 rounded outline-none">
+                    <option value="Semua">Semua Wilayah</option>
+                    {WILAYAH_OPTIONS.map((w) => <option key={w.label} value={`${w.rt}_${w.rw}`}>{String(w.label)}</option>)}
+                  </select>
+                  <span className="bg-slate-200 text-slate-700 px-2 py-1 rounded text-xs font-bold">{currentWargaCount} KK</span>
+                </div>
               </div>
               <div className="overflow-x-auto w-full">
                 <table className="w-full text-left text-sm border-collapse min-w-[800px]">
@@ -1287,7 +1507,11 @@ export default function App() {
                         <td className="p-3"><span className={j.fitrah !== "Muzakki" ? "text-emerald-700 font-bold" : "text-slate-400"}>{String(j.fitrah)}</span></td>
                         <td className="p-3"><span className={j.zuru !== "Bukan Mustahik" ? "text-teal-700 font-bold" : "text-slate-400"}>{String(j.zuru)}</span></td>
                         <td className="p-3">{String(j.qurban) || "Penerima"}</td>
-                        <td className="p-3">{j.approvedByTakmir ? <span className="text-emerald-600 font-bold">✔️ ACC</span> : <span className="text-amber-600 font-bold">⏳ Menunggu</span>}</td>
+                        <td className="p-3">
+                            {j.approvedByTakmir && !j.hasUsulanEdit ? <span className="text-emerald-600 font-bold">✔️ ACC</span> : 
+                             j.hasUsulanEdit ? <span className="text-amber-600 font-bold">⏳ Cek Edit</span> :
+                             <span className="text-blue-600 font-bold">⏳ Baru</span>}
+                        </td>
                         {canEditJamaah && (
                           <td className="p-3 text-right whitespace-nowrap">
                             <button onClick={() => handleEditJamaah(j)} className="p-1.5 text-slate-500 hover:text-emerald-600"><Edit2 size={14}/></button>
@@ -1309,21 +1533,21 @@ export default function App() {
                     <input type="text" placeholder="Nama Kepala Keluarga" required value={jamaahForm.nama} onChange={e => setJamaahForm({...jamaahForm, nama: e.target.value})} className="w-full text-sm border p-2.5 rounded-xl outline-none" />
                     <div className="flex gap-4">
                       <div className="flex-1"><label className="text-[10px] font-bold text-slate-500">Jumlah Jiwa</label><input type="number" min="1" value={jamaahForm.anggota} onChange={e => setJamaahForm({...jamaahForm, anggota: e.target.value})} className="w-full border p-2.5 rounded-xl text-sm" /></div>
-                      <div className="flex-1"><label className="text-[10px] font-bold text-slate-500">Wilayah</label><select value={`${jamaahForm.rt}_${jamaahForm.rw}`} onChange={e => { const [rt, rw] = e.target.value.split('_'); setJamaahForm({...jamaahForm, rt, rw}); }} className="w-full border p-2.5 rounded-xl text-sm bg-white">{WILAYAH_OPTIONS.map(w => <option key={w.label} value={`${w.rt}_${w.rw}`}>{w.label}</option>)}</select></div>
+                      <div className="flex-1"><label className="text-[10px] font-bold text-slate-500">Wilayah</label><select value={`${jamaahForm.rt}_${jamaahForm.rw}`} onChange={e => { const [rt, rw] = e.target.value.split('_'); setJamaahForm({...jamaahForm, rt, rw}); }} className="w-full border p-2.5 rounded-xl text-sm bg-white">{WILAYAH_OPTIONS.map(w => <option key={w.label} value={`${w.rt}_${w.rw}`}>{String(w.label)}</option>)}</select></div>
                     </div>
                     <div><label className="text-[10px] font-bold text-slate-500">Alamat</label><textarea required value={jamaahForm.alamat} onChange={e => setJamaahForm({...jamaahForm, alamat: e.target.value})} className="w-full border p-2.5 rounded-xl text-sm resize-none" rows="2"/></div>
                     
-                    {!currentUserRoles.includes("RT") && (
+                    {Array.isArray(currentUserRoles) && !currentUserRoles.includes("RT") && (
                       <div><label className="text-[10px] font-bold text-slate-500">Status Ekonomi</label>
                         <div className="flex gap-2 text-xs">
                           {["Mampu", "Kurang Mampu", "Sangat Kurang"].map((opsi) => (
-                            <label key={opsi} className={`flex-1 border p-2 rounded-lg text-center cursor-pointer ${jamaahForm.ekonomi === opsi ? 'bg-emerald-50 border-emerald-500 font-bold' : ''}`}><input type="radio" value={opsi} checked={jamaahForm.ekonomi === opsi} onChange={() => setJamaahForm({...jamaahForm, ekonomi: opsi})} className="hidden"/>{opsi}</label>
+                            <label key={opsi} className={`flex-1 border p-2 rounded-lg text-center cursor-pointer ${jamaahForm.ekonomi === opsi ? 'bg-emerald-50 border-emerald-500 font-bold' : ''}`}><input type="radio" value={opsi} checked={jamaahForm.ekonomi === opsi} onChange={() => setJamaahForm({...jamaahForm, ekonomi: opsi})} className="hidden"/>{String(opsi)}</label>
                           ))}
                         </div>
                       </div>
                     )}
                     
-                    {!currentUserRoles.includes("RT") && (
+                    {Array.isArray(currentUserRoles) && !currentUserRoles.includes("RT") && (
                       <div className="flex items-center gap-2 border p-3 rounded-xl bg-slate-50">
                         <input type="checkbox" checked={jamaahForm.isGuruNgaji} onChange={e => setJamaahForm({...jamaahForm, isGuruNgaji: e.target.checked})} className="w-4 h-4 accent-emerald-600" />
                         <span className="text-xs font-bold">Warga ini berstatus Guru Ngaji (Bantuan Khusus)</span>
@@ -1335,12 +1559,12 @@ export default function App() {
                       <div><label className="text-[10px] font-bold text-teal-600">Zakat Zuru'</label><select value={jamaahForm.zuru} onChange={e => setJamaahForm({...jamaahForm, zuru: e.target.value})} className="w-full border p-2 rounded-xl text-xs font-bold"><option value="Bukan Mustahik">Bukan Penerima</option><option value="Berat">Mustahik Berat</option><option value="Sedang">Mustahik Sedang</option><option value="Ringan">Mustahik Ringan</option></select></div>
                     </div>
                     
-                    {!(currentUserRoles.includes("RT") && !currentUserRoles.includes("Admin") && !currentUserRoles.includes("Takmir") && !currentUserRoles.includes("Amil")) && (
+                    {Array.isArray(currentUserRoles) && !(currentUserRoles.includes("RT") && !currentUserRoles.includes("Admin") && !currentUserRoles.includes("Takmir") && !currentUserRoles.includes("Amil")) && (
                       <div><label className="text-[10px] font-bold text-rose-600">Status Qurban</label><select value={jamaahForm.qurban} onChange={e => setJamaahForm({...jamaahForm, qurban: e.target.value})} className="w-full border p-2 rounded-xl text-xs font-bold"><option value="Penerima">Penerima Daging</option><option value="Sahibul Qurban - Sapi">Sahibul Qurban Sapi</option><option value="Sahibul Qurban - Kambing">Sahibul Qurban Kambing</option></select></div>
                     )}
                     <div className="flex justify-end gap-2 pt-4 border-t">
                       <button type="button" onClick={() => setShowJamaahModal(false)} className="px-5 py-2.5 border rounded-xl text-xs font-bold">Batal</button>
-                      <button type="submit" className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold">{(currentUserRoles.includes("Amil") || currentUserRoles.includes("RT")) ? "Usulkan Data" : "Simpan"}</button>
+                      <button type="submit" className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold">{(Array.isArray(currentUserRoles) && (currentUserRoles.includes("Amil") || currentUserRoles.includes("RT"))) ? "Usulkan Data" : "Simpan"}</button>
                     </div>
                   </form>
                 </div>
@@ -1357,25 +1581,25 @@ export default function App() {
                 <div className="flex gap-2">
                     <select value={selectedPrintWilayahFitrah} onChange={e => setSelectedPrintWilayahFitrah(e.target.value)} className="text-xs border p-2 rounded-xl outline-none">
                         <option value="Semua">Semua RT & RW</option>
-                        {WILAYAH_OPTIONS.map((w) => <option key={w.label} value={`${w.rt}_${w.rw}`}>{w.label}</option>)}
+                        {WILAYAH_OPTIONS.map((w) => <option key={w.label} value={`${w.rt}_${w.rw}`}>{String(w.label)}</option>)}
                     </select>
-                    <button onClick={() => handlePrintSelectedReport("fitrah")} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex gap-2 items-center"><Printer size={14}/> Cetak PDF</button>
+                    <button onClick={() => handlePrintSelectedReport("fitrah")} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex gap-2 items-center"><Printer size={14}/> Cetak Laporan</button>
                 </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                 <div>
-                  <p className="text-xs font-bold text-slate-500 mb-2">Timbangan Total Beras Masuk</p><p className="text-3xl font-black text-emerald-600 mb-4">{totalTimbanganFitrahValue.toFixed(1)} Kg</p>
+                  <p className="text-xs font-bold text-slate-500 mb-2">Timbangan Total Beras Masuk</p><p className="text-3xl font-black text-emerald-600 mb-4">{Number(totalTimbanganFitrahValue).toFixed(1)} Kg</p>
                   {canEditFitrah && (
                     <div className="flex gap-2"><input type="number" step="0.1" placeholder="Tambah timbangan (kg)" value={tempBeratFitrah} onChange={e => setTempBeratFitrah(e.target.value)} className="border p-2 rounded flex-1 text-sm outline-none" /><button onClick={() => addTimbangan('fitrah')} className="bg-slate-800 text-white px-3 font-bold text-xs rounded">Tambah</button></div>
                   )}
                   <div className="mt-3 max-h-24 overflow-y-auto space-y-1">
-                    {Array.isArray(timbanganFitrah) && timbanganFitrah.map((b, i) => (<div key={i} className="flex justify-between bg-slate-50 p-2 text-xs border rounded"><span className="font-bold">{b} Kg</span>{canEditFitrah && <button onClick={() => deleteTimbangan('fitrah', i)} className="text-rose-500"><Trash2 size={14}/></button>}</div>))}
+                    {Array.isArray(timbanganFitrah) && timbanganFitrah.map((b, i) => (<div key={i} className="flex justify-between bg-slate-50 p-2 text-xs border rounded"><span className="font-bold">{String(b)} Kg</span>{canEditFitrah && <button onClick={() => deleteTimbangan('fitrah', i)} className="text-rose-500"><Trash2 size={14}/></button>}</div>))}
                   </div>
                 </div>
                 <div className={`mt-4 p-3 rounded-lg border flex justify-between items-center ${statusFitrahValue >= 0 ? 'bg-emerald-100 border-emerald-200 text-emerald-800' : 'bg-rose-100 border-rose-200 text-rose-800'}`}>
                   <span className="text-xs font-bold uppercase">{statusFitrahValue >= 0 ? 'Surplus / Sisa Beras' : 'Kekurangan Beras'}</span>
-                  <span className="text-xl font-black">{Math.abs(statusFitrahValue).toFixed(1)} Kg</span>
+                  <span className="text-xl font-black">{Math.abs(Number(statusFitrahValue)).toFixed(1)} Kg</span>
                 </div>
               </div>
               
@@ -1383,7 +1607,7 @@ export default function App() {
                 <div className="flex justify-between"><p className="text-xs font-bold text-slate-500 mb-2">Rencana Jatah Per Jiwa</p>{canEditFitrah && <button onClick={handleSaveAlokasiFitrah} className="text-xs bg-emerald-100 text-emerald-700 px-3 py-1 font-bold border rounded-lg">Simpan Setelan</button>}</div>
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   {["Berat", "Sedang", "Ringan"].map(a => (
-                    <div key={a} className="border p-2 rounded bg-slate-50 flex justify-between items-center"><span className="text-[10px] font-bold">{a}</span><input type="number" disabled={!canEditFitrah} step="0.5" value={tempAlokasiFitrah[a]} onChange={e => setTempAlokasiFitrah({...tempAlokasiFitrah, [a]: e.target.value})} className="w-12 border rounded text-xs text-center outline-none" /></div>
+                    <div key={a} className="border p-2 rounded bg-slate-50 flex justify-between items-center"><span className="text-[10px] font-bold">{String(a)}</span><input type="number" disabled={!canEditFitrah} step="0.5" value={tempAlokasiFitrah[a]} onChange={e => setTempAlokasiFitrah({...tempAlokasiFitrah, [a]: e.target.value})} className="w-12 border rounded text-xs text-center outline-none" /></div>
                   ))}
                   <div className="border border-emerald-300 p-2 rounded bg-emerald-50 flex justify-between items-center"><span className="text-[10px] font-bold text-emerald-700">Guru</span><input type="number" disabled={!canEditFitrah} step="0.5" value={tempAlokasiFitrah.GuruNgaji} onChange={e => setTempAlokasiFitrah({...tempAlokasiFitrah, GuruNgaji: e.target.value})} className="w-12 border rounded text-xs text-center bg-transparent outline-none" /></div>
                 </div>
@@ -1395,14 +1619,14 @@ export default function App() {
                       <thead className="bg-slate-50"><tr className="border-b"><th className="p-2">Kategori</th><th className="p-2 text-center">Jiwa/KK</th><th className="p-2 text-right">Butuh</th></tr></thead>
                       <tbody>
                         {rincianKebutuhanFitrahData.map((item, idx) => (
-                           <tr key={idx} className="border-b"><td className="p-2 text-slate-700">{item.kategori}</td><td className="p-2 text-center">{item.jiwa}</td><td className="p-2 text-right font-bold">{item.totalButuh} Kg</td></tr>
+                           <tr key={idx} className="border-b"><td className="p-2 text-slate-700">{String(item.kategori)}</td><td className="p-2 text-center">{String(item.jiwa)}</td><td className="p-2 text-right font-bold">{String(item.totalButuh)} Kg</td></tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                   <div className="mt-2 flex justify-between items-center bg-emerald-50 p-2 rounded-lg border border-emerald-100">
                     <p className="text-[10px] font-bold uppercase text-emerald-700">Total Kebutuhan</p>
-                    <p className="text-xl font-black text-emerald-800">{totalButuhFitrahValue.toFixed(1)} Kg</p>
+                    <p className="text-xl font-black text-emerald-800">{Number(totalButuhFitrahValue).toFixed(1)} Kg</p>
                   </div>
                 </div>
               </div>
@@ -1418,25 +1642,25 @@ export default function App() {
                 <div className="flex gap-2">
                     <select value={selectedPrintWilayahZuru} onChange={e => setSelectedPrintWilayahZuru(e.target.value)} className="text-xs border p-2 rounded-xl outline-none">
                         <option value="Semua">Semua RT & RW</option>
-                        {WILAYAH_OPTIONS.map((w) => <option key={w.label} value={`${w.rt}_${w.rw}`}>{w.label}</option>)}
+                        {WILAYAH_OPTIONS.map((w) => <option key={w.label} value={`${w.rt}_${w.rw}`}>{String(w.label)}</option>)}
                     </select>
-                    <button onClick={() => handlePrintSelectedReport("zuru")} className="bg-teal-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex gap-2 items-center"><Printer size={14}/> Cetak PDF</button>
+                    <button onClick={() => handlePrintSelectedReport("zuru")} className="bg-teal-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex gap-2 items-center"><Printer size={14}/> Cetak Laporan</button>
                 </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                 <div>
-                  <p className="text-xs font-bold text-slate-500 mb-2">Timbangan Total Panen Masuk</p><p className="text-3xl font-black text-teal-600 mb-4">{totalTimbanganZuruValue.toFixed(1)} Kg</p>
+                  <p className="text-xs font-bold text-slate-500 mb-2">Timbangan Total Panen Masuk</p><p className="text-3xl font-black text-teal-600 mb-4">{Number(totalTimbanganZuruValue).toFixed(1)} Kg</p>
                   {canEditZuru && (
                     <div className="flex gap-2"><input type="number" step="0.1" placeholder="Tambah timbangan (kg)" value={tempBeratZuru} onChange={e => setTempBeratZuru(e.target.value)} className="border p-2 rounded flex-1 text-sm outline-none" /><button onClick={() => addTimbangan('zuru')} className="bg-slate-800 text-white px-3 font-bold text-xs rounded">Tambah</button></div>
                   )}
                   <div className="mt-3 max-h-24 overflow-y-auto space-y-1">
-                    {Array.isArray(timbanganZuru) && timbanganZuru.map((b, i) => (<div key={i} className="flex justify-between bg-slate-50 p-2 text-xs border rounded"><span className="font-bold">{b} Kg</span>{canEditZuru && <button onClick={() => deleteTimbangan('zuru', i)} className="text-rose-500"><Trash2 size={14}/></button>}</div>))}
+                    {Array.isArray(timbanganZuru) && timbanganZuru.map((b, i) => (<div key={i} className="flex justify-between bg-slate-50 p-2 text-xs border rounded"><span className="font-bold">{String(b)} Kg</span>{canEditZuru && <button onClick={() => deleteTimbangan('zuru', i)} className="text-rose-500"><Trash2 size={14}/></button>}</div>))}
                   </div>
                 </div>
                 <div className={`mt-4 p-3 rounded-lg border flex justify-between items-center ${statusZuruValue >= 0 ? 'bg-teal-100 border-teal-200 text-teal-800' : 'bg-rose-100 border-rose-200 text-rose-800'}`}>
                   <span className="text-xs font-bold uppercase">{statusZuruValue >= 0 ? 'Surplus / Sisa Panen' : 'Kekurangan Panen'}</span>
-                  <span className="text-xl font-black">{Math.abs(statusZuruValue).toFixed(1)} Kg</span>
+                  <span className="text-xl font-black">{Math.abs(Number(statusZuruValue)).toFixed(1)} Kg</span>
                 </div>
               </div>
               
@@ -1444,7 +1668,7 @@ export default function App() {
                 <div className="flex justify-between"><p className="text-xs font-bold text-slate-500 mb-2">Rencana Jatah Per Jiwa</p>{canEditZuru && <button onClick={handleSaveAlokasiZuru} className="text-xs bg-teal-100 text-teal-700 px-3 py-1 font-bold border rounded-lg">Simpan Setelan</button>}</div>
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   {["Berat", "Sedang", "Ringan"].map(a => (
-                    <div key={a} className="border p-2 rounded bg-slate-50 flex justify-between items-center"><span className="text-[10px] font-bold">{a}</span><input type="number" disabled={!canEditZuru} step="0.5" value={tempAlokasiZuru[a]} onChange={e => setTempAlokasiZuru({...tempAlokasiZuru, [a]: e.target.value})} className="w-12 border rounded text-xs text-center outline-none" /></div>
+                    <div key={a} className="border p-2 rounded bg-slate-50 flex justify-between items-center"><span className="text-[10px] font-bold">{String(a)}</span><input type="number" disabled={!canEditZuru} step="0.5" value={tempAlokasiZuru[a]} onChange={e => setTempAlokasiZuru({...tempAlokasiZuru, [a]: e.target.value})} className="w-12 border rounded text-xs text-center outline-none" /></div>
                   ))}
                   <div className="border border-teal-300 p-2 rounded bg-teal-50 flex justify-between items-center"><span className="text-[10px] font-bold text-teal-700">Guru</span><input type="number" disabled={!canEditZuru} step="0.5" value={tempAlokasiZuru.GuruNgaji} onChange={e => setTempAlokasiZuru({...tempAlokasiZuru, GuruNgaji: e.target.value})} className="w-12 border rounded text-xs text-center bg-transparent outline-none" /></div>
                 </div>
@@ -1456,14 +1680,14 @@ export default function App() {
                       <thead className="bg-slate-50"><tr className="border-b"><th className="p-2">Kategori</th><th className="p-2 text-center">Jiwa/KK</th><th className="p-2 text-right">Butuh</th></tr></thead>
                       <tbody>
                         {rincianKebutuhanZuruData.map((item, idx) => (
-                           <tr key={idx} className="border-b"><td className="p-2 text-slate-700">{item.kategori}</td><td className="p-2 text-center">{item.jiwa}</td><td className="p-2 text-right font-bold">{item.totalButuh} Kg</td></tr>
+                           <tr key={idx} className="border-b"><td className="p-2 text-slate-700">{String(item.kategori)}</td><td className="p-2 text-center">{String(item.jiwa)}</td><td className="p-2 text-right font-bold">{String(item.totalButuh)} Kg</td></tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                   <div className="mt-2 flex justify-between items-center bg-teal-50 p-2 rounded-lg border border-teal-100">
                     <p className="text-[10px] font-bold uppercase text-teal-700">Total Kebutuhan</p>
-                    <p className="text-xl font-black text-teal-800">{totalButuruValue.toFixed(1)} Kg</p>
+                    <p className="text-xl font-black text-teal-800">{Number(totalButuruValue).toFixed(1)} Kg</p>
                   </div>
                 </div>
               </div>
@@ -1479,48 +1703,70 @@ export default function App() {
                 <div className="flex gap-2">
                     <select value={selectedPrintWilayahQurban} onChange={e => setSelectedPrintWilayahQurban(e.target.value)} className="text-xs border p-2 rounded-xl outline-none">
                         <option value="Semua">Semua RT & RW</option>
-                        {WILAYAH_OPTIONS.map((w) => <option key={w.label} value={`${w.rt}_${w.rw}`}>{w.label}</option>)}
+                        {WILAYAH_OPTIONS.map((w) => <option key={w.label} value={`${w.rt}_${w.rw}`}>{String(w.label)}</option>)}
                     </select>
-                    <button onClick={() => handlePrintSelectedReport("qurban")} className="bg-rose-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2"><Printer size={14}/> Cetak per Wilayah</button>
+                    <button onClick={() => handlePrintSelectedReport("qurban")} className="bg-rose-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2"><Printer size={14}/> Cetak Laporan</button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white border rounded-2xl p-4 shadow-xs">
+                    <h3 className="font-bold text-sm mb-3 text-indigo-600">Alokasi Hak Sahibul Qurban (Pencatatan)</h3>
+                    <div className="flex gap-4">
+                        <div className="flex items-center gap-2"><span className="text-xs font-bold">SAPI:</span><input type="number" step="0.1" value={tempQurbanSahibul.sapi} onChange={e => setTempQurbanSahibul({...tempQurbanSahibul, sapi: parseFloat(e.target.value) || 0})} className="w-16 border rounded text-sm text-center outline-none" /> <span className="text-xs">Kg</span></div>
+                        <div className="flex items-center gap-2"><span className="text-xs font-bold">KAMBING:</span><input type="number" step="0.1" value={tempQurbanSahibul.kambing} onChange={e => setTempQurbanSahibul({...tempQurbanSahibul, kambing: parseFloat(e.target.value) || 0})} className="w-16 border rounded text-sm text-center outline-none" /> <span className="text-xs">Kg</span></div>
+                    </div>
+                </div>
+
+                <div className="bg-white border rounded-2xl p-4 shadow-xs">
+                    <div className="flex justify-between items-center mb-3">
+                        <h3 className="font-bold text-sm text-orange-600">Alokasi Tamu / Panitia (Memotong Kuota)</h3>
+                        {canEditQurban && <button onClick={handleSaveQurbanTambahan} className="bg-slate-800 text-white px-3 py-1 rounded text-[10px] font-bold">Simpan</button>}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div><span className="block text-[10px] text-slate-500 font-bold mb-1">Jumlah Orang</span><input type="number" value={tempQurbanTamu.jumlah} onChange={e => setTempQurbanTamu({...tempQurbanTamu, jumlah: parseInt(e.target.value) || 0})} className="w-full border p-1.5 rounded text-center outline-none" /></div>
+                        <div><span className="block text-[10px] text-slate-500 font-bold mb-1">Jatah Sapi/Org (Kg)</span><input type="number" step="0.1" value={tempQurbanTamu.jatahSapi} onChange={e => setTempQurbanTamu({...tempQurbanTamu, jatahSapi: parseFloat(e.target.value) || 0})} className="w-full border p-1.5 rounded text-center outline-none" /></div>
+                        <div><span className="block text-[10px] text-slate-500 font-bold mb-1">Jatah Kmbg/Org (Kg)</span><input type="number" step="0.1" value={tempQurbanTamu.jatahKambing} onChange={e => setTempQurbanTamu({...tempQurbanTamu, jatahKambing: parseFloat(e.target.value) || 0})} className="w-full border p-1.5 rounded text-center outline-none" /></div>
+                    </div>
                 </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                 <div>
-                  <p className="text-xs font-bold text-rose-500 mb-2">Total Daging SAPI Masuk</p><p className="text-3xl font-black text-rose-600 mb-4">{totalTimbanganQurbanSapiValue.toFixed(1)} Kg</p>
+                  <p className="text-xs font-bold text-rose-500 mb-2">Total Daging SAPI Masuk</p><p className="text-3xl font-black text-rose-600 mb-4">{Number(totalTimbanganQurbanSapiValue).toFixed(1)} Kg</p>
                   {canEditQurban && (
                     <div className="flex gap-2"><input type="number" step="0.1" placeholder="Berat Daging Sapi (kg)" value={tempBeratQurbanSapi} onChange={e => setTempBeratQurbanSapi(e.target.value)} className="border p-2 rounded flex-1 text-sm outline-none" /><button onClick={() => addTimbangan('qurbanSapi')} className="bg-slate-800 text-white px-3 font-bold text-xs rounded">Tambah</button></div>
                   )}
                   <div className="mt-3 max-h-32 overflow-y-auto space-y-1">
-                    {Array.isArray(timbanganQurbanSapi) && timbanganQurbanSapi.map((b, i) => (<div key={i} className="flex justify-between bg-rose-50 p-2 text-xs border border-rose-100 rounded text-rose-900"><span className="font-bold">{b} Kg</span>{canEditQurban && <button onClick={() => deleteTimbangan('qurbanSapi', i)} className="text-rose-500"><Trash2 size={14}/></button>}</div>))}
+                    {Array.isArray(timbanganQurbanSapi) && timbanganQurbanSapi.map((b, i) => (<div key={i} className="flex justify-between bg-rose-50 p-2 text-xs border border-rose-100 rounded text-rose-900"><span className="font-bold">{String(b)} Kg</span>{canEditQurban && <button onClick={() => deleteTimbangan('qurbanSapi', i)} className="text-rose-500"><Trash2 size={14}/></button>}</div>))}
                   </div>
                 </div>
               </div>
               
               <div className="bg-white border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                 <div>
-                  <p className="text-xs font-bold text-amber-500 mb-2">Total Daging KAMBING Masuk</p><p className="text-3xl font-black text-amber-600 mb-4">{totalTimbanganQurbanKambingValue.toFixed(1)} Kg</p>
+                  <p className="text-xs font-bold text-amber-500 mb-2">Total Daging KAMBING Masuk</p><p className="text-3xl font-black text-amber-600 mb-4">{Number(totalTimbanganQurbanKambingValue).toFixed(1)} Kg</p>
                   {canEditQurban && (
                     <div className="flex gap-2"><input type="number" step="0.1" placeholder="Berat Daging Kambing (kg)" value={tempBeratQurbanKambing} onChange={e => setTempBeratQurbanKambing(e.target.value)} className="border p-2 rounded flex-1 text-sm outline-none" /><button onClick={() => addTimbangan('qurbanKambing')} className="bg-slate-800 text-white px-3 font-bold text-xs rounded">Tambah</button></div>
                   )}
                   <div className="mt-3 max-h-32 overflow-y-auto space-y-1">
-                    {Array.isArray(timbanganQurbanKambing) && timbanganQurbanKambing.map((b, i) => (<div key={i} className="flex justify-between bg-amber-50 p-2 text-xs border border-amber-100 rounded text-amber-900"><span className="font-bold">{b} Kg</span>{canEditQurban && <button onClick={() => deleteTimbangan('qurbanKambing', i)} className="text-amber-500"><Trash2 size={14}/></button>}</div>))}
+                    {Array.isArray(timbanganQurbanKambing) && timbanganQurbanKambing.map((b, i) => (<div key={i} className="flex justify-between bg-amber-50 p-2 text-xs border border-amber-100 rounded text-amber-900"><span className="font-bold">{String(b)} Kg</span>{canEditQurban && <button onClick={() => deleteTimbangan('qurbanKambing', i)} className="text-amber-500"><Trash2 size={14}/></button>}</div>))}
                   </div>
                 </div>
               </div>
             </div>
             
             <div className="bg-slate-900 text-white border rounded-3xl p-5 shadow-lg grid grid-cols-3 gap-4">
-              <div className="text-center"><p className="text-[10px] text-slate-400 uppercase font-bold">Total Penerima Qurban</p><p className="text-3xl font-black mt-1">{totalPenerimaKK} KK</p></div>
-              <div className="text-center border-l border-slate-700"><p className="text-[10px] text-rose-400 uppercase font-bold">Jatah Sapi / KK</p><p className="text-3xl font-black mt-1">{jatahDagingSapiPerKK} Kg</p></div>
-              <div className="text-center border-l border-slate-700"><p className="text-[10px] text-amber-400 uppercase font-bold">Jatah Kambing / KK</p><p className="text-3xl font-black mt-1">{jatahDagingKambingPerKK} Kg</p></div>
+              <div className="text-center"><p className="text-[10px] text-slate-400 uppercase font-bold">Warga Penerima (Sisa)</p><p className="text-3xl font-black mt-1">{String(totalPenerimaKK)} KK</p></div>
+              <div className="text-center border-l border-slate-700"><p className="text-[10px] text-rose-400 uppercase font-bold">Jatah Sapi / KK</p><p className="text-3xl font-black mt-1">{Number(jatahDagingSapiPerKK).toFixed(2)} Kg</p></div>
+              <div className="text-center border-l border-slate-700"><p className="text-[10px] text-amber-400 uppercase font-bold">Jatah Kambing / KK</p><p className="text-3xl font-black mt-1">{Number(jatahDagingKambingPerKK).toFixed(2)} Kg</p></div>
             </div>
           </div>
         )}
 
         {/* ======================= TAB: RBAC ======================= */}
-        {activeTab === "rbac" && currentUserRoles.includes("Admin") && (
+        {activeTab === "rbac" && Array.isArray(currentUserRoles) && currentUserRoles.includes("Admin") && (
           <div className="space-y-6">
             
             {pendingAccounts.length > 0 && (
@@ -1532,7 +1778,7 @@ export default function App() {
                     <tbody>
                       {pendingAccounts.map(un => (
                         <tr key={un} className="border-t">
-                          <td className="p-3 font-bold">{userDatabase[un].label}</td><td className="p-3 font-mono">@{un}</td>
+                          <td className="p-3 font-bold">{String(userDatabase[un].label)}</td><td className="p-3 font-mono">@{String(un)}</td>
                           <td className="p-3">
                             <div className="flex gap-2">
                               <select id={`r-${un}`} className="border p-1.5 rounded outline-none" defaultValue="Jamaah"><option value="Takmir">Takmir</option><option value="Amil">Amil Zakat</option><option value="RT">Ketua RT</option><option value="Petugas">Petugas</option><option value="Jamaah">Jama'ah</option></select>
@@ -1573,11 +1819,11 @@ export default function App() {
                  {Object.keys(userDatabase).filter(k => userDatabase[k].approved).map(k => (
                     <div key={k} className="border rounded-xl p-3 flex justify-between items-center bg-white">
                       <div className="w-full max-w-[70%]">
-                        <p className="font-bold text-xs truncate">{userDatabase[k].label}</p>
-                        <p className="text-[10px] text-slate-500 font-mono">@{k} | Pass: {userDatabase[k].password}</p>
+                        <p className="font-bold text-xs truncate">{String(userDatabase[k].label)}</p>
+                        <p className="text-[10px] text-slate-500 font-mono">@{String(k)} | Pass: {String(userDatabase[k].password)}</p>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {(userDatabase[k].roles || [userDatabase[k].role]).map((r, i) => (
-                             <span key={i} className="text-[8px] bg-slate-100 border px-1 rounded font-bold">{r}</span>
+                             <span key={i} className="text-[8px] bg-slate-100 border px-1 rounded font-bold">{String(r)}</span>
                           ))}
                         </div>
                       </div>
@@ -1598,7 +1844,7 @@ export default function App() {
               <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
                 <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6">
                    <h3 className="font-bold mb-1">Atur Peran Akun</h3>
-                   <p className="text-xs text-slate-500 font-mono mb-4">@{editingUserRoles.username}</p>
+                   <p className="text-xs text-slate-500 font-mono mb-4">@{String(editingUserRoles.username)}</p>
                    
                    <div className="space-y-2 mb-6">
                      {Object.keys(rolesConfig).map(roleKey => (
@@ -1614,7 +1860,7 @@ export default function App() {
                            }}
                            className="w-4 h-4 accent-emerald-600 cursor-pointer"
                          />
-                         <span className="font-bold text-slate-700">{rolesConfig[roleKey].label}</span>
+                         <span className="font-bold text-slate-700">{String(rolesConfig[roleKey].label)}</span>
                        </label>
                      ))}
                    </div>
@@ -1639,11 +1885,11 @@ export default function App() {
             <div className="bg-white p-5 rounded-2xl shadow-xs border overflow-x-auto">
               <h3 className="font-bold text-sm mb-4">Matriks Akses (RBAC)</h3>
               <table className="w-full text-left text-xs border-collapse min-w-[500px] overflow-hidden rounded-lg">
-                <thead className="bg-slate-800 text-white"><tr className="border-b border-slate-700"><th className="p-3">Modul Aplikasi</th>{Object.keys(rolesConfig).map(r => <th key={r} className="p-3 text-center">{r}</th>)}</tr></thead>
+                <thead className="bg-slate-800 text-white"><tr className="border-b border-slate-700"><th className="p-3">Modul Aplikasi</th>{Object.keys(rolesConfig).map(r => <th key={r} className="p-3 text-center">{String(r)}</th>)}</tr></thead>
                 <tbody>
                   {[{id: "dashboard", label: "Dashboard Utama"}, {id: "petugas", label: "Petugas Jumat"}, {id: "jamaah", label: "Data Warga"}, {id: "fitrah", label: "Zakat Fitrah"}, {id: "zuru", label: "Zakat Zuru'"}, {id: "qurban", label: "Qurban"}, {id: "rbac", label: "Pengaturan RBAC"}].map((m, index) => (
                     <tr key={m.id} className={index % 2 === 0 ? "bg-slate-50" : "bg-white"}>
-                      <td className="p-3 font-bold border-r">{m.label}</td>
+                      <td className="p-3 font-bold border-r">{String(m.label)}</td>
                       {Object.keys(rolesConfig).map(r => {
                           const accessLvl = rolesConfig[r].access[m.id];
                           let badgeClass = "bg-rose-100 text-rose-700";
