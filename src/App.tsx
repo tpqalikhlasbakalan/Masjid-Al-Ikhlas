@@ -808,8 +808,70 @@ export default function App() {
       tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">${j.fitrah !== "Muzakki" ? String(j.fitrah) : "-"}${j.isGuruNgaji?"+Guru":""}</td><td class="text-center">${j.zuru !== "Bukan Mustahik" ? String(j.zuru) : "-"}${j.isGuruNgaji?"+Guru":""}</td><td style="height:35px;"></td></tr>`).join('') : `<tr><td colspan="5" class="text-center">Kosong</td></tr>`;
     }
 
+    const printDate = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
     const waLink = createWAShareLink(masjidName, docTitle, rtTitle, waSummaryText);
-    const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>${docTitle}</title><style>body{font-family:sans-serif;background:#f1f5f9;margin:0} .wrapper{width:100%;overflow-x:auto;padding:20px} .print-container{width:215mm;background:white;padding:15mm;margin:0 auto} .control-panel{max-width:215mm;margin:0 auto 15px;background:white;padding:15px;display:flex;justify-content:space-between} .btn{padding:10px;border-radius:6px;cursor:pointer;border:none;text-decoration:none;font-weight:bold} .btn-close{background:#ef4444;color:white} .btn-wa{background:#25D366;color:white} .btn-pdf{background:#0f172a;color:white} table{width:100%;border-collapse:collapse;font-size:10px;min-width:450px} th,td{border:1px solid #cbd5e1;padding:5px} th{background:#f8fafc} .text-center{text-align:center} @media screen and (max-width:215mm){.print-container{width:100%;padding:15px;margin:0}} @media print{ .wrapper{padding:0} .control-panel{display:none} .print-container{width:100%;padding:0;margin:0;box-shadow:none} @page{size:215mm 330mm;margin:15mm} }</style></head><body><div class="wrapper"><div class="control-panel"><button onclick="window.parent.postMessage('CLOSE_PRINT_FRAME', '*')" class="btn btn-close">Tutup</button><div style="display:flex;gap:8px;"><a href="${waLink}" target="_blank" class="btn btn-wa">Share WA</a><button onclick="window.print()" class="btn btn-pdf">Cetak / PDF</button></div></div><div class="print-container"><h2>${docTitle}</h2><p>${rtTitle}</p>${summaryHTML}<div style="width:100%;overflow-x:auto;"><table><thead>${tableHeaderHTML}</thead><tbody>${tableRowsHTML}</tbody></table></div></div></div></body></html>`;
+    
+    const html = `<!DOCTYPE html>
+    <html lang="id">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${docTitle}</title>
+      <style>
+        body { font-family: sans-serif; background: #f1f5f9; margin: 0; padding: 0; }
+        .wrapper { width: 100%; box-sizing: border-box; padding: 10px; }
+        .control-panel { max-width: 100%; margin: 0 auto 15px; background: white; padding: 12px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-x: auto; gap: 10px; }
+        .btn { padding: 8px 12px; border-radius: 6px; cursor: pointer; border: none; text-decoration: none; font-weight: bold; font-size: 12px; white-space: nowrap; }
+        .btn-close { background: #ef4444; color: white; }
+        .btn-wa { background: #25D366; color: white; }
+        .btn-pdf { background: #0f172a; color: white; }
+        .print-container { width: 100%; max-width: 215mm; background: white; padding: 5%; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); box-sizing: border-box; }
+        table { width: 100%; border-collapse: collapse; font-size: 10px; min-width: 100%; }
+        th, td { border: 1px solid #cbd5e1; padding: 6px; word-wrap: break-word; }
+        th { background: #f8fafc; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .header-info { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+        .print-date { font-size: 9px; color: #64748b; text-align: right; }
+        @media print {
+          body { background: white; }
+          .wrapper { padding: 0; }
+          .control-panel { display: none !important; }
+          .print-container { max-width: none; width: 100%; box-shadow: none; margin: 0; padding: 0; }
+          @page { size: 215mm 330mm; margin: 15mm; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="wrapper">
+        <div class="control-panel">
+          <button onclick="window.parent.postMessage('CLOSE_PRINT_FRAME', '*')" class="btn btn-close">Kembali</button>
+          <div style="display:flex; gap:8px;">
+            <a href="${waLink}" target="_blank" class="btn btn-wa">Bagikan WA</a>
+            <button onclick="window.print()" class="btn btn-pdf">Cetak / Unduh PDF</button>
+          </div>
+        </div>
+        <div class="print-container">
+          <div class="header-info">
+            <div>
+              <h2 style="margin:0 0 5px 0; font-size: 16px;">${docTitle}</h2>
+              <p style="margin:0; font-size: 12px; color: #475569;">${rtTitle}</p>
+            </div>
+            <div class="print-date">
+              Dicetak pada:<br/><strong>${printDate}</strong>
+            </div>
+          </div>
+          ${summaryHTML}
+          <div style="width:100%; overflow-x:auto;">
+            <table>
+              <thead>${tableHeaderHTML}</thead>
+              <tbody>${tableRowsHTML}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>`;
     setPrintIframeData(html);
   };
 
@@ -882,9 +944,7 @@ export default function App() {
 
       <header className="bg-white border-b border-slate-200 px-4 py-4 flex items-center justify-between sticky top-0 z-40 shadow-xs">
         <div className="flex items-center gap-3">
-          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 border rounded-xl"><Menu size={20} /></button>
-          <div className="w-10 h-10">{renderMasjidLogo("w-full h-full object-contain", "w-8 h-8")}</div>
-          <div><h1 className="font-bold text-sm tracking-tight">{String(masjidName)}</h1></div>
+          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 border rounded-xl hover:bg-slate-50 transition-colors"><Menu size={20} /></button>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 pl-3 pr-2 py-1.5 rounded-2xl">
@@ -1120,7 +1180,7 @@ export default function App() {
         {activeTab === "jamaah" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Database Jemaah & Warga</h2>
+              <h2 className="text-xl font-bold">Database Jama'ah & Warga</h2>
               {canEditJamaah && <button onClick={() => { setEditingJamaah(null); setShowJamaahModal(true); }} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold">{currentRole === "Amil" || currentRole === "RT" ? "Usul Warga" : "Tambah Warga"}</button>}
             </div>
 
@@ -1434,9 +1494,13 @@ export default function App() {
 
       </main>
 
+      <footer className="bg-white border-t border-slate-200 px-4 py-3 text-center text-xs text-slate-500 z-10">
+        &copy; {new Date().getFullYear()} {String(masjidName)} - developed by Misbahul Munir
+      </footer>
+
       {printIframeData && (
-         <div className="fixed inset-0 z-[99999] bg-white flex flex-col h-screen w-screen overflow-hidden">
-           <iframe title="Print" srcDoc={printIframeData} className="w-full h-full border-0" />
+         <div className="fixed inset-0 z-[99999] bg-slate-100 flex flex-col h-screen w-screen overflow-hidden">
+           <iframe title="Print" srcDoc={printIframeData} className="w-full h-full border-0 bg-transparent flex-1" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-downloads allow-modals" />
          </div>
       )}
     </div>
