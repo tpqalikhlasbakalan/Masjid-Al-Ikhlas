@@ -81,6 +81,7 @@ const getLocalStorageData = (key, fallbackValue) => {
     if (!saved || saved === "undefined" || saved === "null") return fallbackValue;
     try { 
       const parsed = JSON.parse(saved); 
+      // Proteksi anti-crash dari injeksi Objek React
       if (parsed !== null && typeof parsed === 'object') {
         if (parsed.$$typeof || (!Array.isArray(parsed) && (key === "masjidName" || key === "masjidLogoUrl"))) {
           localStorage.removeItem(key);
@@ -312,44 +313,6 @@ export default function App() {
     setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 4000);
   };
 
-  const getJumlahJiwaPerKategoriFitrah = (list, kategori) => {
-    if (!Array.isArray(list)) return 0;
-    return list.filter(item => item.fitrah === kategori && item.approvedByTakmir).reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
-  };
-
-  const getJumlahJiwaPerKategoriZuru = (list, kategori) => {
-    if (!Array.isArray(list)) return 0;
-    return list.filter(item => item.zuru === kategori && item.approvedByTakmir).reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
-  };
-
-  const getPasaranJawaLocal = (date) => {
-    const dateUTC = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
-    const diffDays = Math.floor(dateUTC / (24 * 60 * 60 * 1000));
-    let pasaranIndex = (diffDays + 3) % 5;
-    if (pasaranIndex < 0) pasaranIndex += 5;
-    return PASARAN_LIST[pasaranIndex];
-  };
-
-  const getUpcomingFridaysLocal = (currTime, pAbadi, count = 5) => {
-    const fridays = [];
-    const tempDate = new Date(currTime);
-    const dayOfWeek = tempDate.getDay();
-    let daysToFriday = (5 - dayOfWeek + 7) % 7;
-    if (daysToFriday === 0 && tempDate.getHours() >= 18) daysToFriday = 7;
-    tempDate.setDate(tempDate.getDate() + daysToFriday);
-    
-    for (let i = 0; i < count; i++) {
-      const target = new Date(tempDate);
-      const pasaran = getPasaranJawaLocal(target);
-      fridays.push({
-        formattedDate: target.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-        rawDate: new Date(target), pasaran: pasaran, petugas: pAbadi[pasaran] || {}
-      });
-      tempDate.setDate(tempDate.getDate() + 7);
-    }
-    return fridays;
-  };
-
   const playAlarmSound = () => {
     try {
       const ctx = audioContext || new (window.AudioContext || window.webkitAudioContext)();
@@ -487,7 +450,7 @@ export default function App() {
       } catch (err) { console.warn("Gagal fetch jadwal sholat."); }
     };
     fetchJadwalRealTime();
-  }, [lokasi, currentDay]);
+  }, [lokasi.latitude, lokasi.longitude, currentDay]);
 
   const handleFetchFromGoogleSheets = async () => {
     if (!googleSheetsUrl) { setIsDataFetched(true); return; }
@@ -560,23 +523,22 @@ export default function App() {
       timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
       timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig
     };
+    const payloadStr = JSON.stringify(payload);
+    
     setSyncStatus("Menyimpan Otomatis...");
     const timeoutId = setTimeout(async () => {
       try {
-        await fetch(googleSheetsUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) });
+        await fetch(googleSheetsUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: payloadStr });
         setSyncStatus("Tersinkronisasi");
       } catch (err) { setSyncStatus("Gagal Menyimpan"); }
     }, 3000); 
     return () => clearTimeout(timeoutId);
   }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig, googleSheetsUrl, isDataFetched, syncConflict]);
 
+
   // === 4. DERIVED CALCULATIONS ===
   const usulanWargaList = Array.isArray(jamaahList) ? jamaahList.filter(w => !w.approvedByTakmir || w.hasUsulanEdit) : [];
   const pendingAccounts = userDatabase && typeof userDatabase === 'object' ? Object.keys(userDatabase).filter(un => userDatabase[un] && !userDatabase[un].approved) : [];
-
-  const nextSholat = getNextSholat();
-  const upcomingFridaysList = getUpcomingFridaysLocal(currentTime, petugasAbadi, 5);
-  const infoTugasBesok = getPetugasTugasBesok();
 
   const currentWargaCount = Array.isArray(jamaahList) ? jamaahList.filter(j => (filterWilayahJamaah === "Semua" || `${j.rt}_${j.rw}` === filterWilayahJamaah) && j.approvedByTakmir && !j.hasUsulanEdit).length : 0;
 
@@ -645,6 +607,33 @@ export default function App() {
   const canEditQurban = checkEditAccess('qurban');
 
   // === 5. EVENT HANDLERS ACTIONS ===
+  const handleForceSave = async () => {
+    if (!googleSheetsUrl) { addNotification("Tautan Google Sheets belum diatur!", "error"); return; }
+    setIsSyncing(true);
+    setSyncStatus("Memaksa Simpan...");
+    const payload = {
+      masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
+      timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
+      timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig
+    };
+    const payloadStr = JSON.stringify(payload);
+    
+    try {
+      await fetch(googleSheetsUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: payloadStr });
+      setSyncStatus("Tersinkronisasi");
+      addNotification("Data berhasil dipaksa simpan ke awan!", "success");
+      
+      if(payloadStr.length > 45000) {
+         addNotification("INFO: Data sudah sangat besar, pastikan Anda menggunakan Apps Script terbaru!", "warning");
+      }
+    } catch (err) { 
+      setSyncStatus("Gagal Menyimpan");
+      addNotification("Gagal memaksakan simpan data.", "error");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleLogin = (e) => {
     e.preventDefault();
     const cleanUser = inputUsername.trim().toLowerCase();
@@ -690,27 +679,6 @@ export default function App() {
     setCurrentUserLabel("");
     setCurrentUserRoles(["Admin"]);
     addNotification("Berhasil keluar dari sistem.", "warning");
-  };
-
-  const handleForceSave = async () => {
-    if (!googleSheetsUrl) { addNotification("Tautan Google Sheets belum diatur!", "error"); return; }
-    setIsSyncing(true);
-    setSyncStatus("Memaksa Simpan...");
-    const payload = {
-      masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
-      timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
-      timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig
-    };
-    try {
-      await fetch(googleSheetsUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) });
-      setSyncStatus("Tersinkronisasi");
-      addNotification("Data berhasil dipaksa simpan ke awan!", "success");
-    } catch (err) { 
-      setSyncStatus("Gagal Menyimpan");
-      addNotification("Gagal memaksakan simpan data.", "error");
-    } finally {
-      setIsSyncing(false);
-    }
   };
 
   const handleRegisterMandiri = (e) => {
