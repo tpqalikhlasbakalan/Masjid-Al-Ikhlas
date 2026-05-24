@@ -313,6 +313,16 @@ export default function App() {
     setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 4000);
   };
 
+  const getJumlahJiwaPerKategoriFitrah = (list, kategori) => {
+    if (!Array.isArray(list)) return 0;
+    return list.filter(item => item.fitrah === kategori && item.approvedByTakmir).reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
+  };
+
+  const getJumlahJiwaPerKategoriZuru = (list, kategori) => {
+    if (!Array.isArray(list)) return 0;
+    return list.filter(item => item.zuru === kategori && item.approvedByTakmir).reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
+  };
+
   const playAlarmSound = () => {
     try {
       const ctx = audioContext || new (window.AudioContext || window.webkitAudioContext)();
@@ -535,10 +545,13 @@ export default function App() {
     return () => clearTimeout(timeoutId);
   }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig, googleSheetsUrl, isDataFetched, syncConflict]);
 
-
   // === 4. DERIVED CALCULATIONS ===
   const usulanWargaList = Array.isArray(jamaahList) ? jamaahList.filter(w => !w.approvedByTakmir || w.hasUsulanEdit) : [];
   const pendingAccounts = userDatabase && typeof userDatabase === 'object' ? Object.keys(userDatabase).filter(un => userDatabase[un] && !userDatabase[un].approved) : [];
+
+  const nextSholat = getNextSholat();
+  const upcomingFridaysList = getUpcomingFridaysLocal(currentTime, petugasAbadi, 5);
+  const infoTugasBesok = getPetugasTugasBesok();
 
   const currentWargaCount = Array.isArray(jamaahList) ? jamaahList.filter(j => (filterWilayahJamaah === "Semua" || `${j.rt}_${j.rw}` === filterWilayahJamaah) && j.approvedByTakmir && !j.hasUsulanEdit).length : 0;
 
@@ -1270,6 +1283,10 @@ export default function App() {
     </body>
     </html>`;
     setPrintIframeData(html);
+  };
+
+  const handlePrintQurbanRT = () => {
+    handlePrintSelectedReport("qurban");
   };
 
 
@@ -2154,7 +2171,7 @@ export default function App() {
 
       {/* Bagian Footer */}
       <footer className="bg-white border-t border-slate-200 px-4 py-3 text-center text-xs text-slate-500 z-10 w-full mt-auto">
-        &copy; {new Date().getFullYear()} {String(masjidName)} - developed by Misbahul Munir
+        &copy; {new Date().getFullYear()} {String(masjidName)} - Sistem Manajemen Masjid Terpadu
       </footer>
 
       {printIframeData && (
