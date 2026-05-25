@@ -30,7 +30,7 @@ const INITIAL_ROLES = {
 };
 
 const INITIAL_USER_DATABASE = {
-  "admin": { password: "admin123", roles: ["Admin"], label: "Super Admin", approved: true },
+  "admin": { password: "admin5758", roles: ["Admin"], label: "Super Admin", approved: true },
   "takmir": { password: "takmir123", roles: ["Takmir"], label: "Takmir Masjid", approved: true },
   "rt01": { password: "rt123", roles: ["RT"], label: "Ketua RT 01", approved: true },
   "amil": { password: "amil123", roles: ["Amil"], label: "Amil Zakat", approved: true },
@@ -1540,7 +1540,7 @@ export default function App() {
         {/* ======================= TAB: PETUGAS ======================= */}
         {activeTab === "petugas" && (
           <div className="space-y-4">
-            <h2 className="text-xl font-bold">Jadwal Petugas Abadi (5 Pasaran Jawa)</h2>
+            <h2 className="text-xl font-bold">Jadwal Petugas Shalat Jum'at</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               {PASARAN_LIST.map((pasaran) => {
                 const data = petugasAbadi[pasaran] || {};
@@ -1588,7 +1588,7 @@ export default function App() {
         {activeTab === "jamaah" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Database Jemaah & Warga</h2>
+              <h2 className="text-xl font-bold">Database Jama'ah & Warga</h2>
               {canEditJamaah && <button onClick={() => { setEditingJamaah(null); setShowJamaahModal(true); }} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold">{Array.isArray(currentUserRoles) && (currentUserRoles.includes("Amil") || currentUserRoles.includes("RT")) ? "Usul Warga" : "Tambah Warga"}</button>}
             </div>
 
@@ -1602,7 +1602,7 @@ export default function App() {
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Warga</button>
                   <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Pekurban</button>
-                  <button onClick={() => handlePrintSelectedReport("penerimazakat")} className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Penerima Zakat</button>
+                  <button onClick={() => handlePrintSelectedReport("penerimazakat")} className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Mustahik</button>
                   <button onClick={() => handlePrintSelectedReport("penerimaqurban")} className="bg-rose-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Penerima Qurban</button>
                 </div>
               </div>
@@ -1850,7 +1850,7 @@ export default function App() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white border rounded-2xl p-4 shadow-xs">
-                    <h3 className="font-bold text-sm mb-3 text-indigo-600">Alokasi Hak Sahibul Qurban (Pencatatan)</h3>
+                    <h3 className="font-bold text-sm mb-3 text-indigo-600">Alokasi Hak Sahibul Qurban</h3>
                     <div className="flex gap-4">
                         <div className="flex items-center gap-2"><span className="text-[10px] font-bold">JATAH SAPI/JIWA:</span><input type="number" step="0.1" value={tempQurbanSahibul.sapi} onChange={e => setTempQurbanSahibul({...tempQurbanSahibul, sapi: parseFloat(e.target.value) || 0})} className="w-16 border rounded text-sm text-center outline-none" /> <span className="text-xs">Kg</span></div>
                         <div className="flex items-center gap-2"><span className="text-[10px] font-bold">JATAH KMBG/JIWA:</span><input type="number" step="0.1" value={tempQurbanSahibul.kambing} onChange={e => setTempQurbanSahibul({...tempQurbanSahibul, kambing: parseFloat(e.target.value) || 0})} className="w-16 border rounded text-sm text-center outline-none" /> <span className="text-xs">Kg</span></div>
@@ -1862,7 +1862,7 @@ export default function App() {
 
                 <div className="bg-white border rounded-2xl p-4 shadow-xs">
                     <div className="flex justify-between items-center mb-3">
-                        <h3 className="font-bold text-sm text-orange-600">Alokasi Tamu / Panitia (Memotong Kuota)</h3>
+                        <h3 className="font-bold text-sm text-orange-600">Alokasi Tamu / Panitia</h3>
                         {canEditQurban && <button onClick={handleSaveQurbanTambahan} className="bg-slate-800 text-white px-3 py-1 rounded text-[10px] font-bold">Simpan</button>}
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-xs">
@@ -2058,7 +2058,7 @@ export default function App() {
 
       {/* Bagian Footer */}
       <footer className="bg-white border-t border-slate-200 px-4 py-3 text-center text-xs text-slate-500 z-10 w-full mt-auto">
-        &copy; {new Date().getFullYear()} {String(masjidName)} - Sistem Manajemen Masjid Terpadu
+        &copy; {new Date().getFullYear()} {String(masjidName)} - developed by Misbahul Munir
       </footer>
 
       {printIframeData && (
