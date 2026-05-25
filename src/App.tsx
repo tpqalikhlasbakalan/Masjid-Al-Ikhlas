@@ -81,7 +81,6 @@ const getLocalStorageData = (key, fallbackValue) => {
     if (!saved || saved === "undefined" || saved === "null") return fallbackValue;
     try { 
       const parsed = JSON.parse(saved); 
-      // Proteksi anti-crash dari injeksi Objek React
       if (parsed !== null && typeof parsed === 'object') {
         if (parsed.$$typeof || (!Array.isArray(parsed) && (key === "masjidName" || key === "masjidLogoUrl"))) {
           localStorage.removeItem(key);
@@ -304,8 +303,6 @@ export default function App() {
     return d && typeof d === 'object' && !Array.isArray(d) ? d : def;
   });
 
-  const [rawBackupInput, setRawBackupInput] = useState("");
-
   // === 2. HELPER FUNCTIONS INSIDE COMPONENT ===
   const addNotification = (message, type = "success") => {
     const id = Date.now();
@@ -471,7 +468,6 @@ export default function App() {
       if (resData && resData.status === "success" && Object.keys(resData.data).length > 0) {
         const payload = resData.data;
 
-        // PROTEKSI: Bandingkan jumlah KK lokal vs awan
         let localKK = 0;
         try {
           const l = JSON.parse(localStorage.getItem("jamaahList"));
@@ -480,7 +476,6 @@ export default function App() {
 
         const cloudKK = Array.isArray(payload.jamaahList) ? payload.jamaahList.length : 0;
 
-        // Jika data di browser lokal jauh lebih banyak dari cloud, tahan penimpaan & beri warning konflik
         if (localKK > cloudKK && localKK > 10) {
             setSyncConflict({
                localKK,
@@ -620,33 +615,6 @@ export default function App() {
   const canEditQurban = checkEditAccess('qurban');
 
   // === 5. EVENT HANDLERS ACTIONS ===
-  const handleForceSave = async () => {
-    if (!googleSheetsUrl) { addNotification("Tautan Google Sheets belum diatur!", "error"); return; }
-    setIsSyncing(true);
-    setSyncStatus("Memaksa Simpan...");
-    const payload = {
-      masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
-      timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
-      timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig
-    };
-    const payloadStr = JSON.stringify(payload);
-    
-    try {
-      await fetch(googleSheetsUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: payloadStr });
-      setSyncStatus("Tersinkronisasi");
-      addNotification("Data berhasil dipaksa simpan ke awan!", "success");
-      
-      if(payloadStr.length > 45000) {
-         addNotification("INFO: Data sudah sangat besar, pastikan Anda menggunakan Apps Script terbaru!", "warning");
-      }
-    } catch (err) { 
-      setSyncStatus("Gagal Menyimpan");
-      addNotification("Gagal memaksakan simpan data.", "error");
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
   const handleLogin = (e) => {
     e.preventDefault();
     const cleanUser = inputUsername.trim().toLowerCase();
@@ -977,6 +945,12 @@ export default function App() {
       summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#f8fafc;border:1px solid #cbd5e1;text-align:center;"><strong>Total Warga:</strong> ${filteredWarga.length} KK</div>`;
       tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 30%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 15%;">RT / RW</th><th style="width: 35%;">Alamat Lengkap</th><th class="text-center" style="width: 15%;">Jumlah Jiwa</th></tr>`;
       tableRowsHTML = filteredWarga.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)} ${j.isGuruNgaji ? '(Guru Ngaji)' : ''}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center">${String(j.anggota)} Orang</td></tr>`).join('');
+    } else if (reportType === "penerimazakat") {
+      docTitle = `Daftar Penerima Zakat`;
+      const penerimaZakatList = filteredWarga.filter(j => (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji) && (!j.qurban || !String(j.qurban).startsWith("Sahibul Qurban")));
+      summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#e0e7ff;border:1px solid #c7d2fe;text-align:center;"><strong>Total Penerima Zakat (Non-Pekurban):</strong> ${penerimaZakatList.length} KK</div>`;
+      tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 35%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 15%;">RT / RW</th><th class="text-center" style="width: 15%;">Fitrah</th><th class="text-center" style="width: 15%;">Zuru'</th><th class="text-center" style="width: 15%;">Paraf</th></tr>`;
+      tableRowsHTML = penerimaZakatList.length > 0 ? penerimaZakatList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td class="text-center">${j.fitrah !== "Muzakki" ? String(j.fitrah) : "-"}${j.isGuruNgaji?" <span style='font-size:8px;'>(+Guru)</span>":""}</td><td class="text-center">${j.zuru !== "Bukan Mustahik" ? String(j.zuru) : "-"}${j.isGuruNgaji?" <span style='font-size:8px;'>(+Guru)</span>":""}</td><td style="height:22px;"></td></tr>`).join('') : `<tr><td colspan="6" class="text-center">Kosong</td></tr>`;
     } else if (reportType === "fitrah") {
       docTitle = `Rekapitulasi Penyaluran Zakat Fitrah`;
       
@@ -1040,7 +1014,7 @@ export default function App() {
            <div style="flex:1; padding:8px; background:#fff1f2; border:1px solid #fecdd3; text-align:center;"><strong>Status:</strong><br/>${statusFitrahValue >= 0 ? `Surplus ${Number(statusFitrahValue).toFixed(1)} Kg` : `Kurang ${Math.abs(Number(statusFitrahValue)).toFixed(1)} Kg`}</div>
         </div>
         <h4>1. Ringkasan Penerima Zakat Fitrah (Berdasarkan Kriteria)</h4>
-        <table style="margin-bottom:15px;">
+        <table class="data-table" style="margin-bottom:15px;">
            <thead>
              <tr>
                <th>Kategori Mustahik</th>
@@ -1055,7 +1029,7 @@ export default function App() {
            </tbody>
         </table>
         <h4>2. Rekap Pembayar Zakat Fitrah (Muzakki)</h4>
-        <table style="margin-bottom:15px;">
+        <table class="data-table" style="margin-bottom:15px;">
            <thead><tr><th>Wilayah RT/RW</th><th class="text-center">Total Jiwa</th></tr></thead>
            <tbody>${mzRows || `<tr><td colspan="2" class="text-center font-bold">Tidak ada data</td></tr>`}</tbody>
         </table>
@@ -1125,7 +1099,7 @@ export default function App() {
            <div style="flex:1; padding:8px; background:#fff1f2; border:1px solid #fecdd3; text-align:center;"><strong>Status:</strong><br/>${statusZuruValue >= 0 ? `Surplus ${Number(statusZuruValue).toFixed(1)} Kg` : `Kurang ${Math.abs(Number(statusZuruValue)).toFixed(1)} Kg`}</div>
         </div>
         <h4>1. Ringkasan Penerima Zakat Zuru' (Berdasarkan Kriteria)</h4>
-        <table style="margin-bottom:15px;">
+        <table class="data-table" style="margin-bottom:15px;">
            <thead>
              <tr>
                <th>Kategori Mustahik</th>
@@ -1140,7 +1114,7 @@ export default function App() {
            </tbody>
         </table>
         <h4>2. Rekap Pembayar Zakat Zuru'</h4>
-        <table style="margin-bottom:15px;">
+        <table class="data-table" style="margin-bottom:15px;">
            <thead><tr><th>Wilayah RT/RW</th><th class="text-center">Total Jiwa</th></tr></thead>
            <tbody>${mzRows || `<tr><td colspan="2" class="text-center font-bold">Tidak ada data</td></tr>`}</tbody>
         </table>
@@ -1166,7 +1140,7 @@ export default function App() {
            <div style="flex:1; padding:6px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center; font-size: 10px;"><strong>Kambing Diterima:</strong><br/>${Number(totalTimbanganQurbanKambingValue).toFixed(1)} Kg</div>
         </div>
         <h4>Alokasi Sahibul Qurban & Tamu/Panitia</h4>
-        <table style="margin-bottom:10px;">
+        <table class="data-table" style="margin-bottom:10px;">
            <thead><tr><th>Kategori Khusus</th><th class="text-center">Jatah Sapi (Kg)</th><th class="text-center">Jatah Kambing (Kg)</th><th class="text-center">Keterangan</th></tr></thead>
            <tbody>
              <tr><td>Sahibul Qurban</td><td class="text-center">${Number(qurbanSahibul.sapi) || 0} Kg</td><td class="text-center">${Number(qurbanSahibul.kambing) || 0} Kg</td><td class="text-center">Catatan Internal</td></tr>
@@ -1192,8 +1166,9 @@ export default function App() {
     }
 
     const printDate = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
+    const safeTitle = String(docTitle).replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
     
-    // SCRIPT HTML2PDF YANG RAMAH APK DENGAN 2 TOMBOL SINGKAT
+    // SCRIPT HTML2PDF YANG RAMAH APK DENGAN THEAD BERULANG
     const html = `<!DOCTYPE html>
     <html lang="id">
     <head>
@@ -1209,13 +1184,15 @@ export default function App() {
         .btn-pdf { background: #0f172a; color: white; display: flex; align-items: center; gap: 5px; }
         .btn-pdf-browser { background: #334155; color: white; }
         .print-container { width: 100%; max-width: 215mm; background: white; padding: 20px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); box-sizing: border-box; }
+        .master-table { width: 100%; border-collapse: collapse; border: none; }
+        .master-table > thead > tr > td, .master-table > tbody > tr > td { border: none; padding: 0; }
         .kop-masjid { display: flex; align-items: center; justify-content: center; gap: 15px; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 10px; text-align: left; }
-        .kop-masjid h1 { margin: 0; font-size: 18px; text-transform: uppercase; }
-        .kop-masjid p { margin: 2px 0 0; font-size: 10px; }
-        table { width: 100%; border-collapse: collapse; font-size: 10px; min-width: 100%; margin-bottom: 10px; }
-        th, td { border: 1px solid #000; padding: 2px 4px; word-wrap: break-word; line-height: 1.1; }
-        th { background: #f8fafc; font-weight: bold; padding: 4px; }
-        h4 { margin: 0 0 4px 0; font-size: 11px; }
+        .kop-masjid h1 { margin: 0; font-size: 18px; text-transform: uppercase; font-weight: bold; color: #000; }
+        .kop-masjid p { margin: 2px 0 0; font-size: 10px; color: #000; font-weight: normal; }
+        table.data-table { width: 100%; border-collapse: collapse; font-size: 10px; min-width: 100%; margin-bottom: 10px; }
+        table.data-table th, table.data-table td { border: 1px solid #000; padding: 2px 4px; word-wrap: break-word; line-height: 1.1; }
+        table.data-table th { background: #f8fafc; font-weight: bold; padding: 4px; }
+        h4 { margin: 0 0 4px 0; font-size: 11px; color: #000; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .header-info { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
@@ -1237,7 +1214,7 @@ export default function App() {
             btn.innerHTML = "⏳ Memproses PDF...";
             var opt = {
                 margin:       10,
-                filename:     '${docTitle.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf',
+                filename:     '${safeTitle}_${new Date().getTime()}.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2 },
                 jsPDF:        { unit: 'mm', format: 'legal', orientation: 'portrait' }
@@ -1261,32 +1238,42 @@ export default function App() {
           </div>
         </div>
         <div class="print-container">
-          ${kopMasjidHTML}
-          <div class="header-info">
-            <div>
-              <h2 style="margin:0 0 2px 0; font-size: 15px; text-transform: uppercase; text-decoration: underline;">${docTitle}</h2>
-              <p style="margin:0; font-size: 11px; font-weight: bold;">Wilayah: ${rtTitle}</p>
-            </div>
-            <div class="print-date">
-              Dicetak pada:<br/><strong>${printDate}</strong>
-            </div>
-          </div>
-          ${summaryHTML}
-          <div style="width:100%; overflow-x:auto;">
-            <table>
-              <thead>${tableHeaderHTML}</thead>
-              <tbody>${tableRowsHTML}</tbody>
-            </table>
-          </div>
+          <table class="master-table">
+            <thead>
+              <tr>
+                <td>
+                  ${kopMasjidHTML}
+                </td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="header-info">
+                    <div>
+                      <h2 style="margin:0 0 2px 0; font-size: 15px; text-transform: uppercase; text-decoration: underline;">${docTitle}</h2>
+                      <p style="margin:0; font-size: 11px; font-weight: bold;">Wilayah: ${rtTitle}</p>
+                    </div>
+                    <div class="print-date">
+                      Dicetak pada:<br/><strong>${printDate}</strong>
+                    </div>
+                  </div>
+                  ${summaryHTML}
+                  <div style="width:100%; overflow-x:auto;">
+                    <table class="data-table">
+                      <thead>${tableHeaderHTML}</thead>
+                      <tbody>${tableRowsHTML}</tbody>
+                    </table>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </body>
     </html>`;
     setPrintIframeData(html);
-  };
-
-  const handlePrintQurbanRT = () => {
-    handlePrintSelectedReport("qurban");
   };
 
 
@@ -1474,18 +1461,6 @@ export default function App() {
         {/* ======================= TAB: DASHBOARD ======================= */}
         {activeTab === "dashboard" && (
           <div className="space-y-4">
-            
-            {/* Tombol Simpan Paksa Manual Di Sini */}
-            <div className="bg-white border rounded-2xl p-4 shadow-xs flex justify-between items-center gap-4">
-               <div>
-                  <h3 className="font-bold text-sm text-slate-800">Sinkronisasi Cloud</h3>
-                  <p className="text-[10px] text-slate-500 hidden sm:block">Mencegah data terputus akibat menekan "keluar" terlalu cepat.</p>
-               </div>
-               <button onClick={handleForceSave} disabled={isSyncing} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${isSyncing ? 'bg-slate-100 text-slate-400' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'}`}>
-                 {isSyncing ? <RefreshCw size={14} className="animate-spin"/> : <CloudUpload size={14}/>} 
-                 {isSyncing ? "Menyimpan..." : "Simpan Paksa ke Server"}
-               </button>
-            </div>
 
             {(Array.isArray(currentUserRoles) && (currentUserRoles.includes("Takmir") || currentUserRoles.includes("Admin"))) && usulanWargaList.length > 0 && (
               <div className="bg-white border-2 border-amber-500 rounded-3xl p-5 shadow-lg space-y-4">
@@ -1685,9 +1660,12 @@ export default function App() {
                   <option value="Semua">Semua RT & RW</option>
                   {WILAYAH_OPTIONS.map((w) => <option key={w.label} value={`${w.rt}_${w.rw}`}>{String(w.label)}</option>)}
                 </select>
-                <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 text-white text-xs px-3 py-2 rounded-xl font-bold">Cetak Warga</button>
-                <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold">Cetak Pekurban</button>
-                <button onClick={() => handlePrintSelectedReport("terpadu")} className="bg-teal-700 text-white text-xs px-3 py-2 rounded-xl font-bold">Cetak Terpadu</button>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Warga</button>
+                  <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Pekurban</button>
+                  <button onClick={() => handlePrintSelectedReport("terpadu")} className="bg-teal-700 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Terpadu</button>
+                  <button onClick={() => handlePrintSelectedReport("penerimazakat")} className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Penerima Zakat</button>
+                </div>
               </div>
             </div>
 
@@ -2012,54 +1990,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* BARU: FITUR SINKRONISASI MANUAL BACKUP & RESTORE DATA (PENCEGAH HILANGNYA DATA MASJID) */}
-            <div className="bg-white p-5 rounded-2xl shadow-xs border">
-              <h3 className="font-bold text-sm mb-2 text-blue-700">Pencadangan & Pemulihan Data Manual</h3>
-              <p className="text-xs text-slate-500 mb-4">Ekspor cadangan teks ini untuk mengamankan 250+ KK Anda agar tidak terhapus cache browser/webview.</p>
-              
-              <div className="flex flex-col sm:flex-row gap-3">
-                 <button 
-                   onClick={() => {
-                     const dataStr = JSON.stringify(jamaahList);
-                     navigator.clipboard.writeText(dataStr);
-                     addNotification("Database warga berhasil disalin ke papan klip! Simpan di catatan HP Anda.", "success");
-                   }}
-                   className="px-4 py-2.5 bg-blue-100 text-blue-700 font-bold rounded-xl text-xs flex gap-2 justify-center items-center hover:bg-blue-200"
-                 >
-                   <Download size={14}/> Salin Teks Cadangan (Backup)
-                 </button>
-                 <div className="flex-1 flex gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="Tempel teks cadangan di sini untuk memulihkan..." 
-                      value={rawBackupInput}
-                      onChange={(e) => setRawBackupInput(e.target.value)}
-                      className="border p-2 rounded-xl text-xs flex-1 outline-none focus:border-blue-500"
-                    />
-                    <button 
-                      onClick={() => {
-                        if(!rawBackupInput.trim()) return;
-                        try {
-                           const parsed = JSON.parse(rawBackupInput.trim());
-                           if(Array.isArray(parsed)) {
-                              setJamaahList(parsed);
-                              addNotification(`Sukses memulihkan ${parsed.length} data KK ke penyimpanan lokal Anda!`, "success");
-                              setRawBackupInput("");
-                           } else {
-                              addNotification("Format teks cadangan tidak valid (Harus Array)!", "error");
-                           }
-                        } catch(err) {
-                           addNotification("Format teks cadangan salah / rusak!", "error");
-                        }
-                      }}
-                      className="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-xl"
-                    >
-                      Pulihkan
-                    </button>
-                 </div>
-              </div>
-            </div>
-
             <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-xs border">
                <h3 className="font-bold text-sm mb-4">Pendaftaran Instan Akun Pengurus</h3>
                <form onSubmit={handleCreateAccount} className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border items-end">
@@ -2171,7 +2101,7 @@ export default function App() {
 
       {/* Bagian Footer */}
       <footer className="bg-white border-t border-slate-200 px-4 py-3 text-center text-xs text-slate-500 z-10 w-full mt-auto">
-        &copy; {new Date().getFullYear()} {String(masjidName)} - Sistem Manajemen Masjid Terpadu
+        &copy; {new Date().getFullYear()} {String(masjidName)} - developed by Misbahul Munir
       </footer>
 
       {printIframeData && (
