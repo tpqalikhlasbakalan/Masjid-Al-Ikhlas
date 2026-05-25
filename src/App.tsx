@@ -42,9 +42,9 @@ const INITIAL_USER_DATABASE = {
 };
 
 const INITIAL_JAMAAH = [
-  { id: "1", nama: "Ahmad Subarjo", anggota: 4, rt: "01", rw: "01", alamat: "Jl. Masjid No. 12", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", isGuruNgaji: false, approvedByTakmir: true, usulanOleh: "System" },
-  { id: "2", nama: "Slamet Rahardjo", anggota: 3, rt: "01", rw: "01", alamat: "Gang Kelinci No. 2", ekonomi: "Sangat Kurang", fitrah: "Berat", zuru: "Berat", qurban: "Penerima", isGuruNgaji: false, approvedByTakmir: true, usulanOleh: "System" },
-  { id: "3", nama: "Budi Santoso", anggota: 5, rt: "02", rw: "01", alamat: "Jl. Mangga No. 5", ekonomi: "Kurang Mampu", fitrah: "Sedang", zuru: "Sedang", qurban: "Penerima", isGuruNgaji: false, approvedByTakmir: true, usulanOleh: "System" }
+  { id: "1", nama: "Ahmad Subarjo", anggota: 4, rt: "01", rw: "01", alamat: "Jl. Masjid No. 12", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", qurbanJiwa: 1, isGuruNgaji: false, approvedByTakmir: true, usulanOleh: "System" },
+  { id: "2", nama: "Slamet Rahardjo", anggota: 3, rt: "01", rw: "01", alamat: "Gang Kelinci No. 2", ekonomi: "Sangat Kurang", fitrah: "Berat", zuru: "Berat", qurban: "Penerima", qurbanJiwa: 1, isGuruNgaji: false, approvedByTakmir: true, usulanOleh: "System" },
+  { id: "3", nama: "Budi Santoso", anggota: 5, rt: "02", rw: "01", alamat: "Jl. Mangga No. 5", ekonomi: "Kurang Mampu", fitrah: "Sedang", zuru: "Sedang", qurban: "Penerima", qurbanJiwa: 1, isGuruNgaji: false, approvedByTakmir: true, usulanOleh: "System" }
 ];
 
 const INITIAL_PETUGAS_ABADI = {
@@ -56,8 +56,9 @@ const INITIAL_PETUGAS_ABADI = {
 };
 
 // ====================================================================
-// STATIC COMPONENTS & HELPERS
+// STATIC COMPONENTS & HELPERS (GLOBAL SCOPE TO PREVENT HOISTING ERRORS)
 // ====================================================================
+
 const KubahMasjidIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="50" cy="50" r="46" fill="#f0fdf4" stroke="#10b981" strokeWidth="3" />
@@ -97,19 +98,6 @@ const getLocalStorageData = (key, fallbackValue) => {
   }
 };
 
-function getMockJadwal(kab, lat, lon) {
-  let offset = 0;
-  if (lat && lon) {
-    const coordHash = Math.abs(Math.round((parseFloat(lat) + parseFloat(lon)) * 105));
-    offset = coordHash % 15;
-  }
-  return {
-    Subuh: `04:${(15 + offset).toString().padStart(2, '0')}`, Terbit: `05:${(30 + offset).toString().padStart(2, '0')}`,
-    Dzuhur: `11:${(35 + offset).toString().padStart(2, '0')}`, Ashar: `14:${(55 + offset).toString().padStart(2, '0')}`,
-    Maghrib: `17:${(30 + offset).toString().padStart(2, '0')}`, Isya: `18:${(45 + offset).toString().padStart(2, '0')}`
-  };
-}
-
 function getPasaranJawaLocal(date) {
   const dateUTC = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
   const msPerDay = 24 * 60 * 60 * 1000;
@@ -139,9 +127,58 @@ function getUpcomingFridaysLocal(currentTime, petugasAbadi, count = 5) {
   return fridays;
 }
 
-function createWAShareLink(masjidName, title, rtTitle, summaryText) {
-  const message = `*${String(masjidName)}*\n\n📝 *${title}*\nWilayah: ${rtTitle}\nTanggal: ${new Date().toLocaleDateString('id-ID')}\n\n${summaryText}\n\n_Dokumen cetak tersedia di pengurus._`;
-  return `https://wa.me/?text=${encodeURIComponent(message)}`;
+const renderMasjidLogo = (masjidLogoUrl, imgClassName, fallbackClassName) => {
+  if (typeof masjidLogoUrl === 'string' && masjidLogoUrl.trim() !== "") {
+    return ( 
+      <img src={masjidLogoUrl} alt="Logo Masjid" className={imgClassName} onError={(e) => { e.target.style.display = 'none'; }} /> 
+    );
+  }
+  return <KubahMasjidIcon className={fallbackClassName} />;
+};
+
+const getJumlahJiwaPerKategoriFitrah = (list, kategori) => {
+  if (!Array.isArray(list)) return 0;
+  return list.filter(item => item.fitrah === kategori && item.approvedByTakmir).reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
+};
+
+const getJumlahJiwaPerKategoriZuru = (list, kategori) => {
+  if (!Array.isArray(list)) return 0;
+  return list.filter(item => item.zuru === kategori && item.approvedByTakmir).reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
+};
+
+function getNextSholat(currentTime, jadwalSholat) {
+  const nowStr = currentTime.toTimeString().split(' ')[0].substring(0, 5); 
+  const sholatTimes = Object.entries(jadwalSholat).filter(([k]) => k !== 'Terbit');
+  for (let [name, time] of sholatTimes) { 
+    if (String(time) > nowStr) return { name: String(name), time: String(time) }; 
+  }
+  return { name: "Subuh (Besok)", time: String(sholatTimes[0]?.[1] || "04:15") };
+}
+
+function getPetugasTugasBesok(currentTime, isSimulatedThursday, isDutyDismissed, petugasAbadi, currentUserLabel) {
+  const isKamis = currentTime.getDay() === 4;
+  let targetDate = null;
+  if (isKamis) {
+    targetDate = new Date(currentTime); targetDate.setDate(targetDate.getDate() + 1); 
+  } else if (isSimulatedThursday) {
+    targetDate = new Date(currentTime);
+    const daysToFriday = (5 - targetDate.getDay() + 7) % 7;
+    targetDate.setDate(targetDate.getDate() + daysToFriday);
+  }
+  if (!targetDate || isDutyDismissed) return null;
+
+  const pasaranBesok = getPasaranJawaLocal(targetDate);
+  const petugasBesok = petugasAbadi[pasaranBesok];
+
+  if (petugasBesok && currentUserLabel) {
+    const peranan = [];
+    if (petugasBesok.khatib === currentUserLabel) peranan.push("KHATIB");
+    if (petugasBesok.imam === currentUserLabel) peranan.push("IMAM");
+    if (petugasBesok.muadzin === currentUserLabel) peranan.push("MUADZIN");
+    if (petugasBesok.bilal === currentUserLabel) peranan.push("BILAL");
+    if (peranan.length > 0) return { pasaran: pasaranBesok, tanggal: targetDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), peran: peranan.join(" & ") };
+  }
+  return null;
 }
 
 // ====================================================================
@@ -285,7 +322,7 @@ export default function App() {
   const [selectedPrintWilayah, setSelectedPrintWilayah] = useState("Semua");
   const [showJamaahModal, setShowJamaahModal] = useState(false);
   const [editingJamaah, setEditingJamaah] = useState(null);
-  const [jamaahForm, setJamaahForm] = useState({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", isGuruNgaji: false });
+  const [jamaahForm, setJamaahForm] = useState({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", qurbanJiwa: 1, isGuruNgaji: false });
 
   const [googleSheetsUrl, setGoogleSheetsUrl] = useState(() => getLocalStorageData("googleSheetsUrl", GOOGLE_SHEETS_SCRIPT_URL));
   const [syncStatus, setSyncStatus] = useState("Tersinkronisasi Lokal");
@@ -303,52 +340,13 @@ export default function App() {
     return d && typeof d === 'object' && !Array.isArray(d) ? d : def;
   });
 
+  const [rawBackupInput, setRawBackupInput] = useState("");
+
   // === 2. HELPER FUNCTIONS INSIDE COMPONENT ===
   const addNotification = (message, type = "success") => {
     const id = Date.now();
     setNotifications(prev => [...prev, { id, message: String(message), type }]);
     setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 4000);
-  };
-
-  const getJumlahJiwaPerKategoriFitrah = (list, kategori) => {
-    if (!Array.isArray(list)) return 0;
-    return list.filter(item => item.fitrah === kategori && item.approvedByTakmir).reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
-  };
-
-  const getJumlahJiwaPerKategoriZuru = (list, kategori) => {
-    if (!Array.isArray(list)) return 0;
-    return list.filter(item => item.zuru === kategori && item.approvedByTakmir).reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
-  };
-
-  const playAlarmSound = () => {
-    try {
-      const ctx = audioContext || new (window.AudioContext || window.webkitAudioContext)();
-      if (!audioContext) setAudioContext(ctx);
-      const playBeep = (delay, duration, freq) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.value = freq;
-        osc.type = "sine";
-        gain.gain.setValueAtTime(0, ctx.currentTime + delay);
-        gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + delay + 0.05);
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + delay + duration);
-        osc.start(ctx.currentTime + delay);
-        osc.stop(ctx.currentTime + delay + duration);
-      };
-      playBeep(0.0, 0.25, 880); playBeep(0.3, 0.25, 880); playBeep(0.6, 0.25, 880); playBeep(1.0, 0.40, 1100);
-      addNotification("🔊 Bunyi alarm disimulasikan!", "success");
-    } catch (e) { console.warn("Audio Context diblokir peramban."); }
-  };
-
-  const renderMasjidLogo = (imgClassName, fallbackClassName) => {
-    if (typeof masjidLogoUrl === 'string' && masjidLogoUrl.trim() !== "") {
-      return ( 
-        <img src={masjidLogoUrl} alt="Logo Masjid" className={imgClassName} onError={() => { addNotification("Logo kustom gagal dimuat!", "error"); setMasjidLogoUrl(""); }} /> 
-      );
-    }
-    return <KubahMasjidIcon className={fallbackClassName} />;
   };
 
   const hasAccess = (tabName) => {
@@ -370,37 +368,21 @@ export default function App() {
     else { addNotification("Akses Ditolak! Peran Anda tidak memiliki hak.", "error"); }
   };
 
-  const getNextSholat = () => {
-    const nowStr = currentTime.toTimeString().split(' ')[0].substring(0, 5); 
-    const sholatTimes = Object.entries(jadwalSholat).filter(([k]) => k !== 'Terbit');
-    for (let [name, time] of sholatTimes) { if (String(time) > nowStr) return { name: String(name), time: String(time) }; }
-    return { name: "Subuh (Besok)", time: String(sholatTimes[0][1] || "04:15") };
-  };
-
-  const getPetugasTugasBesok = () => {
-    const isKamis = currentTime.getDay() === 4;
-    let targetDate = null;
-    if (isKamis) {
-      targetDate = new Date(currentTime); targetDate.setDate(targetDate.getDate() + 1); 
-    } else if (isSimulatedThursday) {
-      targetDate = new Date(currentTime);
-      const daysToFriday = (5 - targetDate.getDay() + 7) % 7;
-      targetDate.setDate(targetDate.getDate() + daysToFriday);
-    }
-    if (!targetDate || isDutyDismissed) return null;
-
-    const pasaranBesok = getPasaranJawaLocal(targetDate);
-    const petugasBesok = petugasAbadi[pasaranBesok];
-
-    if (petugasBesok && currentUserLabel) {
-      const peranan = [];
-      if (petugasBesok.khatib === currentUserLabel) peranan.push("KHATIB");
-      if (petugasBesok.imam === currentUserLabel) peranan.push("IMAM");
-      if (petugasBesok.muadzin === currentUserLabel) peranan.push("MUADZIN");
-      if (petugasBesok.bilal === currentUserLabel) peranan.push("BILAL");
-      if (peranan.length > 0) return { pasaran: pasaranBesok, tanggal: targetDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), peran: peranan.join(" & ") };
-    }
-    return null;
+  const applyCloudData = (payload) => {
+    if (payload.masjidName !== undefined) setMasjidName(payload.masjidName);
+    if (payload.masjidLogoUrl !== undefined) setMasjidLogoUrl(payload.masjidLogoUrl);
+    if (payload.petugasAbadi !== undefined) setPetugasAbadi(payload.petugasAbadi);
+    if (payload.jamaahList !== undefined) setJamaahList(payload.jamaahList);
+    if (payload.timbanganFitrah !== undefined) setTimbanganFitrah(payload.timbanganFitrah);
+    if (payload.alokasiFitrah !== undefined) setAlokasiFitrah(payload.alokasiFitrah);
+    if (payload.timbanganZuru !== undefined) setTimbanganZuru(payload.timbanganZuru);
+    if (payload.alokasiZuru !== undefined) setAlokasiZuru(payload.alokasiZuru);
+    if (payload.timbanganQurbanSapi !== undefined) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
+    if (payload.timbanganQurbanKambing !== undefined) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
+    if (payload.qurbanTamu !== undefined) setQurbanTamu(payload.qurbanTamu);
+    if (payload.qurbanSahibul !== undefined) setQurbanSahibul(payload.qurbanSahibul);
+    if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
+    if (payload.rolesConfig !== undefined) setRolesConfig(payload.rolesConfig);
   };
 
   // === 3. EFFECTS ===
@@ -457,7 +439,7 @@ export default function App() {
       } catch (err) { console.warn("Gagal fetch jadwal sholat."); }
     };
     fetchJadwalRealTime();
-  }, [lokasi.latitude, lokasi.longitude, currentDay]);
+  }, [lokasi, currentDay]);
 
   const handleFetchFromGoogleSheets = async () => {
     if (!googleSheetsUrl) { setIsDataFetched(true); return; }
@@ -468,6 +450,7 @@ export default function App() {
       if (resData && resData.status === "success" && Object.keys(resData.data).length > 0) {
         const payload = resData.data;
 
+        // PROTEKSI: Bandingkan jumlah KK lokal vs awan
         let localKK = 0;
         try {
           const l = JSON.parse(localStorage.getItem("jamaahList"));
@@ -476,6 +459,7 @@ export default function App() {
 
         const cloudKK = Array.isArray(payload.jamaahList) ? payload.jamaahList.length : 0;
 
+        // Jika data di browser lokal jauh lebih banyak dari cloud, tahan penimpaan & beri warning konflik
         if (localKK > cloudKK && localKK > 10) {
             setSyncConflict({
                localKK,
@@ -498,56 +482,14 @@ export default function App() {
     }
   };
 
-  const applyCloudData = (payload) => {
-    if (payload.masjidName !== undefined) setMasjidName(payload.masjidName);
-    if (payload.masjidLogoUrl !== undefined) setMasjidLogoUrl(payload.masjidLogoUrl);
-    if (payload.petugasAbadi !== undefined) setPetugasAbadi(payload.petugasAbadi);
-    if (payload.jamaahList !== undefined) setJamaahList(payload.jamaahList);
-    if (payload.timbanganFitrah !== undefined) setTimbanganFitrah(payload.timbanganFitrah);
-    if (payload.alokasiFitrah !== undefined) setAlokasiFitrah(payload.alokasiFitrah);
-    if (payload.timbanganZuru !== undefined) setTimbanganZuru(payload.timbanganZuru);
-    if (payload.alokasiZuru !== undefined) setAlokasiZuru(payload.alokasiZuru);
-    if (payload.timbanganQurbanSapi !== undefined) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
-    if (payload.timbanganQurbanKambing !== undefined) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
-    if (payload.qurbanTamu !== undefined) setQurbanTamu(payload.qurbanTamu);
-    if (payload.qurbanSahibul !== undefined) setQurbanSahibul(payload.qurbanSahibul);
-    if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
-    if (payload.rolesConfig !== undefined) setRolesConfig(payload.rolesConfig);
-  };
-
   useEffect(() => {
     if (googleSheetsUrl) handleFetchFromGoogleSheets();
     else setIsDataFetched(true);
   }, [googleSheetsUrl]);
 
-  // Sync Timer: Auto save but give users a manual option to force push
-  useEffect(() => {
-    if (!googleSheetsUrl || !isDataFetched || syncConflict) return;
-    const payload = {
-      masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
-      timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
-      timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig
-    };
-    const payloadStr = JSON.stringify(payload);
-    
-    setSyncStatus("Menyimpan Otomatis...");
-    const timeoutId = setTimeout(async () => {
-      try {
-        await fetch(googleSheetsUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: payloadStr });
-        setSyncStatus("Tersinkronisasi");
-      } catch (err) { setSyncStatus("Gagal Menyimpan"); }
-    }, 3000); 
-    return () => clearTimeout(timeoutId);
-  }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig, googleSheetsUrl, isDataFetched, syncConflict]);
-
-  // === 4. DERIVED CALCULATIONS ===
+  // === 4. DERIVED CALCULATIONS & ACCESS RIGHTS ===
   const usulanWargaList = Array.isArray(jamaahList) ? jamaahList.filter(w => !w.approvedByTakmir || w.hasUsulanEdit) : [];
   const pendingAccounts = userDatabase && typeof userDatabase === 'object' ? Object.keys(userDatabase).filter(un => userDatabase[un] && !userDatabase[un].approved) : [];
-
-  const nextSholat = getNextSholat();
-  const upcomingFridaysList = getUpcomingFridaysLocal(currentTime, petugasAbadi, 5);
-  const infoTugasBesok = getPetugasTugasBesok();
-
   const currentWargaCount = Array.isArray(jamaahList) ? jamaahList.filter(j => (filterWilayahJamaah === "Semua" || `${j.rt}_${j.rw}` === filterWilayahJamaah) && j.approvedByTakmir && !j.hasUsulanEdit).length : 0;
 
   // FITRAH
@@ -603,6 +545,11 @@ export default function App() {
   const totalPenerimaKK = wargaPenerimaQurban.length;
   const jatahDagingSapiPerKK = totalPenerimaKK > 0 ? (totalSapiDikurangiTamu / totalPenerimaKK).toFixed(2) : 0;
   const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalKambingDikurangiTamu / totalPenerimaKK).toFixed(2) : 0;
+
+  const pekurbanSapiJiwa = Array.isArray(jamaahList) ? jamaahList.filter(j => j.approvedByTakmir && !j.hasUsulanEdit && j.qurban === "Sahibul Qurban - Sapi").reduce((sum, j) => sum + (parseInt(j.qurbanJiwa) || 1), 0) : 0;
+  const pekurbanKambingJiwa = Array.isArray(jamaahList) ? jamaahList.filter(j => j.approvedByTakmir && !j.hasUsulanEdit && j.qurban === "Sahibul Qurban - Kambing").reduce((sum, j) => sum + (parseInt(j.qurbanJiwa) || 1), 0) : 0;
+  const totalAlokasiSahibulSapi = pekurbanSapiJiwa * (Number(qurbanSahibul.sapi) || 0);
+  const totalAlokasiSahibulKambing = pekurbanKambingJiwa * (Number(qurbanSahibul.kambing) || 0);
 
   const checkEditAccess = (tab) => {
      if(!Array.isArray(currentUserRoles)) return false;
@@ -705,8 +652,9 @@ export default function App() {
           if (editingJamaah.fitrah !== finalData.fitrah) diffNotes.push(`Fitrah: ${editingJamaah.fitrah} ➔ ${finalData.fitrah}`);
           if (editingJamaah.zuru !== finalData.zuru) diffNotes.push(`Zuru': ${editingJamaah.zuru} ➔ ${finalData.zuru}`);
           if (editingJamaah.qurban !== finalData.qurban) diffNotes.push(`Qurban: ${editingJamaah.qurban} ➔ ${finalData.qurban}`);
+          if (String(editingJamaah.qurbanJiwa || 1) !== String(finalData.qurbanJiwa)) diffNotes.push(`Jiwa Qurban: ${editingJamaah.qurbanJiwa || 1} ➔ ${finalData.qurbanJiwa}`);
           if (editingJamaah.ekonomi !== finalData.ekonomi) diffNotes.push(`Ekonomi: ${editingJamaah.ekonomi} ➔ ${finalData.ekonomi}`);
-          if (String(editingJamaah.anggota) !== String(finalData.anggota)) diffNotes.push(`Jiwa: ${editingJamaah.anggota} ➔ ${finalData.anggota}`);
+          if (String(editingJamaah.anggota) !== String(finalData.anggota)) diffNotes.push(`Jiwa KK: ${editingJamaah.anggota} ➔ ${finalData.anggota}`);
           if (editingJamaah.isGuruNgaji !== finalData.isGuruNgaji) diffNotes.push(`Guru Ngaji: ${editingJamaah.isGuruNgaji ? 'Ya' : 'Tidak'} ➔ ${finalData.isGuruNgaji ? 'Ya' : 'Tidak'}`);
 
           if (diffNotes.length === 0) {
@@ -739,7 +687,7 @@ export default function App() {
       addNotification(butuhAcc ? "Usulan warga baru terkirim! Menunggu ACC" : "Warga didaftarkan", "success");
     }
     setShowJamaahModal(false); setEditingJamaah(null);
-    setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", isGuruNgaji: false });
+    setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", qurbanJiwa: 1, isGuruNgaji: false });
   };
 
   const handleApproveWarga = (wargaId) => { 
@@ -768,7 +716,7 @@ export default function App() {
       } 
   };
 
-  const handleEditJamaah = (jamaah) => { setEditingJamaah(jamaah); setJamaahForm({ ...jamaah, qurban: jamaah.qurban || "Penerima" }); setShowJamaahModal(true); };
+  const handleEditJamaah = (jamaah) => { setEditingJamaah(jamaah); setJamaahForm({ ...jamaah, qurban: jamaah.qurban || "Penerima", qurbanJiwa: jamaah.qurbanJiwa || 1 }); setShowJamaahModal(true); };
   const handleDeleteJamaah = (id) => {
     if (window.confirm("Apakah Anda yakin ingin menghapus data warga ini?")) {
       setJamaahList(prev => prev.filter(item => item.id !== id)); addNotification("Data dihapus", "warning");
@@ -828,87 +776,6 @@ export default function App() {
     }
   };
 
-  const handleSaveNewIdentity = () => {
-    if (!tempMasjidName.trim()) { addNotification("Nama Masjid tidak boleh kosong!", "error"); return; }
-    setMasjidName(tempMasjidName);
-    setMasjidLogoUrl(tempMasjidLogoUrl);
-    addNotification("Identitas dan Logo Masjid berhasil diperbarui!", "success");
-  };
-
-  const handleCancelNewIdentity = () => {
-    setTempMasjidName(masjidName);
-    setTempMasjidLogoUrl(masjidLogoUrl);
-    addNotification("Perubahan identitas dibatalkan.", "warning");
-  };
-
-  const handleEditPasaran = (pasaranKey) => {
-    setEditingPasaran(pasaranKey);
-    setPasaranForm(petugasAbadi[pasaranKey] || { khatib: "", imam: "", muadzin: "", bilal: "", telp: "" });
-  };
-
-  const handleSavePasaran = (e) => {
-    e.preventDefault();
-    setPetugasAbadi(prev => ({ ...prev, [editingPasaran]: pasaranForm }));
-    addNotification(`Template Petugas Jumat ${editingPasaran} berhasil diperbarui!`);
-    setEditingPasaran(null);
-  };
-
-  const handleCreateAccount = (e) => {
-    e.preventDefault();
-    const cleanUsername = newAccUsername.trim().toLowerCase();
-    if (!cleanUsername || !newAccPassword.trim() || !newAccLabel.trim()) return;
-    if (userDatabase[cleanUsername]) { addNotification("Username terdaftar!", "error"); return; }
-    setUserDatabase(prev => ({ ...prev, [cleanUsername]: { password: newAccPassword, roles: [newAccRole], label: newAccLabel, approved: true } }));
-    addNotification("Akun dibuat!"); setNewAccUsername(""); setNewAccPassword(""); setNewAccLabel(""); setNewAccRole("Jamaah");
-  };
-
-  const handleDeleteAccount = (usernameKey) => {
-    if (["admin", "takmir", "rt01", "jamaah"].includes(usernameKey)) { addNotification("Akun bawaan sistem tidak boleh dihapus!", "error"); return; }
-    if (window.confirm("Hapus akun?")) { setUserDatabase(prev => { const copy = { ...prev }; delete copy[usernameKey]; return copy; }); addNotification("Akun dihapus.", "warning"); }
-  };
-
-  const handleSaveNewPassword = (e) => {
-    e.preventDefault();
-    if (!newPasswordValue.trim()) return;
-    setUserDatabase(prev => ({ ...prev, [editingAccountPassword]: { ...prev[editingAccountPassword], password: newPasswordValue.trim() } }));
-    addNotification("Password diganti!", "success"); setEditingAccountPassword(null); setNewPasswordValue("");
-  };
-
-  const handlePrepareNotification = (fridayData, type) => {
-    setNotificationType(type);
-    let msg = type === "WA" ? `Yth. *${String(fridayData.petugas.khatib)}*, besok Jumat ${String(fridayData.pasaran)} jadwal bertugas Khatib. Mohon hadir tepat waktu.` : `[MASJID] Yth ${String(fridayData.petugas.khatib)}, besok Jumat ${String(fridayData.pasaran)} jadwal tugas.`;
-    setSimulatedMessageText(msg); setActiveNotificationSim(fridayData);
-  };
-
-  const handleSendSimMessage = () => {
-    setIsSendingMessage(true);
-    setTimeout(() => {
-      setIsSendingMessage(false);
-      addNotification(`Notifikasi ${notificationType} sukses terkirim ke ${activeNotificationSim.petugas.khatib}!`, "success");
-      setActiveNotificationSim(null);
-    }, 1500);
-  };
-
-  const handleGetGPSLocation = () => {
-    if (!navigator.geolocation) {
-      addNotification("Browser tidak mendukung fitur penunjuk GPS.", "error");
-      return;
-    }
-    addNotification("Mencari titik GPS... Harap izinkan akses Lokasi.", "info");
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        setTempLokasi(prev => ({ ...prev, latitude: lat, longitude: lon }));
-        addNotification(`GPS Ditemukan! ${lat.toFixed(5)}, ${lon.toFixed(5)}.`, "success");
-      },
-      (error) => {
-        addNotification("Gagal mengambil GPS. Pastikan GPS menyala.", "error");
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-    );
-  };
-
   const handlePrintSelectedReport = (reportType) => {
     let filteredWarga = Array.isArray(jamaahList) ? jamaahList.filter(j => j.approvedByTakmir && !j.hasUsulanEdit) : []; 
     let rtTitle = "Seluruh Wilayah (Semua RT & RW)";
@@ -951,6 +818,18 @@ export default function App() {
       summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#e0e7ff;border:1px solid #c7d2fe;text-align:center;"><strong>Total Penerima Zakat (Non-Pekurban):</strong> ${penerimaZakatList.length} KK</div>`;
       tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 35%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 15%;">RT / RW</th><th class="text-center" style="width: 15%;">Fitrah</th><th class="text-center" style="width: 15%;">Zuru'</th><th class="text-center" style="width: 15%;">Paraf</th></tr>`;
       tableRowsHTML = penerimaZakatList.length > 0 ? penerimaZakatList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td class="text-center">${j.fitrah !== "Muzakki" ? String(j.fitrah) : "-"}${j.isGuruNgaji?" <span style='font-size:8px;'>(+Guru)</span>":""}</td><td class="text-center">${j.zuru !== "Bukan Mustahik" ? String(j.zuru) : "-"}${j.isGuruNgaji?" <span style='font-size:8px;'>(+Guru)</span>":""}</td><td style="height:22px;"></td></tr>`).join('') : `<tr><td colspan="6" class="text-center">Kosong</td></tr>`;
+    } else if (reportType === "penerimaqurban") {
+      docTitle = `Daftar Penerima Qurban`;
+      const penerimaQurbanList = filteredWarga.filter(j => {
+          if (j.qurban && String(j.qurban).startsWith("Sahibul Qurban")) return false;
+          if (qurbanHanyaMustahik) {
+            return (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
+          }
+          return true;
+      });
+      summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#ffe4e6;border:1px solid #fecdd3;text-align:center;"><strong>Total Penerima Qurban:</strong> ${penerimaQurbanList.length} KK</div>`;
+      tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 35%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 15%;">RT / RW</th><th class="text-center" style="width: 15%;">Jumlah Jiwa</th><th class="text-center" style="width: 30%;">Paraf</th></tr>`;
+      tableRowsHTML = penerimaQurbanList.length > 0 ? penerimaQurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td class="text-center">${j.anggota}</td><td style="height:22px;"></td></tr>`).join('') : `<tr><td colspan="5" class="text-center">Kosong</td></tr>`;
     } else if (reportType === "fitrah") {
       docTitle = `Rekapitulasi Penyaluran Zakat Fitrah`;
       
@@ -961,23 +840,20 @@ export default function App() {
       });
       let mzRows = Object.keys(muzakkiPerRT).map(k => `<tr><td>${k}</td><td class="text-center">${muzakkiPerRT[k]} Jiwa</td></tr>`).join('');
       
-      // PERINCIAN PENERIMA SEPERTI PERMINTAAN USER (KATEGORI: Berat, Sedang, Ringan, Guru Ngaji)
       let fitrahCategories = ["Berat", "Sedang", "Ringan"];
       let categorySummaryRows = fitrahCategories.map(cat => {
          let list = filteredWarga.filter(j => j.fitrah === cat);
          let countKK = list.length;
-         let totalJiwa = list.reduce((s, j) => s + (parseInt(j.anggota)||0), 0);
+         let totalJiwa = list.reduce((s, j) => s + (parseInt(j.anggota||0), 0), 0);
          let totalKg = totalJiwa * (Number(alokasiFitrah[cat]) || 0);
          return `<tr><td>Mustahik ${cat}</td><td class="text-center">${countKK} KK</td><td class="text-center">${totalJiwa} Jiwa</td><td class="text-center">${alokasiFitrah[cat]} Kg/Jiwa</td><td class="text-right font-bold">${totalKg.toFixed(1)} Kg</td></tr>`;
       }).join('');
       
-      // Tambah Guru Ngaji ke ringkasan kategori
       let guruFitrahList = filteredWarga.filter(j => j.isGuruNgaji);
       let guruCount = guruFitrahList.length;
       let guruTotalKg = guruCount * (Number(alokasiFitrah.GuruNgaji) || 0);
       categorySummaryRows += `<tr><td>Guru Ngaji (Bantuan Khusus)</td><td class="text-center">${guruCount} KK</td><td class="text-center">-</td><td class="text-center">${alokasiFitrah.GuruNgaji} Kg/KK</td><td class="text-right font-bold">${guruTotalKg.toFixed(1)} Kg</td></tr>`;
 
-      // Tabel RT/RW dengan Perincian Kategori Detil
       let rtRows = [];
       WILAYAH_OPTIONS.forEach(w => {
          let rtWarga = filteredWarga.filter(j => j.rt === w.rt && j.rw === w.rw);
@@ -1141,10 +1017,11 @@ export default function App() {
         </div>
         <h4>Alokasi Sahibul Qurban & Tamu/Panitia</h4>
         <table class="data-table" style="margin-bottom:10px;">
-           <thead><tr><th>Kategori Khusus</th><th class="text-center">Jatah Sapi (Kg)</th><th class="text-center">Jatah Kambing (Kg)</th><th class="text-center">Keterangan</th></tr></thead>
+           <thead><tr><th>Kategori Khusus</th><th class="text-center">Total Hak Sapi (Kg)</th><th class="text-center">Total Hak Kambing (Kg)</th><th class="text-center">Keterangan</th></tr></thead>
            <tbody>
-             <tr><td>Sahibul Qurban</td><td class="text-center">${Number(qurbanSahibul.sapi) || 0} Kg</td><td class="text-center">${Number(qurbanSahibul.kambing) || 0} Kg</td><td class="text-center">Catatan Internal</td></tr>
-             <tr><td>Tamu (${Number(qurbanTamu.jumlah) || 0} Orang)</td><td class="text-center">${Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahSapi)} Kg</td><td class="text-center">${Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahKambing)} Kg</td><td class="text-center">Memotong Kuota Warga</td></tr>
+             <tr><td>Sahibul Qurban Sapi (${pekurbanSapiJiwa} Jiwa)</td><td class="text-center">${totalAlokasiSahibulSapi.toFixed(1)} Kg</td><td class="text-center">-</td><td class="text-center">Hak otomatis dari jiwa</td></tr>
+             <tr><td>Sahibul Qurban Kambing (${pekurbanKambingJiwa} Jiwa)</td><td class="text-center">-</td><td class="text-center">${totalAlokasiSahibulKambing.toFixed(1)} Kg</td><td class="text-center">Hak otomatis dari jiwa</td></tr>
+             <tr><td>Tamu (${Number(qurbanTamu.jumlah) || 0} Orang)</td><td class="text-center">${(Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahSapi)).toFixed(1)} Kg</td><td class="text-center">${(Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahKambing)).toFixed(1)} Kg</td><td class="text-center">Memotong Kuota Warga</td></tr>
            </tbody>
         </table>
         <h4>Rekap Kebutuhan Daging per Wilayah RT/RW (Total: ${totalPenerimaKK} KK)</h4>
@@ -1156,19 +1033,14 @@ export default function App() {
       docTitle = `Daftar Sahibul Qurban (Pekurban)`;
       const pekurbanList = filteredWarga.filter(j => j.qurban && j.qurban.startsWith("Sahibul Qurban"));
       summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#fffbeb;border:1px solid #fde68a;text-align:center;"><strong>Total Pekurban:</strong> ${pekurbanList.length} Warga</div>`;
-      tableHeaderHTML = `<tr><th class="text-center" style="width: 8%;">No</th><th style="width: 35%;">Nama Pekurban</th><th class="text-center" style="width: 15%;">RT / RW</th><th style="width: 22%;">Alamat</th><th class="text-center" style="width: 20%;">Jenis Qurban</th></tr>`;
-      tableRowsHTML = pekurbanList.length > 0 ? pekurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center font-bold text-amber-700">${String(j.qurban).replace("Sahibul Qurban - ", "")}</td></tr>`).join('') : `<tr><td colspan="5" class="text-center">Belum ada pekurban.</td></tr>`;
-    } else if (reportType === "terpadu") {
-      docTitle = `Rekap Zakat Terpadu`;
-      const mustahikList = filteredWarga.filter(j => j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
-      tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 35%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 15%;">RT / RW</th><th class="text-center" style="width: 15%;">Fitrah</th><th class="text-center" style="width: 15%;">Zuru'</th><th class="text-center" style="width: 15%;">Paraf</th></tr>`;
-      tableRowsHTML = mustahikList.length > 0 ? mustahikList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td class="text-center">${j.fitrah !== "Muzakki" ? String(j.fitrah) : "-"}${j.isGuruNgaji?" <span style='font-size:8px;'>(+Guru)</span>":""}</td><td class="text-center">${j.zuru !== "Bukan Mustahik" ? String(j.zuru) : "-"}${j.isGuruNgaji?" <span style='font-size:8px;'>(+Guru)</span>":""}</td><td style="height:22px;"></td></tr>`).join('') : `<tr><td colspan="6" class="text-center">Kosong</td></tr>`;
+      tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 30%;">Nama Pekurban</th><th class="text-center" style="width: 15%;">RT / RW</th><th style="width: 25%;">Alamat</th><th class="text-center" style="width: 15%;">Jenis Qurban</th><th class="text-center" style="width: 10%;">Jiwa Diqurbankan</th></tr>`;
+      tableRowsHTML = pekurbanList.length > 0 ? pekurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center font-bold text-amber-700">${String(j.qurban).replace("Sahibul Qurban - ", "")}</td><td class="text-center font-black">${j.qurbanJiwa || 1}</td></tr>`).join('') : `<tr><td colspan="6" class="text-center">Belum ada pekurban.</td></tr>`;
     }
 
     const printDate = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
     const safeTitle = String(docTitle).replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
     
-    // SCRIPT HTML2PDF YANG RAMAH APK DENGAN THEAD BERULANG
+    // SCRIPT HTML2PDF YANG RAMAH APK DENGAN THEAD BERULANG UNTUK F4
     const html = `<!DOCTYPE html>
     <html lang="id">
     <head>
@@ -1185,6 +1057,7 @@ export default function App() {
         .btn-pdf-browser { background: #334155; color: white; }
         .print-container { width: 100%; max-width: 215mm; background: white; padding: 20px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); box-sizing: border-box; }
         .master-table { width: 100%; border-collapse: collapse; border: none; }
+        .master-table > thead { display: table-header-group; }
         .master-table > thead > tr > td, .master-table > tbody > tr > td { border: none; padding: 0; }
         .kop-masjid { display: flex; align-items: center; justify-content: center; gap: 15px; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 10px; text-align: left; }
         .kop-masjid h1 { margin: 0; font-size: 18px; text-transform: uppercase; font-weight: bold; color: #000; }
@@ -1202,6 +1075,7 @@ export default function App() {
           .wrapper { padding: 0; }
           .control-panel { display: none !important; }
           .print-container { max-width: none; width: 100%; box-shadow: none; margin: 0; padding: 0; border: none; }
+          tr { page-break-inside: avoid; }
           @page { size: 215mm 330mm; margin: 10mm; }
         }
       </style>
@@ -1276,6 +1150,69 @@ export default function App() {
     setPrintIframeData(html);
   };
 
+  const handleSaveNewIdentity = () => {
+    if (!tempMasjidName.trim()) { addNotification("Nama Masjid tidak boleh kosong!", "error"); return; }
+    setMasjidName(tempMasjidName);
+    setMasjidLogoUrl(tempMasjidLogoUrl);
+    addNotification("Identitas dan Logo Masjid berhasil diperbarui!", "success");
+  };
+
+  const handleCancelNewIdentity = () => {
+    setTempMasjidName(masjidName);
+    setTempMasjidLogoUrl(masjidLogoUrl);
+    addNotification("Perubahan identitas dibatalkan.", "warning");
+  };
+
+  const handleEditPasaran = (pasaranKey) => {
+    setEditingPasaran(pasaranKey);
+    setPasaranForm(petugasAbadi[pasaranKey] || { khatib: "", imam: "", muadzin: "", bilal: "", telp: "" });
+  };
+
+  const handleSavePasaran = (e) => {
+    e.preventDefault();
+    setPetugasAbadi(prev => ({ ...prev, [editingPasaran]: pasaranForm }));
+    addNotification(`Template Petugas Jumat ${editingPasaran} berhasil diperbarui!`);
+    setEditingPasaran(null);
+  };
+
+  const handleCreateAccount = (e) => {
+    e.preventDefault();
+    const cleanUsername = newAccUsername.trim().toLowerCase();
+    if (!cleanUsername || !newAccPassword.trim() || !newAccLabel.trim()) return;
+    if (userDatabase[cleanUsername]) { addNotification("Username terdaftar!", "error"); return; }
+    setUserDatabase(prev => ({ ...prev, [cleanUsername]: { password: newAccPassword, roles: [newAccRole], label: newAccLabel, approved: true } }));
+    addNotification("Akun dibuat!"); setNewAccUsername(""); setNewAccPassword(""); setNewAccLabel(""); setNewAccRole("Jamaah");
+  };
+
+  const handleDeleteAccount = (usernameKey) => {
+    if (["admin", "takmir", "rt01", "jamaah"].includes(usernameKey)) { addNotification("Akun bawaan sistem tidak boleh dihapus!", "error"); return; }
+    if (window.confirm("Hapus akun?")) { setUserDatabase(prev => { const copy = { ...prev }; delete copy[usernameKey]; return copy; }); addNotification("Akun dihapus.", "warning"); }
+  };
+
+  const handleGetGPSLocation = () => {
+    if (!navigator.geolocation) {
+      addNotification("Browser tidak mendukung fitur penunjuk GPS.", "error");
+      return;
+    }
+    addNotification("Mencari titik GPS... Harap izinkan akses Lokasi.", "info");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        setTempLokasi(prev => ({ ...prev, latitude: lat, longitude: lon }));
+        addNotification(`GPS Ditemukan! ${lat.toFixed(5)}, ${lon.toFixed(5)}.`, "success");
+      },
+      (error) => {
+        addNotification("Gagal mengambil GPS. Pastikan GPS menyala.", "error");
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
+
+  // === CALCULATED CONSTANTS & VARIABLES (Placed INSIDE App to safely read states, AFTER all handlers) ===
+  const nextSholat = getNextSholat(currentTime, jadwalSholat);
+  const upcomingFridaysList = getUpcomingFridaysLocal(currentTime, petugasAbadi, 5);
+  const infoTugasBesok = getPetugasTugasBesok(currentTime, isSimulatedThursday, isDutyDismissed, petugasAbadi, currentUserLabel);
 
   // === 6. RENDER PENGANTAR LOGIN / REGISTER ===
   if (!isLoggedIn) {
@@ -1333,7 +1270,9 @@ export default function App() {
 
         <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6">
           <div className="text-center space-y-2">
-            <div className="w-16 h-16 text-emerald-600 mx-auto">{renderMasjidLogo("w-full h-full object-contain rounded-lg", "w-16 h-16")}</div>
+            <div className="w-16 h-16 text-emerald-600 mx-auto">
+               {renderMasjidLogo(masjidLogoUrl, "w-full h-full object-contain rounded-lg", "w-16 h-16")}
+            </div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">{String(masjidName)}</h1>
           </div>
 
@@ -1414,7 +1353,7 @@ export default function App() {
             <div className="p-5 border-b flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-2.5 overflow-hidden">
                 <div className="w-8 h-8 text-emerald-600 shrink-0">
-                  {renderMasjidLogo("w-full h-full object-contain rounded", "w-7 h-7")}
+                  {renderMasjidLogo(masjidLogoUrl, "w-full h-full object-contain rounded", "w-7 h-7")}
                 </div>
                 <span className="text-sm font-black text-slate-800 tracking-wide truncate">{String(masjidName)}</span>
               </div>
@@ -1663,8 +1602,8 @@ export default function App() {
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Warga</button>
                   <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Pekurban</button>
-                  <button onClick={() => handlePrintSelectedReport("terpadu")} className="bg-teal-700 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Terpadu</button>
                   <button onClick={() => handlePrintSelectedReport("penerimazakat")} className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Penerima Zakat</button>
+                  <button onClick={() => handlePrintSelectedReport("penerimaqurban")} className="bg-rose-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Penerima Qurban</button>
                 </div>
               </div>
             </div>
@@ -1717,7 +1656,7 @@ export default function App() {
                   <form onSubmit={handleSaveJamaah} className="space-y-4">
                     <input type="text" placeholder="Nama Kepala Keluarga" required value={jamaahForm.nama} onChange={e => setJamaahForm({...jamaahForm, nama: e.target.value})} className="w-full text-sm border p-2.5 rounded-xl outline-none" />
                     <div className="flex gap-4">
-                      <div className="flex-1"><label className="text-[10px] font-bold text-slate-500">Jumlah Jiwa</label><input type="number" min="1" value={jamaahForm.anggota} onChange={e => setJamaahForm({...jamaahForm, anggota: e.target.value})} className="w-full border p-2.5 rounded-xl text-sm" /></div>
+                      <div className="flex-1"><label className="text-[10px] font-bold text-slate-500">Jumlah Jiwa KK</label><input type="number" min="1" value={jamaahForm.anggota} onChange={e => setJamaahForm({...jamaahForm, anggota: e.target.value})} className="w-full border p-2.5 rounded-xl text-sm" /></div>
                       <div className="flex-1"><label className="text-[10px] font-bold text-slate-500">Wilayah</label><select value={`${jamaahForm.rt}_${jamaahForm.rw}`} onChange={e => { const [rt, rw] = e.target.value.split('_'); setJamaahForm({...jamaahForm, rt, rw}); }} className="w-full border p-2.5 rounded-xl text-sm bg-white">{WILAYAH_OPTIONS.map(w => <option key={w.label} value={`${w.rt}_${w.rw}`}>{String(w.label)}</option>)}</select></div>
                     </div>
                     <div><label className="text-[10px] font-bold text-slate-500">Alamat</label><textarea required value={jamaahForm.alamat} onChange={e => setJamaahForm({...jamaahForm, alamat: e.target.value})} className="w-full border p-2.5 rounded-xl text-sm resize-none" rows="2"/></div>
@@ -1745,7 +1684,22 @@ export default function App() {
                     </div>
                     
                     {Array.isArray(currentUserRoles) && !(currentUserRoles.includes("RT") && !currentUserRoles.includes("Admin") && !currentUserRoles.includes("Takmir") && !currentUserRoles.includes("Amil")) && (
-                      <div><label className="text-[10px] font-bold text-rose-600">Status Qurban</label><select value={jamaahForm.qurban} onChange={e => setJamaahForm({...jamaahForm, qurban: e.target.value})} className="w-full border p-2 rounded-xl text-xs font-bold"><option value="Penerima">Penerima Daging</option><option value="Sahibul Qurban - Sapi">Sahibul Qurban Sapi</option><option value="Sahibul Qurban - Kambing">Sahibul Qurban Kambing</option></select></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[10px] font-bold text-rose-600">Status Qurban</label>
+                            <select value={jamaahForm.qurban} onChange={e => setJamaahForm({...jamaahForm, qurban: e.target.value})} className="w-full border p-2 rounded-xl text-xs font-bold outline-none">
+                                <option value="Penerima">Penerima Daging</option>
+                                <option value="Sahibul Qurban - Sapi">Sahibul Qurban Sapi</option>
+                                <option value="Sahibul Qurban - Kambing">Sahibul Qurban Kambing</option>
+                            </select>
+                        </div>
+                        {jamaahForm.qurban && jamaahForm.qurban.startsWith("Sahibul Qurban") && (
+                          <div>
+                             <label className="text-[10px] font-bold text-rose-600">Jumlah Jiwa Diqurbankan</label>
+                             <input type="number" min="1" value={jamaahForm.qurbanJiwa || 1} onChange={e => setJamaahForm({...jamaahForm, qurbanJiwa: parseInt(e.target.value) || 1})} className="w-full border p-2 rounded-xl text-xs font-bold outline-none" />
+                          </div>
+                        )}
+                      </div>
                     )}
                     <div className="flex justify-end gap-2 pt-4 border-t">
                       <button type="button" onClick={() => setShowJamaahModal(false)} className="px-5 py-2.5 border rounded-xl text-xs font-bold">Batal</button>
@@ -1800,7 +1754,7 @@ export default function App() {
                 <div className="mt-4 pt-4 border-t">
                   <p className="text-xs font-bold text-slate-500 mb-2">Rincian Estimasi Kebutuhan</p>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left">
+                    <table className="data-table">
                       <thead className="bg-slate-50"><tr className="border-b"><th className="p-2">Kategori</th><th className="p-2 text-center">Jiwa/KK</th><th className="p-2 text-right">Butuh</th></tr></thead>
                       <tbody>
                         {rincianKebutuhanFitrahData.map((item, idx) => (
@@ -1861,7 +1815,7 @@ export default function App() {
                 <div className="mt-4 pt-4 border-t">
                   <p className="text-xs font-bold text-slate-500 mb-2">Rincian Estimasi Kebutuhan</p>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left">
+                    <table className="data-table">
                       <thead className="bg-slate-50"><tr className="border-b"><th className="p-2">Kategori</th><th className="p-2 text-center">Jiwa/KK</th><th className="p-2 text-right">Butuh</th></tr></thead>
                       <tbody>
                         {rincianKebutuhanZuruData.map((item, idx) => (
@@ -1898,8 +1852,11 @@ export default function App() {
                 <div className="bg-white border rounded-2xl p-4 shadow-xs">
                     <h3 className="font-bold text-sm mb-3 text-indigo-600">Alokasi Hak Sahibul Qurban (Pencatatan)</h3>
                     <div className="flex gap-4">
-                        <div className="flex items-center gap-2"><span className="text-xs font-bold">SAPI:</span><input type="number" step="0.1" value={tempQurbanSahibul.sapi} onChange={e => setTempQurbanSahibul({...tempQurbanSahibul, sapi: parseFloat(e.target.value) || 0})} className="w-16 border rounded text-sm text-center outline-none" /> <span className="text-xs">Kg</span></div>
-                        <div className="flex items-center gap-2"><span className="text-xs font-bold">KAMBING:</span><input type="number" step="0.1" value={tempQurbanSahibul.kambing} onChange={e => setTempQurbanSahibul({...tempQurbanSahibul, kambing: parseFloat(e.target.value) || 0})} className="w-16 border rounded text-sm text-center outline-none" /> <span className="text-xs">Kg</span></div>
+                        <div className="flex items-center gap-2"><span className="text-[10px] font-bold">JATAH SAPI/JIWA:</span><input type="number" step="0.1" value={tempQurbanSahibul.sapi} onChange={e => setTempQurbanSahibul({...tempQurbanSahibul, sapi: parseFloat(e.target.value) || 0})} className="w-16 border rounded text-sm text-center outline-none" /> <span className="text-xs">Kg</span></div>
+                        <div className="flex items-center gap-2"><span className="text-[10px] font-bold">JATAH KMBG/JIWA:</span><input type="number" step="0.1" value={tempQurbanSahibul.kambing} onChange={e => setTempQurbanSahibul({...tempQurbanSahibul, kambing: parseFloat(e.target.value) || 0})} className="w-16 border rounded text-sm text-center outline-none" /> <span className="text-xs">Kg</span></div>
+                    </div>
+                    <div className="mt-3 bg-indigo-50 border border-indigo-100 p-2 rounded-lg text-xs text-indigo-800">
+                        Total Hak: Sapi <strong>{totalAlokasiSahibulSapi.toFixed(1)} Kg</strong> ({pekurbanSapiJiwa} Jiwa), Kambing <strong>{totalAlokasiSahibulKambing.toFixed(1)} Kg</strong> ({pekurbanKambingJiwa} Jiwa)
                     </div>
                 </div>
 
@@ -1966,7 +1923,7 @@ export default function App() {
                           <td className="p-3 font-bold">{String(userDatabase[un].label)}</td><td className="p-3 font-mono">@{String(un)}</td>
                           <td className="p-3">
                             <div className="flex gap-2">
-                              <select id={`r-${un}`} className="border p-1.5 rounded outline-none" defaultValue="Jamaah"><option value="Takmir">Takmir</option><option value="Amil">Amil Zakat</option><option value="RT">Ketua RT</option><option value="Petugas">Petugas</option><option value="Jamaah">Jama'ah</option></select>
+                              <select id={`r-${un}`} className="border p-1.5 rounded outline-none" defaultValue="Jamaah"><option value="Takmir">Takmir</option><option value="Amil Zakat">Amil Zakat</option><option value="RT">Ketua RT</option><option value="Petugas">Petugas</option><option value="Jamaah">Jama'ah</option></select>
                               <button onClick={() => handleApproveAccount(un, document.getElementById(`r-${un}`).value)} className="bg-emerald-600 text-white px-3 rounded font-bold">ACC</button>
                               <button onClick={() => handleRejectAccount(un)} className="bg-rose-100 text-rose-600 px-3 rounded font-bold">Tolak</button>
                             </div>
@@ -1996,12 +1953,12 @@ export default function App() {
                  <div><label className="text-[10px] font-bold text-slate-500">Nama Lengkap</label><input type="text" required value={newAccLabel} onChange={e => setNewAccLabel(e.target.value)} className="w-full border p-2 rounded-lg mt-1 text-xs outline-none" /></div>
                  <div><label className="text-[10px] font-bold text-slate-500">Username</label><input type="text" required value={newAccUsername} onChange={e => setNewAccUsername(e.target.value)} className="w-full border p-2 rounded-lg mt-1 text-xs outline-none" /></div>
                  <div><label className="text-[10px] font-bold text-slate-500">Password</label><input type="text" required value={newAccPassword} onChange={e => setNewAccPassword(e.target.value)} className="w-full border p-2 rounded-lg mt-1 text-xs outline-none" /></div>
-                 <div className="flex gap-2"><select value={newAccRole} onChange={e => setNewAccRole(e.target.value)} className="flex-1 border p-2 rounded-lg text-xs font-bold outline-none"><option value="Admin">Admin</option><option value="Takmir">Takmir</option><option value="Amil">Amil Zakat</option><option value="RT">Ketua RT</option><option value="Petugas">Petugas</option><option value="Jamaah">Jama'ah</option></select><button type="submit" className="bg-slate-800 text-white px-3 rounded-lg text-xs font-bold">Buat</button></div>
+                 <div className="flex gap-2"><select value={newAccRole} onChange={e => setNewAccRole(e.target.value)} className="flex-1 border p-2 rounded-lg text-xs font-bold outline-none"><option value="Admin">Admin</option><option value="Takmir">Takmir</option><option value="Amil Zakat">Amil Zakat</option><option value="RT">Ketua RT</option><option value="Petugas">Petugas</option><option value="Jamaah">Jama'ah</option></select><button type="submit" className="bg-slate-800 text-white px-3 rounded-lg text-xs font-bold">Buat</button></div>
                </form>
                
                <h3 className="font-bold text-xs mt-6 mb-3 uppercase text-slate-500">Akun Terdaftar (Aktif)</h3>
                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                 {Object.keys(userDatabase).filter(k => userDatabase[k].approved).map(k => (
+                 {Object.keys(userDatabase).map(k => (
                     <div key={k} className="border rounded-xl p-3 flex justify-between items-center bg-white">
                       <div className="w-full max-w-[70%]">
                         <p className="font-bold text-xs truncate">{String(userDatabase[k].label)}</p>
@@ -2072,7 +2029,7 @@ export default function App() {
               <table className="w-full text-left text-xs border-collapse min-w-[500px] overflow-hidden rounded-lg">
                 <thead className="bg-slate-800 text-white"><tr className="border-b border-slate-700"><th className="p-3">Modul Aplikasi</th>{Object.keys(rolesConfig).map(r => <th key={r} className="p-3 text-center">{String(r)}</th>)}</tr></thead>
                 <tbody>
-                  {[{id: "dashboard", label: "Dashboard Utama"}, {id: "petugas", label: "Petugas Jumat"}, {id: "jamaah", label: "Data Warga"}, {id: "fitrah", label: "Zakat Fitrah"}, {id: "zuru", label: "Zakat Zuru'"}, {id: "qurban", label: "Qurban"}, {id: "rbac", label: "Pengaturan RBAC"}].map((m, index) => (
+                  {[{id: "dashboard", label: "Dashboard Utama"}, {id: "petugas", label: "Petugas Jumat"}, {id: "jamaah", label: "Data Warga"}, {id: "fitrah", label: "Zakat Fitrah"}, {id: "zuru", label: "Zakat Zuru'"}, {id: "qurban", label: "Daging Qurban"}, {id: "rbac", label: "Pengaturan RBAC"}].map((m, index) => (
                     <tr key={m.id} className={index % 2 === 0 ? "bg-slate-50" : "bg-white"}>
                       <td className="p-3 font-bold border-r">{String(m.label)}</td>
                       {Object.keys(rolesConfig).map(r => {
@@ -2101,7 +2058,7 @@ export default function App() {
 
       {/* Bagian Footer */}
       <footer className="bg-white border-t border-slate-200 px-4 py-3 text-center text-xs text-slate-500 z-10 w-full mt-auto">
-        &copy; {new Date().getFullYear()} {String(masjidName)} - developed by Misbahul Munir
+        &copy; {new Date().getFullYear()} {String(masjidName)} - Sistem Manajemen Masjid Terpadu
       </footer>
 
       {printIframeData && (
