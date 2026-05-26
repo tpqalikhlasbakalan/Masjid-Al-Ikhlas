@@ -12,7 +12,7 @@ import {
 // ====================================================================
 // Catatan: Anda tidak perlu lagi mengisi URL di sini. 
 // Silakan isi langsung melalui menu "Hak Akses & Akun" di dalam Aplikasi!
-const GOOGLE_SHEETS_SCRIPT_URL = ""; 
+const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlT-MtuAXW_wl-KnFnqUkhX4fPf6YIyXNMPTE4Syi66_uDhxGiKVVK9_imo25DpRCm/exec"; 
 
 // === SEED DATA AWAL ===
 const INITIAL_LOKASI = { provinsi: "Jawa Timur", kabupaten: "Lamongan", kecamatan: "Tikung", desa: "Bakalan", latitude: -7.1126, longitude: 112.4150 };
@@ -32,7 +32,7 @@ const INITIAL_ROLES = {
 };
 
 const INITIAL_USER_DATABASE = {
-  "admin": { password: "admin5758", roles: ["Admin"], label: "Super Admin", approved: true },
+  "admin": { password: "admin123", roles: ["Admin"], label: "Super Admin", approved: true },
   "takmir": { password: "takmir123", roles: ["Takmir"], label: "Takmir Masjid", approved: true },
   "rt01": { password: "rt123", roles: ["RT"], label: "Ketua RT 01", approved: true },
   "amil": { password: "amil123", roles: ["Amil"], label: "Amil Zakat", approved: true },
@@ -630,10 +630,6 @@ export default function App() {
       await fetch(googleSheetsUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: payloadStr });
       setSyncStatus("Tersinkronisasi");
       addNotification("Data berhasil dipaksa simpan ke awan!", "success");
-      
-      if(payloadStr.length > 45000) {
-         addNotification("INFO: Data sudah sangat besar, pastikan Anda menggunakan Apps Script terbaru!", "warning");
-      }
     } catch (err) { 
       setSyncStatus("Gagal Menyimpan");
       addNotification("Gagal memaksakan simpan data.", "error");
@@ -861,7 +857,7 @@ export default function App() {
     let rtTitle = "Seluruh Wilayah (Semua RT & RW)";
 
     let appliedPrintWilayah = "Semua";
-    if (reportType === "qurban" || reportType === "penerimaqurban") appliedPrintWilayah = selectedPrintWilayahQurban;
+    if (reportType === "qurban") appliedPrintWilayah = selectedPrintWilayahQurban;
     else if (reportType === "fitrah") appliedPrintWilayah = selectedPrintWilayahFitrah;
     else if (reportType === "zuru") appliedPrintWilayah = selectedPrintWilayahZuru;
     else appliedPrintWilayah = selectedPrintWilayah; 
@@ -1661,7 +1657,7 @@ export default function App() {
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Warga</button>
                   <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Mudhohi</button>
-                  <button onClick={() => handlePrintSelectedReport("penerimazakat")} className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Mustahik</button>
+                  <button onClick={() => handlePrintSelectedReport("penerimazakat")} className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Mustahik Zakat</button>
                   <button onClick={() => handlePrintSelectedReport("penerimaqurban")} className="bg-rose-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Mustahik Qurban</button>
                 </div>
               </div>
