@@ -342,192 +342,7 @@ export default function App() {
     return d && typeof d === 'object' && !Array.isArray(d) ? d : def;
   });
 
-  // === 2. HELPER FUNCTIONS INSIDE COMPONENT ===
-  const addNotification = (message, type = "success") => {
-    const id = Date.now();
-    setNotifications(prev => [...prev, { id, message: String(message), type }]);
-    setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 4000);
-  };
-
-  const hasAccess = (tabName) => {
-    if (!rolesConfig || !currentUserRoles || currentUserRoles.length === 0) return false;
-    if (currentUserRoles.includes("Admin")) return true;
-    return currentUserRoles.some(role => {
-      const acc = rolesConfig[role]?.access?.[tabName];
-      return acc === "view" || acc === "edit";
-    });
-  };
-
-  const updateRoleAccess = (role, menuId, newAccess) => {
-    setRolesConfig(prev => ({ ...prev, [role]: { ...prev[role], access: { ...prev[role].access, [menuId]: newAccess } } }));
-    addNotification("Hak akses diubah.", "success");
-  };
-
-  const navigateTo = (tabName) => {
-    if (hasAccess(tabName)) { setActiveTab(tabName); setIsMenuOpen(false); } 
-    else { addNotification("Akses Ditolak! Peran Anda tidak memiliki hak.", "error"); }
-  };
-
-  const applyCloudData = (payload) => {
-    if (payload.masjidName !== undefined) setMasjidName(payload.masjidName);
-    if (payload.masjidLogoUrl !== undefined) setMasjidLogoUrl(payload.masjidLogoUrl);
-    if (payload.petugasAbadi !== undefined) setPetugasAbadi(payload.petugasAbadi);
-    if (payload.jamaahList !== undefined) setJamaahList(payload.jamaahList);
-    if (payload.timbanganFitrah !== undefined) setTimbanganFitrah(payload.timbanganFitrah);
-    if (payload.alokasiFitrah !== undefined) setAlokasiFitrah(payload.alokasiFitrah);
-    if (payload.timbanganZuru !== undefined) setTimbanganZuru(payload.timbanganZuru);
-    if (payload.alokasiZuru !== undefined) setAlokasiZuru(payload.alokasiZuru);
-    if (payload.timbanganQurbanSapi !== undefined) setTimbanganQurbanSapi(payload.timbanganQurbanSapi);
-    if (payload.timbanganQurbanKambing !== undefined) setTimbanganQurbanKambing(payload.timbanganQurbanKambing);
-    if (payload.qurbanTamu !== undefined) setQurbanTamu(payload.qurbanTamu);
-    if (payload.qurbanSahibul !== undefined) setQurbanSahibul(payload.qurbanSahibul);
-    if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
-    if (payload.rolesConfig !== undefined) setRolesConfig(payload.rolesConfig);
-  };
-
-  const playAlarmSound = () => {
-    try {
-      const ctx = audioContext || new (window.AudioContext || window.webkitAudioContext)();
-      if (!audioContext) setAudioContext(ctx);
-      const playBeep = (delay, duration, freq) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.value = freq;
-        osc.type = "sine";
-        gain.gain.setValueAtTime(0, ctx.currentTime + delay);
-        gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + delay + 0.05);
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + delay + duration);
-        osc.start(ctx.currentTime + delay);
-        osc.stop(ctx.currentTime + delay + duration);
-      };
-      playBeep(0.0, 0.25, 880); playBeep(0.3, 0.25, 880); playBeep(0.6, 0.25, 880); playBeep(1.0, 0.40, 1100);
-      addNotification("🔊 Bunyi alarm disimulasikan!", "success");
-    } catch (e) { console.warn("Audio Context diblokir peramban."); }
-  };
-
-  // === 3. EFFECTS ===
-  useEffect(() => {
-    const handleMessage = (event) => { if (event.data === 'CLOSE_PRINT_FRAME') setPrintIframeData(null); };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
-  useEffect(() => { localStorage.setItem("masjidName", JSON.stringify(masjidName)); }, [masjidName]);
-  useEffect(() => { localStorage.setItem("masjidLogoUrl", JSON.stringify(masjidLogoUrl)); }, [masjidLogoUrl]);
-  useEffect(() => { localStorage.setItem("userDatabase", JSON.stringify(userDatabase)); }, [userDatabase]);
-  useEffect(() => { localStorage.setItem("rolesConfig", JSON.stringify(rolesConfig)); }, [rolesConfig]);
-  useEffect(() => { localStorage.setItem("lokasi", JSON.stringify(lokasi)); }, [lokasi]); 
-  useEffect(() => { localStorage.setItem("petugasAbadi", JSON.stringify(petugasAbadi)); }, [petugasAbadi]);
-  useEffect(() => { localStorage.setItem("jamaahList", JSON.stringify(jamaahList)); }, [jamaahList]);
-  useEffect(() => { localStorage.setItem("timbanganFitrah", JSON.stringify(timbanganFitrah)); }, [timbanganFitrah]);
-  useEffect(() => { localStorage.setItem("alokasiFitrah", JSON.stringify(alokasiFitrah)); }, [alokasiFitrah]);
-  useEffect(() => { localStorage.setItem("timbanganZuru", JSON.stringify(timbanganZuru)); }, [timbanganZuru]);
-  useEffect(() => { localStorage.setItem("alokasiZuru", JSON.stringify(alokasiZuru)); }, [alokasiZuru]);
-  useEffect(() => { localStorage.setItem("timbanganQurbanSapi", JSON.stringify(timbanganQurbanSapi)); }, [timbanganQurbanSapi]);
-  useEffect(() => { localStorage.setItem("timbanganQurbanKambing", JSON.stringify(timbanganQurbanKambing)); }, [timbanganQurbanKambing]);
-  useEffect(() => { localStorage.setItem("qurbanTamu", JSON.stringify(qurbanTamu)); }, [qurbanTamu]);
-  useEffect(() => { localStorage.setItem("qurbanSahibul", JSON.stringify(qurbanSahibul)); }, [qurbanSahibul]);
-
-  useEffect(() => { setTempMasjidName(masjidName); }, [masjidName]);
-  useEffect(() => { setTempMasjidLogoUrl(masjidLogoUrl); }, [masjidLogoUrl]);
-
-  useEffect(() => {
-    if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const currentDay = currentTime.getDate();
-  useEffect(() => {
-    const fetchJadwalRealTime = async () => {
-      if (!lokasi.latitude || !lokasi.longitude) return;
-      try {
-        const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lokasi.latitude}&longitude=${lokasi.longitude}&method=20`);
-        const result = await res.json();
-        if (result && result.code === 200) {
-          const t = result.data.timings;
-          setJadwalSholat({
-            Subuh: String(t.Fajr), Terbit: String(t.Sunrise), Dzuhur: String(t.Dhuhr),
-            Ashar: String(t.Asr), Maghrib: String(t.Maghrib), Isya: String(t.Isha)
-          });
-        }
-      } catch (err) { console.warn("Gagal fetch jadwal sholat."); }
-    };
-    fetchJadwalRealTime();
-  }, [lokasi.latitude, lokasi.longitude, currentDay]);
-
-  const handleFetchFromGoogleSheets = async () => {
-    if (!googleSheetsUrl) { setIsDataFetched(true); return; }
-    setIsDataFetched(false); setIsSyncing(true); setSyncStatus("Mengunduh Server...");
-    try {
-      const response = await fetch(`${googleSheetsUrl}?action=getData`);
-      const resData = await response.json();
-      if (resData && resData.status === "success" && Object.keys(resData.data).length > 0) {
-        const payload = resData.data;
-
-        // PROTEKSI: Bandingkan jumlah KK lokal vs awan
-        let localKK = 0;
-        try {
-          const l = JSON.parse(localStorage.getItem("jamaahList"));
-          if (Array.isArray(l)) localKK = l.length;
-        } catch(e){}
-
-        const cloudKK = Array.isArray(payload.jamaahList) ? payload.jamaahList.length : 0;
-
-        // Jika data di browser lokal jauh lebih banyak dari cloud, tahan penimpaan & beri warning konflik
-        if (localKK > cloudKK && localKK > 10) {
-            setSyncConflict({
-               localKK,
-               cloudKK,
-               payload
-            });
-            setSyncStatus("Konflik Sinkronisasi");
-            setIsSyncing(false);
-            setIsDataFetched(true);
-            return;
-        }
-
-        applyCloudData(payload);
-        setSyncStatus("Tersinkronisasi");
-      } else { setSyncStatus("Tersinkronisasi Lokal"); }
-    } catch (err) {
-      setSyncStatus("Gagal Sinkron");
-    } finally {
-      setIsSyncing(false); setIsDataFetched(true); 
-    }
-  };
-
-  useEffect(() => {
-    if (googleSheetsUrl) handleFetchFromGoogleSheets();
-    else setIsDataFetched(true);
-  }, [googleSheetsUrl]);
-
-  // Sync Timer: Auto save but give users a manual option to force push
-  useEffect(() => {
-    if (!googleSheetsUrl || !isDataFetched || syncConflict) return;
-    const payload = {
-      masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
-      timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
-      timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig
-    };
-    const payloadStr = JSON.stringify(payload);
-    
-    setSyncStatus("Menyimpan Otomatis...");
-    const timeoutId = setTimeout(async () => {
-      try {
-        await fetch(googleSheetsUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: payloadStr });
-        setSyncStatus("Tersinkronisasi");
-      } catch (err) { setSyncStatus("Gagal Menyimpan"); }
-    }, 3000); 
-    return () => clearTimeout(timeoutId);
-  }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig, googleSheetsUrl, isDataFetched, syncConflict]);
+  const [rawBackupInput, setRawBackupInput] = useState("");
 
   // === 4. DERIVED CALCULATIONS & ACCESS RIGHTS ===
   const usulanWargaList = Array.isArray(jamaahList) ? jamaahList.filter(w => !w.approvedByTakmir || w.hasUsulanEdit) : [];
@@ -603,7 +418,59 @@ export default function App() {
   const canEditZuru = checkEditAccess('zuru');
   const canEditQurban = checkEditAccess('qurban');
 
+  const nextSholat = getNextSholat(currentTime, jadwalSholat);
+  const upcomingFridaysList = getUpcomingFridaysLocal(currentTime, petugasAbadi, 5);
+  const infoTugasBesok = getPetugasTugasBesok(currentTime, isSimulatedThursday, isDutyDismissed, petugasAbadi, currentUserLabel);
+
   // === 5. EVENT HANDLERS ACTIONS ===
+  const addNotification = (message, type = "success") => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, message: String(message), type }]);
+    setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 4000);
+  };
+
+  const hasAccess = (tabName) => {
+    if (!rolesConfig || !currentUserRoles || currentUserRoles.length === 0) return false;
+    if (currentUserRoles.includes("Admin")) return true;
+    return currentUserRoles.some(role => {
+      const acc = rolesConfig[role]?.access?.[tabName];
+      return acc === "view" || acc === "edit";
+    });
+  };
+
+  const updateRoleAccess = (role, menuId, newAccess) => {
+    setRolesConfig(prev => ({ ...prev, [role]: { ...prev[role], access: { ...prev[role].access, [menuId]: newAccess } } }));
+    addNotification("Hak akses diubah.", "success");
+  };
+
+  const navigateTo = (tabName) => {
+    if (hasAccess(tabName)) { setActiveTab(tabName); setIsMenuOpen(false); } 
+    else { addNotification("Akses Ditolak! Peran Anda tidak memiliki hak.", "error"); }
+  };
+
+  const handleForceSave = async () => {
+    if (!googleSheetsUrl) { addNotification("Tautan Google Sheets belum diatur!", "error"); return; }
+    setIsSyncing(true);
+    setSyncStatus("Memaksa Simpan...");
+    const payload = {
+      masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
+      timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
+      timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig
+    };
+    const payloadStr = JSON.stringify(payload);
+    
+    try {
+      await fetch(googleSheetsUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: payloadStr });
+      setSyncStatus("Tersinkronisasi");
+      addNotification("Data berhasil dipaksa simpan ke awan!", "success");
+    } catch (err) { 
+      setSyncStatus("Gagal Menyimpan");
+      addNotification("Gagal memaksakan simpan data.", "error");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleLogin = (e) => {
     e.preventDefault();
     const cleanUser = inputUsername.trim().toLowerCase();
@@ -1075,7 +942,7 @@ export default function App() {
       docTitle = `Daftar Sahibul Qurban (Pekurban)`;
       const pekurbanList = filteredWarga.filter(j => j.qurban && j.qurban.startsWith("Sahibul Qurban"));
       summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#fffbeb;border:1px solid #fde68a;text-align:center;"><strong>Total Pekurban:</strong> ${pekurbanList.length} Warga</div>`;
-      tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 30%;">Nama Pekurban</th><th class="text-center" style="width: 15%;">RT / RW</th><th style="width: 25%;">Alamat</th><th class="text-center" style="width: 15%;">Jenis Qurban</th><th class="text-center" style="width: 10%;">Jiwa Diqurbankan</th></tr>`;
+      tableHeaderHTML = `<tr><th class="text-center" style="width: 8%;">No</th><th style="width: 35%;">Nama Pekurban</th><th class="text-center" style="width: 15%;">RT / RW</th><th style="width: 25%;">Alamat</th><th class="text-center" style="width: 15%;">Jenis Qurban</th><th class="text-center" style="width: 10%;">Jiwa Diqurbankan</th></tr>`;
       tableRowsHTML = pekurbanList.length > 0 ? pekurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center font-bold text-amber-700">${String(j.qurban).replace("Sahibul Qurban - ", "")}</td><td class="text-center font-black">${j.qurbanJiwa || 1}</td></tr>`).join('') : `<tr><td colspan="6" class="text-center">Belum ada pekurban.</td></tr>`;
     }
 
