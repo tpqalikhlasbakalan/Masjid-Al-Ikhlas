@@ -1669,8 +1669,8 @@ export default function App() {
                 </select>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Warga</button>
-                  <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Pekurban</button>
-                  <button onClick={() => handlePrintSelectedReport("penerimazakat")} className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Penerima Zakat</button>
+                  <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Mudhohi</button>
+                  <button onClick={() => handlePrintSelectedReport("penerimazakat")} className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Mustahik</button>
                   <button onClick={() => handlePrintSelectedReport("penerimaqurban")} className="bg-rose-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Penerima Qurban</button>
                 </div>
               </div>
