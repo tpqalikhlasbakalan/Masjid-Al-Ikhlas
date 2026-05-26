@@ -12,7 +12,7 @@ import {
 // ====================================================================
 // Catatan: Anda tidak perlu lagi mengisi URL di sini. 
 // Silakan isi langsung melalui menu "Hak Akses & Akun" di dalam Aplikasi!
-const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlT-MtuAXW_wl-KnFnqUkhX4fPf6YIyXNMPTE4Syi66_uDhxGiKVVK9_imo25DpRCm/exec"; 
+const GOOGLE_SHEETS_SCRIPT_URL = ""; 
 
 // === SEED DATA AWAL ===
 const INITIAL_LOKASI = { provinsi: "Jawa Timur", kabupaten: "Lamongan", kecamatan: "Tikung", desa: "Bakalan", latitude: -7.1126, longitude: 112.4150 };
@@ -32,7 +32,7 @@ const INITIAL_ROLES = {
 };
 
 const INITIAL_USER_DATABASE = {
-  "admin": { password: "admin123", roles: ["Admin"], label: "Super Admin", approved: true },
+  "admin": { password: "admin5758", roles: ["Admin"], label: "Super Admin", approved: true },
   "takmir": { password: "takmir123", roles: ["Takmir"], label: "Takmir Masjid", approved: true },
   "rt01": { password: "rt123", roles: ["RT"], label: "Ketua RT 01", approved: true },
   "amil": { password: "amil123", roles: ["Amil"], label: "Amil Zakat", approved: true },
@@ -532,6 +532,7 @@ export default function App() {
     return () => clearTimeout(timeoutId);
   }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig, googleSheetsUrl, isDataFetched, syncConflict]);
 
+
   // === 4. DERIVED CALCULATIONS & ACCESS RIGHTS ===
   const usulanWargaList = Array.isArray(jamaahList) ? jamaahList.filter(w => !w.approvedByTakmir || w.hasUsulanEdit) : [];
   const pendingAccounts = userDatabase && typeof userDatabase === 'object' ? Object.keys(userDatabase).filter(un => userDatabase[un] && !userDatabase[un].approved) : [];
@@ -629,6 +630,7 @@ export default function App() {
       await fetch(googleSheetsUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: payloadStr });
       setSyncStatus("Tersinkronisasi");
       addNotification("Data berhasil dipaksa simpan ke awan!", "success");
+      
       if(payloadStr.length > 45000) {
          addNotification("INFO: Data sudah sangat besar, pastikan Anda menggunakan Apps Script terbaru!", "warning");
       }
@@ -1087,7 +1089,7 @@ export default function App() {
       const pekurbanList = filteredWarga.filter(j => j.qurban && j.qurban.startsWith("Sahibul Qurban"));
       summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#fffbeb;border:1px solid #fde68a;text-align:center;"><strong>Total Pekurban:</strong> ${pekurbanList.length} Warga</div>`;
       tableHeaderHTML = `<tr><th class="text-center" style="width: 8%;">No</th><th style="width: 30%;">Nama Pekurban</th><th class="text-center" style="width: 15%;">RT / RW</th><th style="width: 25%;">Alamat</th><th class="text-center" style="width: 15%;">Jenis Qurban</th><th class="text-center" style="width: 10%;">Jiwa Diqurbankan</th></tr>`;
-      tableRowsHTML = pekurbanList.length > 0 ? pekurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center font-bold text-amber-700">${String(j.qurban).replace("Sahibul Qurban - ", "")}</td><td class="text-center font-black">${j.qurbanJiwa || 1}</td></tr>`).join('') : `<tr><td colspan="6" class="text-center">Belum ada pekurban.</td></tr>`;
+      tableRowsHTML = pekurbanList.length > 0 ? pekurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center font-bold text-amber-700">${String(j.qurban).replace("Sahibul Qurban - ", "")}</td><td class="text-center font-black">${j.qurbanJiwa || 1}</td></tr>`).join('') : `<tr><td colspan="5" class="text-center">Belum ada pekurban.</td></tr>`;
     }
 
     const printDate = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
@@ -1457,17 +1459,6 @@ export default function App() {
         {/* ======================= TAB: DASHBOARD ======================= */}
         {activeTab === "dashboard" && (
           <div className="space-y-4">
-            
-            <div className="bg-white border rounded-2xl p-4 shadow-xs flex justify-between items-center gap-4">
-               <div>
-                  <h3 className="font-bold text-sm text-slate-800">Sinkronisasi Cloud</h3>
-                  <p className="text-[10px] text-slate-500 hidden sm:block">Mencegah data terputus akibat menekan "keluar" terlalu cepat.</p>
-               </div>
-               <button onClick={handleForceSave} disabled={isSyncing} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${isSyncing ? 'bg-slate-100 text-slate-400' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'}`}>
-                 {isSyncing ? <RefreshCw size={14} className="animate-spin"/> : <CloudUpload size={14}/>} 
-                 {isSyncing ? "Menyimpan..." : "Simpan Paksa ke Server"}
-               </button>
-            </div>
 
             {(Array.isArray(currentUserRoles) && (currentUserRoles.includes("Takmir") || currentUserRoles.includes("Admin"))) && usulanWargaList.length > 0 && (
               <div className="bg-white border-2 border-amber-500 rounded-3xl p-5 shadow-lg space-y-4">
@@ -1656,7 +1647,7 @@ export default function App() {
         {activeTab === "jamaah" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Database Jama'ah & Warga</h2>
+              <h2 className="text-xl font-bold">Database Jama'ah</h2>
               {canEditJamaah && <button onClick={() => { setEditingJamaah(null); setShowJamaahModal(true); }} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold">{Array.isArray(currentUserRoles) && (currentUserRoles.includes("Amil") || currentUserRoles.includes("RT")) ? "Usul Warga" : "Tambah Warga"}</button>}
             </div>
 
@@ -1671,7 +1662,7 @@ export default function App() {
                   <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Warga</button>
                   <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Mudhohi</button>
                   <button onClick={() => handlePrintSelectedReport("penerimazakat")} className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Mustahik</button>
-                  <button onClick={() => handlePrintSelectedReport("penerimaqurban")} className="bg-rose-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Penerima Qurban</button>
+                  <button onClick={() => handlePrintSelectedReport("penerimaqurban")} className="bg-rose-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Mustahik Qurban</button>
                 </div>
               </div>
             </div>
