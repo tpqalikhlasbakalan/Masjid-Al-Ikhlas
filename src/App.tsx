@@ -466,7 +466,7 @@ export default function App() {
       } catch (err) { console.warn("Gagal fetch jadwal sholat."); }
     };
     fetchJadwalRealTime();
-  }, [lokasi, currentDay]);
+  }, [lokasi.latitude, lokasi.longitude, currentDay]);
 
   const handleFetchFromGoogleSheets = async () => {
     if (!googleSheetsUrl) { setIsDataFetched(true); return; }
@@ -532,7 +532,6 @@ export default function App() {
     return () => clearTimeout(timeoutId);
   }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig, googleSheetsUrl, isDataFetched, syncConflict]);
 
-
   // === 4. DERIVED CALCULATIONS & ACCESS RIGHTS ===
   const usulanWargaList = Array.isArray(jamaahList) ? jamaahList.filter(w => !w.approvedByTakmir || w.hasUsulanEdit) : [];
   const pendingAccounts = userDatabase && typeof userDatabase === 'object' ? Object.keys(userDatabase).filter(un => userDatabase[un] && !userDatabase[un].approved) : [];
@@ -592,10 +591,13 @@ export default function App() {
   const jatahDagingSapiPerKK = totalPenerimaKK > 0 ? (totalSapiDikurangiTamu / totalPenerimaKK).toFixed(2) : 0;
   const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalKambingDikurangiTamu / totalPenerimaKK).toFixed(2) : 0;
 
-  const pekurbanSapiJiwa = Array.isArray(jamaahList) ? jamaahList.filter(j => j.approvedByTakmir && !j.hasUsulanEdit && j.qurban === "Sahibul Qurban - Sapi").reduce((sum, j) => sum + (parseInt(j.qurbanJiwa) || 1), 0) : 0;
-  const pekurbanKambingJiwa = Array.isArray(jamaahList) ? jamaahList.filter(j => j.approvedByTakmir && !j.hasUsulanEdit && j.qurban === "Sahibul Qurban - Kambing").reduce((sum, j) => sum + (parseInt(j.qurbanJiwa) || 1), 0) : 0;
-  const totalAlokasiSahibulSapi = pekurbanSapiJiwa * (Number(qurbanSahibul.sapi) || 0);
-  const totalAlokasiSahibulKambing = pekurbanKambingJiwa * (Number(qurbanSahibul.kambing) || 0);
+  const pekurbanSapiJiwa = Array.isArray(jamaahList) ? jamaahList.filter(j => j.approvedByTakmir && !j.hasUsulanEdit && j.qurban && String(j.qurban).startsWith("Sahibul Qurban")).reduce((sum, j) => sum + (parseInt(j.qurbanJiwa) || 1), 0) : 0;
+  const totalPekurbanJiwa = pekurbanSapiJiwa;
+  const totalAlokasiSahibulSapi = totalPekurbanJiwa * (Number(qurbanSahibul.sapi) || 0);
+  const totalAlokasiSahibulKambing = totalPekurbanJiwa * (Number(qurbanSahibul.kambing) || 0);
+
+  const displayTotalSapi = totalTimbanganQurbanSapiValue + totalAlokasiSahibulSapi;
+  const displayTotalKambing = totalTimbanganQurbanKambingValue + totalAlokasiSahibulKambing;
 
   const checkEditAccess = (tab) => {
      if(!Array.isArray(currentUserRoles)) return false;
@@ -627,6 +629,9 @@ export default function App() {
       await fetch(googleSheetsUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: payloadStr });
       setSyncStatus("Tersinkronisasi");
       addNotification("Data berhasil dipaksa simpan ke awan!", "success");
+      if(payloadStr.length > 45000) {
+         addNotification("INFO: Data sudah sangat besar, pastikan Anda menggunakan Apps Script terbaru!", "warning");
+      }
     } catch (err) { 
       setSyncStatus("Gagal Menyimpan");
       addNotification("Gagal memaksakan simpan data.", "error");
@@ -906,18 +911,11 @@ export default function App() {
     } else if (reportType === "fitrah") {
       docTitle = `Rekapitulasi Penyaluran Zakat Fitrah`;
       
-      let muzakkiPerRT = {};
-      WILAYAH_OPTIONS.forEach(w => {
-         let count = Array.isArray(jamaahList) ? jamaahList.filter(j => j.fitrah === "Muzakki" && j.rt === w.rt && j.rw === w.rw && j.approvedByTakmir && !j.hasUsulanEdit).reduce((acc, curr) => acc + parseInt(curr.anggota||0), 0) : 0;
-         if(count > 0) muzakkiPerRT[w.label] = count;
-      });
-      let mzRows = Object.keys(muzakkiPerRT).map(k => `<tr><td>${k}</td><td class="text-center">${muzakkiPerRT[k]} Jiwa</td></tr>`).join('');
-      
       let fitrahCategories = ["Berat", "Sedang", "Ringan"];
       let categorySummaryRows = fitrahCategories.map(cat => {
          let list = filteredWarga.filter(j => j.fitrah === cat);
          let countKK = list.length;
-         let totalJiwa = list.reduce((s, j) => s + (parseInt(j.anggota||0), 0), 0);
+         let totalJiwa = list.reduce((s, j) => s + (parseInt(j.anggota)||0), 0);
          let totalKg = totalJiwa * (Number(alokasiFitrah[cat]) || 0);
          return `<tr><td>Mustahik ${cat}</td><td class="text-center">${countKK} KK</td><td class="text-center">${totalJiwa} Jiwa</td><td class="text-center">${alokasiFitrah[cat]} Kg/Jiwa</td><td class="text-right font-bold">${totalKg.toFixed(1)} Kg</td></tr>`;
       }).join('');
@@ -977,12 +975,7 @@ export default function App() {
              ${categorySummaryRows}
            </tbody>
         </table>
-        <h4>2. Rekap Pembayar Zakat Fitrah (Muzakki)</h4>
-        <table class="data-table" style="margin-bottom:15px;">
-           <thead><tr><th>Wilayah RT/RW</th><th class="text-center">Total Jiwa</th></tr></thead>
-           <tbody>${mzRows || `<tr><td colspan="2" class="text-center font-bold">Tidak ada data</td></tr>`}</tbody>
-        </table>
-        <h4>3. Detail Kebutuhan & Distribusi per Wilayah (RT)</h4>
+        <h4>2. Detail Kebutuhan & Distribusi per Wilayah (RT)</h4>
       `;
       tableHeaderHTML = `<tr><th>Wilayah RT/RW</th><th class="text-center">Penerima (KK)</th><th class="text-center">Mustahik Berat</th><th class="text-center">Mustahik Sedang</th><th class="text-center">Mustahik Ringan</th><th class="text-center">Guru Ngaji</th><th class="text-right">Total Kebutuhan Beras</th></tr>`;
       tableRowsHTML = rtRows.length > 0 ? rtRows.join('') : `<tr><td colspan="7" class="text-center">Kosong</td></tr>`;
@@ -1034,13 +1027,6 @@ export default function App() {
       let guruTotalKg = guruCount * (Number(alokasiZuru.GuruNgaji) || 0);
       categorySummaryRows += `<tr><td>Guru Ngaji (Bantuan Khusus)</td><td class="text-center">${guruCount} KK</td><td class="text-center">-</td><td class="text-center">${alokasiZuru.GuruNgaji} Kg/KK</td><td class="text-right font-bold">${guruTotalKg.toFixed(1)} Kg</td></tr>`;
 
-      let mzPerRT = {};
-      WILAYAH_OPTIONS.forEach(w => {
-         let count = Array.isArray(jamaahList) ? jamaahList.filter(j => j.zuru === "Bukan Mustahik" && j.rt === w.rt && j.rw === w.rw && j.approvedByTakmir && !j.hasUsulanEdit).reduce((acc, curr) => acc + parseInt(curr.anggota||0), 0) : 0;
-         if(count > 0) mzPerRT[w.label] = count;
-      });
-      let mzRows = Object.keys(mzPerRT).map(k => `<tr><td>${k}</td><td class="text-center">${mzPerRT[k]} Jiwa</td></tr>`).join('');
-      
       summaryHTML = `
         <div style="margin-bottom:15px; display:flex; gap:10px;">
            <div style="flex:1; padding:8px; background:#f0fdfa; border:1px solid #99f6e4; text-align:center;"><strong>Hasil Panen Diterima:</strong><br/><span style="font-size:14px; font-weight:black;">${Number(totalTimbanganZuruValue).toFixed(1)} Kg</span></div>
@@ -1062,12 +1048,7 @@ export default function App() {
              ${categorySummaryRows}
            </tbody>
         </table>
-        <h4>2. Rekap Pembayar Zakat Zuru'</h4>
-        <table class="data-table" style="margin-bottom:15px;">
-           <thead><tr><th>Wilayah RT/RW</th><th class="text-center">Total Jiwa</th></tr></thead>
-           <tbody>${mzRows || `<tr><td colspan="2" class="text-center font-bold">Tidak ada data</td></tr>`}</tbody>
-        </table>
-        <h4>3. Detail Kebutuhan & Distribusi per Wilayah (RT)</h4>
+        <h4>2. Detail Kebutuhan & Distribusi per Wilayah (RT)</h4>
       `;
       tableHeaderHTML = `<tr><th>Wilayah RT/RW</th><th class="text-center">Penerima (KK)</th><th class="text-center">Mustahik Berat</th><th class="text-center">Mustahik Sedang</th><th class="text-center">Mustahik Ringan</th><th class="text-center">Guru Ngaji</th><th class="text-right">Total Kebutuhan Hasil Panen</th></tr>`;
       tableRowsHTML = rtRows.length > 0 ? rtRows.join('') : `<tr><td colspan="7" class="text-center">Kosong</td></tr>`;
@@ -1085,15 +1066,14 @@ export default function App() {
       
       summaryHTML = `
         <div style="margin-bottom:10px; display:flex; gap:10px;">
-           <div style="flex:1; padding:6px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center; font-size: 10px;"><strong>Sapi Diterima:</strong><br/>${Number(totalTimbanganQurbanSapiValue).toFixed(1)} Kg</div>
-           <div style="flex:1; padding:6px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center; font-size: 10px;"><strong>Kambing Diterima:</strong><br/>${Number(totalTimbanganQurbanKambingValue).toFixed(1)} Kg</div>
+           <div style="flex:1; padding:6px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center; font-size: 10px;"><strong>Total Sapi Diterima:</strong><br/>${Number(displayTotalSapi).toFixed(1)} Kg</div>
+           <div style="flex:1; padding:6px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center; font-size: 10px;"><strong>Total Kambing Diterima:</strong><br/>${Number(displayTotalKambing).toFixed(1)} Kg</div>
         </div>
         <h4>Alokasi Sahibul Qurban & Tamu/Panitia</h4>
         <table class="data-table" style="margin-bottom:10px;">
            <thead><tr><th>Kategori Khusus</th><th class="text-center">Total Hak Sapi (Kg)</th><th class="text-center">Total Hak Kambing (Kg)</th><th class="text-center">Keterangan</th></tr></thead>
            <tbody>
-             <tr><td>Sahibul Qurban Sapi (${pekurbanSapiJiwa} Jiwa)</td><td class="text-center">${totalAlokasiSahibulSapi.toFixed(1)} Kg</td><td class="text-center">-</td><td class="text-center">Hak otomatis dari jiwa</td></tr>
-             <tr><td>Sahibul Qurban Kambing (${pekurbanKambingJiwa} Jiwa)</td><td class="text-center">-</td><td class="text-center">${totalAlokasiSahibulKambing.toFixed(1)} Kg</td><td class="text-center">Hak otomatis dari jiwa</td></tr>
+             <tr><td>Sahibul Qurban (${totalPekurbanJiwa} Jiwa)</td><td class="text-center">${totalAlokasiSahibulSapi.toFixed(1)} Kg</td><td class="text-center">${totalAlokasiSahibulKambing.toFixed(1)} Kg</td><td class="text-center">Hak otomatis dari jiwa</td></tr>
              <tr><td>Tamu (${Number(qurbanTamu.jumlah) || 0} Orang)</td><td class="text-center">${(Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahSapi)).toFixed(1)} Kg</td><td class="text-center">${(Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahKambing)).toFixed(1)} Kg</td><td class="text-center">Memotong Kuota Warga</td></tr>
            </tbody>
         </table>
@@ -1106,8 +1086,8 @@ export default function App() {
       docTitle = `Daftar Sahibul Qurban (Pekurban)`;
       const pekurbanList = filteredWarga.filter(j => j.qurban && j.qurban.startsWith("Sahibul Qurban"));
       summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#fffbeb;border:1px solid #fde68a;text-align:center;"><strong>Total Pekurban:</strong> ${pekurbanList.length} Warga</div>`;
-      tableHeaderHTML = `<tr><th class="text-center" style="width: 8%;">No</th><th style="width: 35%;">Nama Pekurban</th><th class="text-center" style="width: 15%;">RT / RW</th><th style="width: 25%;">Alamat</th><th class="text-center" style="width: 15%;">Jenis Qurban</th><th class="text-center" style="width: 10%;">Jiwa Diqurbankan</th></tr>`;
-      tableRowsHTML = pekurbanList.length > 0 ? pekurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center font-bold text-amber-700">${String(j.qurban).replace("Sahibul Qurban - ", "")}</td><td class="text-center font-black">${j.qurbanJiwa || 1}</td></tr>`).join('') : `<tr><td colspan="5" class="text-center">Belum ada pekurban.</td></tr>`;
+      tableHeaderHTML = `<tr><th class="text-center" style="width: 8%;">No</th><th style="width: 30%;">Nama Pekurban</th><th class="text-center" style="width: 15%;">RT / RW</th><th style="width: 25%;">Alamat</th><th class="text-center" style="width: 15%;">Jenis Qurban</th><th class="text-center" style="width: 10%;">Jiwa Diqurbankan</th></tr>`;
+      tableRowsHTML = pekurbanList.length > 0 ? pekurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center font-bold text-amber-700">${String(j.qurban).replace("Sahibul Qurban - ", "")}</td><td class="text-center font-black">${j.qurbanJiwa || 1}</td></tr>`).join('') : `<tr><td colspan="6" class="text-center">Belum ada pekurban.</td></tr>`;
     }
 
     const printDate = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
@@ -1227,7 +1207,7 @@ export default function App() {
     if (!tempMasjidName.trim()) { addNotification("Nama Masjid tidak boleh kosong!", "error"); return; }
     setMasjidName(tempMasjidName);
     setMasjidLogoUrl(tempMasjidLogoUrl);
-    setGoogleSheetsUrl(tempGoogleSheetsUrl); // Fix: Apply Cloud Script Settings immediately
+    setGoogleSheetsUrl(tempGoogleSheetsUrl); 
     addNotification("Identitas dan Pengaturan Server berhasil diperbarui!", "success");
   };
 
@@ -1676,7 +1656,7 @@ export default function App() {
         {activeTab === "jamaah" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Database Jemaah & Warga</h2>
+              <h2 className="text-xl font-bold">Database Jama'ah & Warga</h2>
               {canEditJamaah && <button onClick={() => { setEditingJamaah(null); setShowJamaahModal(true); }} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold">{Array.isArray(currentUserRoles) && (currentUserRoles.includes("Amil") || currentUserRoles.includes("RT")) ? "Usul Warga" : "Tambah Warga"}</button>}
             </div>
 
@@ -1944,7 +1924,7 @@ export default function App() {
                         <div className="flex items-center gap-2"><span className="text-[10px] font-bold">JATAH KMBG/JIWA:</span><input type="number" step="0.1" value={tempQurbanSahibul.kambing} onChange={e => setTempQurbanSahibul({...tempQurbanSahibul, kambing: parseFloat(e.target.value) || 0})} className="w-16 border rounded text-sm text-center outline-none" /> <span className="text-xs">Kg</span></div>
                     </div>
                     <div className="mt-3 bg-indigo-50 border border-indigo-100 p-2 rounded-lg text-xs text-indigo-800">
-                        Total Hak: Sapi <strong>{totalAlokasiSahibulSapi.toFixed(1)} Kg</strong> ({pekurbanSapiJiwa} Jiwa), Kambing <strong>{totalAlokasiSahibulKambing.toFixed(1)} Kg</strong> ({pekurbanKambingJiwa} Jiwa)
+                        Total Hak: Sapi <strong>{totalAlokasiSahibulSapi.toFixed(1)} Kg</strong> ({totalPekurbanJiwa} Jiwa), Kambing <strong>{totalAlokasiSahibulKambing.toFixed(1)} Kg</strong> ({totalPekurbanJiwa} Jiwa)
                     </div>
                 </div>
 
@@ -2151,7 +2131,7 @@ export default function App() {
 
       {/* Bagian Footer */}
       <footer className="bg-white border-t border-slate-200 px-4 py-3 text-center text-xs text-slate-500 z-10 w-full mt-auto">
-        &copy; {new Date().getFullYear()} {String(masjidName)} - Sistem Manajemen Masjid Terpadu
+        &copy; {new Date().getFullYear()} {String(masjidName)} - developed by Misbahul Munir
       </footer>
 
       {printIframeData && (
