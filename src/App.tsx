@@ -1746,7 +1746,7 @@ export default function App() {
         {activeTab === "jamaah" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Database Jemaah & Warga</h2>
+              <h2 className="text-xl font-bold">Database Jama'ah & Warga</h2>
               {canEditJamaah && <button onClick={() => { setEditingJamaah(null); setShowJamaahModal(true); }} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold">{Array.isArray(currentUserRoles) && (currentUserRoles.includes("Amil") || currentUserRoles.includes("RT")) ? "Usul Warga" : "Tambah Warga"}</button>}
             </div>
 
@@ -1758,10 +1758,10 @@ export default function App() {
                   {WILAYAH_OPTIONS.map((w) => <option key={w.label} value={`${w.rt}_${w.rw}`}>{String(w.label)}</option>)}
                 </select>
                 <div className="flex flex-wrap gap-2">
-                  <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Warga</button>
-                  <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Pekurban</button>
-                  <button onClick={() => handlePrintSelectedReport("penerimazakat")} className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Penerima Zakat</button>
-                  <button onClick={() => handlePrintSelectedReport("penerimaqurban")} className="bg-rose-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Penerima Qurban</button>
+                  <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Jama'ah</button>
+                  <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Shahibul Qurban</button>
+                  <button onClick={() => handlePrintSelectedReport("penerimazakat")} className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Mustahik Zakat</button>
+                  <button onClick={() => handlePrintSelectedReport("penerimaqurban")} className="bg-rose-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Mustahik Qurban</button>
                 </div>
               </div>
             </div>
@@ -2254,7 +2254,7 @@ export default function App() {
 
       {/* Bagian Footer */}
       <footer className="bg-white border-t border-slate-200 px-4 py-3 text-center text-xs text-slate-500 z-10 w-full mt-auto">
-        &copy; {new Date().getFullYear()} {String(masjidName)} - Sistem Manajemen Masjid Terpadu
+        &copy; {new Date().getFullYear()} {String(masjidName)} - developed by Misbahul Munir
       </footer>
 
       {printIframeData && (
