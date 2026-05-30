@@ -320,11 +320,13 @@ export default function App() {
   const [tempQurbanTamu, setTempQurbanTamu] = useState(qurbanTamu);
   const [tempQurbanSahibul, setTempQurbanSahibul] = useState(qurbanSahibul);
   
+  const [sasaranQurbanSapi, setSasaranQurbanSapi] = useState(() => getLocalStorageData("sasaranQurbanSapi", "Semua"));
+  const [sasaranQurbanKambing, setSasaranQurbanKambing] = useState(() => getLocalStorageData("sasaranQurbanKambing", "Semua"));
+
   const [filterWilayahQurban, setFilterWilayahQurban] = useState("Semua");
   const [selectedPrintWilayahQurban, setSelectedPrintWilayahQurban] = useState("Semua");
   const [selectedPrintWilayahFitrah, setSelectedPrintWilayahFitrah] = useState("Semua");
   const [selectedPrintWilayahZuru, setSelectedPrintWilayahZuru] = useState("Semua");
-  const [qurbanHanyaMustahik, setQurbanHanyaMustahik] = useState(false);
 
   const [selectedPrintWilayah, setSelectedPrintWilayah] = useState("Semua");
   const [showJamaahModal, setShowJamaahModal] = useState(false);
@@ -386,6 +388,8 @@ export default function App() {
     if (payload.qurbanSahibul !== undefined) setQurbanSahibul(payload.qurbanSahibul);
     if (payload.userDatabase !== undefined) setUserDatabase(payload.userDatabase);
     if (payload.rolesConfig !== undefined) setRolesConfig(payload.rolesConfig);
+    if (payload.sasaranQurbanSapi !== undefined) setSasaranQurbanSapi(payload.sasaranQurbanSapi);
+    if (payload.sasaranQurbanKambing !== undefined) setSasaranQurbanKambing(payload.sasaranQurbanKambing);
   };
 
   const playAlarmSound = () => {
@@ -433,6 +437,8 @@ export default function App() {
   useEffect(() => { localStorage.setItem("timbanganQurbanKambing", JSON.stringify(timbanganQurbanKambing)); }, [timbanganQurbanKambing]);
   useEffect(() => { localStorage.setItem("qurbanTamu", JSON.stringify(qurbanTamu)); }, [qurbanTamu]);
   useEffect(() => { localStorage.setItem("qurbanSahibul", JSON.stringify(qurbanSahibul)); }, [qurbanSahibul]);
+  useEffect(() => { localStorage.setItem("sasaranQurbanSapi", JSON.stringify(sasaranQurbanSapi)); }, [sasaranQurbanSapi]);
+  useEffect(() => { localStorage.setItem("sasaranQurbanKambing", JSON.stringify(sasaranQurbanKambing)); }, [sasaranQurbanKambing]);
 
   useEffect(() => { setTempMasjidName(masjidName); }, [masjidName]);
   useEffect(() => { setTempMasjidLogoUrl(masjidLogoUrl); }, [masjidLogoUrl]);
@@ -518,7 +524,8 @@ export default function App() {
     const payload = {
       masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
       timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
-      timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig
+      timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig,
+      sasaranQurbanSapi, sasaranQurbanKambing
     };
     const payloadStr = JSON.stringify(payload);
     
@@ -530,7 +537,7 @@ export default function App() {
       } catch (err) { setSyncStatus("Gagal Menyimpan"); }
     }, 3000); 
     return () => clearTimeout(timeoutId);
-  }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig, googleSheetsUrl, isDataFetched, syncConflict]);
+  }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig, sasaranQurbanSapi, sasaranQurbanKambing, googleSheetsUrl, isDataFetched, syncConflict]);
 
 
   // === 4. DERIVED CALCULATIONS & ACCESS RIGHTS ===
@@ -571,7 +578,8 @@ export default function App() {
   const totalSapiDikurangiTamu = Math.max(0, totalTimbanganQurbanSapiValue - (Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahSapi)));
   const totalKambingDikurangiTamu = Math.max(0, totalTimbanganQurbanKambingValue - (Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahKambing)));
 
-  const getWargaPenerimaQurban = () => {
+  // Fungsi dinamis untuk menyaring penerima Qurban berdasarkan Sapi/Kambing
+  const getPenerimaQurban = (sasaran) => {
     if (!Array.isArray(jamaahList)) return [];
     return jamaahList.filter(warga => {
       if (!warga.approvedByTakmir || warga.hasUsulanEdit) return false;
@@ -580,20 +588,25 @@ export default function App() {
         const [filterRt, filterRw] = filterWilayahQurban.split('_');
         if (warga.rt !== filterRt || warga.rw !== filterRw) return false;
       }
-      if (qurbanHanyaMustahik) {
+      if (sasaran === "Mustahik") {
         return (warga.fitrah !== "Muzakki" || warga.zuru !== "Bukan Mustahik" || warga.isGuruNgaji);
       }
       return true;
     });
   };
 
-  const wargaPenerimaQurban = getWargaPenerimaQurban();
-  const totalPenerimaKK = wargaPenerimaQurban.length;
-  const jatahDagingSapiPerKK = totalPenerimaKK > 0 ? (totalSapiDikurangiTamu / totalPenerimaKK).toFixed(2) : 0;
-  const jatahDagingKambingPerKK = totalPenerimaKK > 0 ? (totalKambingDikurangiTamu / totalPenerimaKK).toFixed(2) : 0;
+  const penerimaSapiList = getPenerimaQurban(sasaranQurbanSapi);
+  const totalPenerimaSapiKK = penerimaSapiList.length;
+  const jatahDagingSapiPerKK = totalPenerimaSapiKK > 0 ? (totalSapiDikurangiTamu / totalPenerimaSapiKK).toFixed(2) : 0;
 
-  const pekurbanSapiJiwa = Array.isArray(jamaahList) ? jamaahList.filter(j => j.approvedByTakmir && !j.hasUsulanEdit && j.qurban && String(j.qurban).startsWith("Sahibul Qurban")).reduce((sum, j) => sum + (parseInt(j.qurbanJiwa) || 1), 0) : 0;
-  const totalPekurbanJiwa = pekurbanSapiJiwa;
+  const penerimaKambingList = getPenerimaQurban(sasaranQurbanKambing);
+  const totalPenerimaKambingKK = penerimaKambingList.length;
+  const jatahDagingKambingPerKK = totalPenerimaKambingKK > 0 ? (totalKambingDikurangiTamu / totalPenerimaKambingKK).toFixed(2) : 0;
+
+  // Pekurban disatukan Sapi dan Kambing sama-sama dihitung jiwa-nya
+  const pekurbanJiwaList = Array.isArray(jamaahList) ? jamaahList.filter(j => j.approvedByTakmir && !j.hasUsulanEdit && j.qurban && String(j.qurban).startsWith("Sahibul Qurban")) : [];
+  const totalPekurbanJiwa = pekurbanJiwaList.reduce((sum, j) => sum + (parseInt(j.qurbanJiwa) || 1), 0);
+  
   const totalAlokasiSahibulSapi = totalPekurbanJiwa * (Number(qurbanSahibul.sapi) || 0);
   const totalAlokasiSahibulKambing = totalPekurbanJiwa * (Number(qurbanSahibul.kambing) || 0);
 
@@ -622,7 +635,8 @@ export default function App() {
     const payload = {
       masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
       timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
-      timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig
+      timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig,
+      sasaranQurbanSapi, sasaranQurbanKambing
     };
     const payloadStr = JSON.stringify(payload);
     
@@ -857,7 +871,10 @@ export default function App() {
     let rtTitle = "Seluruh Wilayah (Semua RT & RW)";
 
     let appliedPrintWilayah = "Semua";
-    if (reportType === "qurban") appliedPrintWilayah = selectedPrintWilayahQurban;
+    if (reportType === "qurban" || reportType === "penerimaqurban") {
+      appliedPrintWilayah = selectedPrintWilayahQurban; // Menggunakan dropdown dari menu qurban
+      if(activeTab === "jamaah") appliedPrintWilayah = selectedPrintWilayah; // Menggunakan dropdown dari menu jamaah jika sedang di tab jamaah
+    }
     else if (reportType === "fitrah") appliedPrintWilayah = selectedPrintWilayahFitrah;
     else if (reportType === "zuru") appliedPrintWilayah = selectedPrintWilayahZuru;
     else appliedPrintWilayah = selectedPrintWilayah; 
@@ -896,16 +913,27 @@ export default function App() {
       tableRowsHTML = penerimaZakatList.length > 0 ? penerimaZakatList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td class="text-center">${j.fitrah !== "Muzakki" ? String(j.fitrah) : "-"}${j.isGuruNgaji?" <span style='font-size:8px;'>(+Guru)</span>":""}</td><td class="text-center">${j.zuru !== "Bukan Mustahik" ? String(j.zuru) : "-"}${j.isGuruNgaji?" <span style='font-size:8px;'>(+Guru)</span>":""}</td><td style="height:22px;"></td></tr>`).join('') : `<tr><td colspan="6" class="text-center">Kosong</td></tr>`;
     } else if (reportType === "penerimaqurban") {
       docTitle = `Daftar Penerima Qurban`;
-      const penerimaQurbanList = filteredWarga.filter(j => {
+      
+      const combinedPenerimaList = filteredWarga.filter(j => {
           if (j.qurban && String(j.qurban).startsWith("Sahibul Qurban")) return false;
-          if (qurbanHanyaMustahik) {
-            return (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
-          }
-          return true;
+          const isMustahik = (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
+          const dapatSapi = sasaranQurbanSapi === "Semua" || isMustahik;
+          const dapatKambing = sasaranQurbanKambing === "Semua" || isMustahik;
+          return dapatSapi || dapatKambing;
       });
-      summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#ffe4e6;border:1px solid #fecdd3;text-align:center;"><strong>Total Penerima Qurban:</strong> ${penerimaQurbanList.length} KK</div>`;
-      tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 35%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 15%;">RT / RW</th><th class="text-center" style="width: 15%;">Jumlah Jiwa</th><th class="text-center" style="width: 30%;">Paraf</th></tr>`;
-      tableRowsHTML = penerimaQurbanList.length > 0 ? penerimaQurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td class="text-center">${j.anggota}</td><td style="height:22px;"></td></tr>`).join('') : `<tr><td colspan="5" class="text-center">Kosong</td></tr>`;
+
+      summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#ffe4e6;border:1px solid #fecdd3;text-align:center;"><strong>Total Penerima Qurban:</strong> ${combinedPenerimaList.length} KK</div>`;
+      tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 35%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 15%;">RT / RW</th><th class="text-center" style="width: 10%;">Jiwa</th><th class="text-center" style="width: 15%;">Hak Daging</th><th class="text-center" style="width: 20%;">Paraf</th></tr>`;
+      tableRowsHTML = combinedPenerimaList.length > 0 ? combinedPenerimaList.map((j, i) => {
+          const isMustahik = (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
+          const dapatSapi = sasaranQurbanSapi === "Semua" || isMustahik;
+          const dapatKambing = sasaranQurbanKambing === "Semua" || isMustahik;
+          let hak = [];
+          if(dapatSapi) hak.push("Sapi");
+          if(dapatKambing) hak.push("Kmbg");
+
+          return `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td class="text-center">${j.anggota}</td><td class="text-center text-[10px]">${hak.join(" & ")}</td><td style="height:22px;"></td></tr>`;
+      }).join('') : `<tr><td colspan="6" class="text-center">Kosong</td></tr>`;
     } else if (reportType === "fitrah") {
       docTitle = `Rekapitulasi Penyaluran Zakat Fitrah`;
       
@@ -1056,10 +1084,28 @@ export default function App() {
       
       let rtRowsData = [];
       WILAYAH_OPTIONS.forEach(w => {
-         let count = getWargaPenerimaQurban().filter(j => j.rt === w.rt && j.rw === w.rw).length;
-         let kgSapi = count * Number(jatahDagingSapiPerKK);
-         let kgKambing = count * Number(jatahDagingKambingPerKK);
-         if(count > 0) rtRowsData.push(`<tr><td>${String(w.label)}</td><td class="text-center">${count} KK</td><td class="text-right font-bold">${kgSapi.toFixed(2)} Kg</td><td class="text-right font-bold">${kgKambing.toFixed(2)} Kg</td></tr>`);
+         const isMustahikOnlySapi = sasaranQurbanSapi === "Mustahik";
+         const isMustahikOnlyKambing = sasaranQurbanKambing === "Mustahik";
+
+         let countSapi = filteredWarga.filter(j => {
+             if (j.qurban && String(j.qurban).startsWith("Sahibul Qurban")) return false;
+             if (j.rt !== w.rt || j.rw !== w.rw) return false;
+             if (isMustahikOnlySapi) return (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
+             return true;
+         }).length;
+
+         let countKambing = filteredWarga.filter(j => {
+             if (j.qurban && String(j.qurban).startsWith("Sahibul Qurban")) return false;
+             if (j.rt !== w.rt || j.rw !== w.rw) return false;
+             if (isMustahikOnlyKambing) return (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
+             return true;
+         }).length;
+         
+         let kgSapi = countSapi * Number(jatahDagingSapiPerKK);
+         let kgKambing = countKambing * Number(jatahDagingKambingPerKK);
+         if(countSapi > 0 || countKambing > 0) {
+            rtRowsData.push(`<tr><td>${String(w.label)}</td><td class="text-center">${countSapi} Sapi / ${countKambing} Kmbg</td><td class="text-right font-bold">${kgSapi.toFixed(2)} Kg</td><td class="text-right font-bold">${kgKambing.toFixed(2)} Kg</td></tr>`);
+         }
       });
       
       summaryHTML = `
@@ -1075,9 +1121,9 @@ export default function App() {
              <tr><td>Tamu (${Number(qurbanTamu.jumlah) || 0} Orang)</td><td class="text-center">${(Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahSapi)).toFixed(1)} Kg</td><td class="text-center">${(Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahKambing)).toFixed(1)} Kg</td><td class="text-center">Memotong Kuota Warga</td></tr>
            </tbody>
         </table>
-        <h4>Rekap Kebutuhan Daging per Wilayah RT/RW (Total: ${totalPenerimaKK} KK)</h4>
+        <h4>Rekap Kebutuhan Daging per Wilayah RT/RW</h4>
       `;
-      tableHeaderHTML = `<tr><th>Wilayah RT/RW</th><th class="text-center">Jumlah KK Penerima</th><th class="text-right">Kebutuhan Sapi (Kg)</th><th class="text-right">Kebutuhan Kambing (Kg)</th></tr>`;
+      tableHeaderHTML = `<tr><th>Wilayah RT/RW</th><th class="text-center">Jumlah Penerima (KK)</th><th class="text-right">Kebutuhan Sapi (Kg)</th><th class="text-right">Kebutuhan Kambing (Kg)</th></tr>`;
       tableRowsHTML = rtRowsData.length > 0 ? rtRowsData.join('') : `<tr><td colspan="4" class="text-center">Kosong</td></tr>`;
       
     } else if (reportType === "pekurban") {
@@ -1085,7 +1131,7 @@ export default function App() {
       const pekurbanList = filteredWarga.filter(j => j.qurban && j.qurban.startsWith("Sahibul Qurban"));
       summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#fffbeb;border:1px solid #fde68a;text-align:center;"><strong>Total Pekurban:</strong> ${pekurbanList.length} Warga</div>`;
       tableHeaderHTML = `<tr><th class="text-center" style="width: 8%;">No</th><th style="width: 30%;">Nama Pekurban</th><th class="text-center" style="width: 15%;">RT / RW</th><th style="width: 25%;">Alamat</th><th class="text-center" style="width: 15%;">Jenis Qurban</th><th class="text-center" style="width: 10%;">Jiwa Diqurbankan</th></tr>`;
-      tableRowsHTML = pekurbanList.length > 0 ? pekurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center font-bold text-amber-700">${String(j.qurban).replace("Sahibul Qurban - ", "")}</td><td class="text-center font-black">${j.qurbanJiwa || 1}</td></tr>`).join('') : `<tr><td colspan="5" class="text-center">Belum ada pekurban.</td></tr>`;
+      tableRowsHTML = pekurbanList.length > 0 ? pekurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center font-bold text-amber-700">${String(j.qurban).replace("Sahibul Qurban - ", "")}</td><td class="text-center font-black">${j.qurbanJiwa || 1}</td></tr>`).join('') : `<tr><td colspan="6" class="text-center">Belum ada pekurban.</td></tr>`;
     }
 
     const printDate = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
@@ -1099,7 +1145,7 @@ export default function App() {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${docTitle}</title>
       <style>
-        body { font-family: sans-serif; background: #f1f5f9; margin: 0; padding: 0; }
+        body { font-family: sans-serif; background: #f1f5f9; margin: 0; padding: 0; font-size: 12px; }
         .wrapper { width: 100%; box-sizing: border-box; padding: 10px; }
         .control-panel { max-width: 100%; margin: 0 auto 15px; background: white; padding: 12px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-x: auto; gap: 10px; }
         .btn { padding: 8px 12px; border-radius: 6px; cursor: pointer; border: none; text-decoration: none; font-weight: bold; font-size: 12px; white-space: nowrap; }
@@ -1111,16 +1157,16 @@ export default function App() {
         .master-table > thead { display: table-header-group; }
         .master-table > thead > tr > td, .master-table > tbody > tr > td { border: none; padding: 0; }
         .kop-masjid { display: flex; align-items: center; justify-content: center; gap: 15px; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 10px; text-align: left; }
-        .kop-masjid h1 { margin: 0; font-size: 18px; text-transform: uppercase; font-weight: bold; color: #000; }
-        .kop-masjid p { margin: 2px 0 0; font-size: 10px; color: #000; font-weight: normal; }
-        table.data-table { width: 100%; border-collapse: collapse; font-size: 10px; min-width: 100%; margin-bottom: 10px; }
-        table.data-table th, table.data-table td { border: 1px solid #000; padding: 2px 4px; word-wrap: break-word; line-height: 1.1; }
-        table.data-table th { background: #f8fafc; font-weight: bold; padding: 4px; }
-        h4 { margin: 0 0 4px 0; font-size: 11px; color: #000; }
+        .kop-masjid h1 { margin: 0; font-size: 20px; text-transform: uppercase; font-weight: bold; color: #000; }
+        .kop-masjid p { margin: 2px 0 0; font-size: 12px; color: #000; font-weight: normal; }
+        table.data-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 100%; margin-bottom: 10px; }
+        table.data-table th, table.data-table td { border: 1px solid #000; padding: 2px 2px; word-wrap: break-word; line-height: 1.1; }
+        table.data-table th { background: #f8fafc; font-weight: bold; padding: 3px 2px; }
+        h4 { margin: 0 0 4px 0; font-size: 13px; color: #000; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .header-info { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
-        .print-date { font-size: 9px; color: #475569; text-align: right; }
+        .print-date { font-size: 10px; color: #475569; text-align: right; }
         @media print {
           body { background: white; }
           .wrapper { padding: 0; }
@@ -1177,7 +1223,7 @@ export default function App() {
                   <div class="header-info">
                     <div>
                       <h2 style="margin:0 0 2px 0; font-size: 15px; text-transform: uppercase; text-decoration: underline;">${docTitle}</h2>
-                      <p style="margin:0; font-size: 11px; font-weight: bold;">Wilayah: ${rtTitle}</p>
+                      <p style="margin:0; font-size: 12px; font-weight: bold;">Wilayah: ${rtTitle}</p>
                     </div>
                     <div class="print-date">
                       Dicetak pada:<br/><strong>${printDate}</strong>
@@ -1643,7 +1689,7 @@ export default function App() {
         {activeTab === "jamaah" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Database Jama'ah</h2>
+              <h2 className="text-xl font-bold">Database Jemaah & Warga</h2>
               {canEditJamaah && <button onClick={() => { setEditingJamaah(null); setShowJamaahModal(true); }} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold">{Array.isArray(currentUserRoles) && (currentUserRoles.includes("Amil") || currentUserRoles.includes("RT")) ? "Usul Warga" : "Tambah Warga"}</button>}
             </div>
 
@@ -1656,9 +1702,9 @@ export default function App() {
                 </select>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Warga</button>
-                  <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Mudhohi</button>
-                  <button onClick={() => handlePrintSelectedReport("penerimazakat")} className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Mustahik Zakat</button>
-                  <button onClick={() => handlePrintSelectedReport("penerimaqurban")} className="bg-rose-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Mustahik Qurban</button>
+                  <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Pekurban</button>
+                  <button onClick={() => handlePrintSelectedReport("penerimazakat")} className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Penerima Zakat</button>
+                  <button onClick={() => handlePrintSelectedReport("penerimaqurban")} className="bg-rose-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Cetak Penerima Qurban</button>
                 </div>
               </div>
             </div>
@@ -1927,6 +1973,26 @@ export default function App() {
                     </div>
                 </div>
             </div>
+
+            <div className="bg-white border rounded-2xl p-4 shadow-xs col-span-1 md:col-span-2">
+               <h3 className="font-bold text-sm mb-3">Sasaran Pembagian Daging Warga (Sisa Kuota)</h3>
+               <div className="flex flex-col sm:flex-row gap-4">
+                   <div className="flex-1">
+                       <label className="text-[10px] font-bold text-slate-500 block mb-1">Penerima SAPI</label>
+                       <select value={sasaranQurbanSapi} onChange={e => setSasaranQurbanSapi(e.target.value)} disabled={!canEditQurban} className="w-full border p-2 rounded-xl text-xs outline-none bg-slate-50">
+                           <option value="Semua">Seluruh Warga (Semua Kalangan)</option>
+                           <option value="Mustahik">Hanya Mustahik (Fakir, Miskin, Guru Ngaji)</option>
+                       </select>
+                   </div>
+                   <div className="flex-1">
+                       <label className="text-[10px] font-bold text-slate-500 block mb-1">Penerima KAMBING</label>
+                       <select value={sasaranQurbanKambing} onChange={e => setSasaranQurbanKambing(e.target.value)} disabled={!canEditQurban} className="w-full border p-2 rounded-xl text-xs outline-none bg-slate-50">
+                           <option value="Semua">Seluruh Warga (Semua Kalangan)</option>
+                           <option value="Mustahik">Hanya Mustahik (Fakir, Miskin, Guru Ngaji)</option>
+                       </select>
+                   </div>
+               </div>
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
@@ -1954,10 +2020,9 @@ export default function App() {
               </div>
             </div>
             
-            <div className="bg-slate-900 text-white border rounded-3xl p-5 shadow-lg grid grid-cols-3 gap-4">
-              <div className="text-center"><p className="text-[10px] text-slate-400 uppercase font-bold">Warga Penerima (Sisa)</p><p className="text-3xl font-black mt-1">{String(totalPenerimaKK)} KK</p></div>
-              <div className="text-center border-l border-slate-700"><p className="text-[10px] text-rose-400 uppercase font-bold">Jatah Sapi / KK</p><p className="text-3xl font-black mt-1">{Number(jatahDagingSapiPerKK).toFixed(2)} Kg</p></div>
-              <div className="text-center border-l border-slate-700"><p className="text-[10px] text-amber-400 uppercase font-bold">Jatah Kambing / KK</p><p className="text-3xl font-black mt-1">{Number(jatahDagingKambingPerKK).toFixed(2)} Kg</p></div>
+            <div className="bg-slate-900 text-white border rounded-3xl p-5 shadow-lg grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="text-center p-2"><p className="text-[10px] text-rose-400 uppercase font-bold">Jatah Sapi (Sisa: {totalPenerimaSapiKK} KK)</p><p className="text-3xl font-black mt-1">{Number(jatahDagingSapiPerKK).toFixed(2)} Kg</p></div>
+              <div className="text-center border-t sm:border-t-0 sm:border-l border-slate-700 p-2"><p className="text-[10px] text-amber-400 uppercase font-bold">Jatah Kambing (Sisa: {totalPenerimaKambingKK} KK)</p><p className="text-3xl font-black mt-1">{Number(jatahDagingKambingPerKK).toFixed(2)} Kg</p></div>
             </div>
           </div>
         )}
@@ -2118,7 +2183,7 @@ export default function App() {
 
       {/* Bagian Footer */}
       <footer className="bg-white border-t border-slate-200 px-4 py-3 text-center text-xs text-slate-500 z-10 w-full mt-auto">
-        &copy; {new Date().getFullYear()} {String(masjidName)} - developed by Misbahul Munir
+        &copy; {new Date().getFullYear()} {String(masjidName)} - Sistem Manajemen Masjid Terpadu
       </footer>
 
       {printIframeData && (
