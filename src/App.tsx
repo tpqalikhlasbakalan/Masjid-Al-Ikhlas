@@ -1698,7 +1698,7 @@ export default function App() {
         {/* ======================= TAB: PETUGAS ======================= */}
         {activeTab === "petugas" && (
           <div className="space-y-4">
-            <h2 className="text-xl font-bold">Jadwal Petugas Abadi (5 Pasaran Jawa)</h2>
+            <h2 className="text-xl font-bold">Jadwal Petugas Shalat Jum'at</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               {PASARAN_LIST.map((pasaran) => {
                 const data = petugasAbadi[pasaran] || {};
@@ -2049,16 +2049,16 @@ export default function App() {
                    <div className="flex-1">
                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Penerima SAPI</label>
                        <select value={sasaranQurbanSapi} onChange={e => setSasaranQurbanSapi(e.target.value)} disabled={!canEditQurban} className="w-full border p-2 rounded-xl text-xs outline-none bg-slate-50">
-                           <option value="SemuaNonPekurban">Seluruh Warga (Kecuali Pekurban)</option>
-                           <option value="SemuaPlusPekurban">Seluruh Warga + Pekurban Ikut Dapat</option>
+                           <option value="SemuaNonPekurban">Mustahik Qurban</option>
+                           <option value="SemuaPlusPekurban">Mustahik + Shahibul Qurban</option>
                            <option value="Mustahik">Hanya Mustahik Saja</option>
                        </select>
                    </div>
                    <div className="flex-1">
                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Penerima KAMBING</label>
                        <select value={sasaranQurbanKambing} onChange={e => setSasaranQurbanKambing(e.target.value)} disabled={!canEditQurban} className="w-full border p-2 rounded-xl text-xs outline-none bg-slate-50">
-                           <option value="SemuaNonPekurban">Seluruh Warga (Kecuali Pekurban)</option>
-                           <option value="SemuaPlusPekurban">Seluruh Warga + Pekurban Ikut Dapat</option>
+                           <option value="SemuaNonPekurban">Mustahik Qurban</option>
+                           <option value="SemuaPlusPekurban">Mustahik + Shahibul Qurban</option>
                            <option value="Mustahik">Hanya Mustahik Saja</option>
                        </select>
                    </div>
