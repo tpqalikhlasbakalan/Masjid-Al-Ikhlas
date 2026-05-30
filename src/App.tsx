@@ -10,8 +10,6 @@ import {
 // ====================================================================
 // CONFIGURATION GOOGLE SHEETS API
 // ====================================================================
-// Catatan: Anda tidak perlu lagi mengisi URL di sini. 
-// Silakan isi langsung melalui menu "Hak Akses & Akun" di dalam Aplikasi!
 const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlT-MtuAXW_wl-KnFnqUkhX4fPf6YIyXNMPTE4Syi66_uDhxGiKVVK9_imo25DpRCm/exec"; 
 
 // === SEED DATA AWAL ===
@@ -44,9 +42,9 @@ const INITIAL_USER_DATABASE = {
 };
 
 const INITIAL_JAMAAH = [
-  { id: "1", nama: "Ahmad Subarjo", anggota: 4, rt: "01", rw: "01", alamat: "Jl. Masjid No. 12", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", qurbanJiwa: 1, isGuruNgaji: false, approvedByTakmir: true, usulanOleh: "System" },
-  { id: "2", nama: "Slamet Rahardjo", anggota: 3, rt: "01", rw: "01", alamat: "Gang Kelinci No. 2", ekonomi: "Sangat Kurang", fitrah: "Berat", zuru: "Berat", qurban: "Penerima", qurbanJiwa: 1, isGuruNgaji: false, approvedByTakmir: true, usulanOleh: "System" },
-  { id: "3", nama: "Budi Santoso", anggota: 5, rt: "02", rw: "01", alamat: "Jl. Mangga No. 5", ekonomi: "Kurang Mampu", fitrah: "Sedang", zuru: "Sedang", qurban: "Penerima", qurbanJiwa: 1, isGuruNgaji: false, approvedByTakmir: true, usulanOleh: "System" }
+  { id: "1", nama: "Ahmad Subarjo", anggota: 4, rt: "01", rw: "01", alamat: "Jl. Masjid No. 12", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", qurbanSapiJiwa: 0, qurbanKambingJiwa: 0, isGuruNgaji: false, approvedByTakmir: true, usulanOleh: "System" },
+  { id: "2", nama: "Slamet Rahardjo", anggota: 3, rt: "01", rw: "01", alamat: "Gang Kelinci No. 2", ekonomi: "Sangat Kurang", fitrah: "Berat", zuru: "Berat", qurban: "Penerima", qurbanSapiJiwa: 0, qurbanKambingJiwa: 0, isGuruNgaji: false, approvedByTakmir: true, usulanOleh: "System" },
+  { id: "3", nama: "Budi Santoso", anggota: 5, rt: "02", rw: "01", alamat: "Jl. Mangga No. 5", ekonomi: "Kurang Mampu", fitrah: "Sedang", zuru: "Sedang", qurban: "Penerima", qurbanSapiJiwa: 0, qurbanKambingJiwa: 0, isGuruNgaji: false, approvedByTakmir: true, usulanOleh: "System" }
 ];
 
 const INITIAL_PETUGAS_ABADI = {
@@ -100,6 +98,18 @@ const getLocalStorageData = (key, fallbackValue) => {
   }
 };
 
+const getJiwaQurban = (w) => {
+  if (w.qurban === "Penerima" || !w.qurban) return { sapi: 0, kambing: 0 };
+  let sapi = parseInt(w.qurbanSapiJiwa) || 0;
+  let kambing = parseInt(w.qurbanKambingJiwa) || 0;
+  
+  // Backward compatibility untuk data versi sebelumnya
+  if (w.qurban === "Sahibul Qurban - Sapi" && sapi === 0) sapi = parseInt(w.qurbanJiwa) || 1;
+  if (w.qurban === "Sahibul Qurban - Kambing" && kambing === 0) kambing = parseInt(w.qurbanJiwa) || 1;
+  
+  return { sapi, kambing };
+};
+
 function getPasaranJawaLocal(date) {
   const dateUTC = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
   const msPerDay = 24 * 60 * 60 * 1000;
@@ -148,7 +158,7 @@ const getJumlahJiwaPerKategoriZuru = (list, kategori) => {
   return list.filter(item => item.zuru === kategori && item.approvedByTakmir).reduce((sum, item) => sum + parseInt(item.anggota || 0), 0);
 };
 
-// Fungsi Murni Untuk Jadwal Sholat Terdekat (Bebas Error Hoisting)
+// Fungsi Murni Untuk Jadwal Sholat Terdekat
 function getNextSholat(currentTime, jadwalSholat) {
   const nowStr = currentTime.toTimeString().split(' ')[0].substring(0, 5); 
   const sholatTimes = Object.entries(jadwalSholat).filter(([k]) => k !== 'Terbit');
@@ -158,7 +168,7 @@ function getNextSholat(currentTime, jadwalSholat) {
   return { name: "Subuh (Besok)", time: String(sholatTimes[0]?.[1] || "04:15") };
 }
 
-// Fungsi Murni Menentukan Petugas Jumat Besok H-1 (Bebas Error Hoisting)
+// Fungsi Murni Menentukan Petugas Jumat Besok H-1
 function getPetugasTugasBesok(currentTime, isSimulatedThursday, isDutyDismissed, petugasAbadi, currentUserLabel) {
   const isKamis = currentTime.getDay() === 4;
   let targetDate = null;
@@ -320,8 +330,8 @@ export default function App() {
   const [tempQurbanTamu, setTempQurbanTamu] = useState(qurbanTamu);
   const [tempQurbanSahibul, setTempQurbanSahibul] = useState(qurbanSahibul);
   
-  const [sasaranQurbanSapi, setSasaranQurbanSapi] = useState(() => getLocalStorageData("sasaranQurbanSapi", "Semua"));
-  const [sasaranQurbanKambing, setSasaranQurbanKambing] = useState(() => getLocalStorageData("sasaranQurbanKambing", "Semua"));
+  const [sasaranQurbanSapi, setSasaranQurbanSapi] = useState(() => getLocalStorageData("sasaranQurbanSapi", "SemuaNonPekurban"));
+  const [sasaranQurbanKambing, setSasaranQurbanKambing] = useState(() => getLocalStorageData("sasaranQurbanKambing", "SemuaNonPekurban"));
 
   const [filterWilayahQurban, setFilterWilayahQurban] = useState("Semua");
   const [selectedPrintWilayahQurban, setSelectedPrintWilayahQurban] = useState("Semua");
@@ -331,7 +341,7 @@ export default function App() {
   const [selectedPrintWilayah, setSelectedPrintWilayah] = useState("Semua");
   const [showJamaahModal, setShowJamaahModal] = useState(false);
   const [editingJamaah, setEditingJamaah] = useState(null);
-  const [jamaahForm, setJamaahForm] = useState({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", qurbanJiwa: 1, isGuruNgaji: false });
+  const [jamaahForm, setJamaahForm] = useState({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", qurbanSapiJiwa: 0, qurbanKambingJiwa: 0, isGuruNgaji: false });
 
   const [syncStatus, setSyncStatus] = useState("Tersinkronisasi Lokal");
   const [isSyncing, setIsSyncing] = useState(false);
@@ -339,7 +349,6 @@ export default function App() {
   
   const [syncConflict, setSyncConflict] = useState(null); 
   const [printIframeData, setPrintIframeData] = useState(null);
-  const [rawBackupInput, setRawBackupInput] = useState("");
   
   const [jadwalSholat, setJadwalSholat] = useState(() => {
     const def = { Subuh: "04:15", Terbit: "05:30", Dzuhur: "11:35", Ashar: "14:55", Maghrib: "17:30", Isya: "18:45" };
@@ -579,36 +588,38 @@ export default function App() {
   const totalKambingDikurangiTamu = Math.max(0, totalTimbanganQurbanKambingValue - (Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahKambing)));
 
   // Fungsi dinamis untuk menyaring penerima Qurban berdasarkan Sapi/Kambing
-  const getPenerimaQurban = (sasaran) => {
+  const getPenerimaQurbanList = (sasaran) => {
     if (!Array.isArray(jamaahList)) return [];
     return jamaahList.filter(warga => {
       if (!warga.approvedByTakmir || warga.hasUsulanEdit) return false;
-      if (warga.qurban && String(warga.qurban).startsWith("Sahibul Qurban")) return false;
-      if (filterWilayahQurban !== "Semua") {
-        const [filterRt, filterRw] = filterWilayahQurban.split('_');
-        if (warga.rt !== filterRt || warga.rw !== filterRw) return false;
-      }
+      
+      const isPekurban = warga.qurban && warga.qurban !== "Penerima";
+      const isMustahik = (warga.fitrah !== "Muzakki" || warga.zuru !== "Bukan Mustahik" || warga.isGuruNgaji);
+
       if (sasaran === "Mustahik") {
-        return (warga.fitrah !== "Muzakki" || warga.zuru !== "Bukan Mustahik" || warga.isGuruNgaji);
+        return isMustahik;
+      } else if (sasaran === "SemuaNonPekurban") {
+        return !isPekurban;
+      } else { // "SemuaPlusPekurban"
+        return true;
       }
-      return true;
     });
   };
 
-  const penerimaSapiList = getPenerimaQurban(sasaranQurbanSapi);
+  const penerimaSapiList = getPenerimaQurbanList(sasaranQurbanSapi);
   const totalPenerimaSapiKK = penerimaSapiList.length;
   const jatahDagingSapiPerKK = totalPenerimaSapiKK > 0 ? (totalSapiDikurangiTamu / totalPenerimaSapiKK).toFixed(2) : 0;
 
-  const penerimaKambingList = getPenerimaQurban(sasaranQurbanKambing);
+  const penerimaKambingList = getPenerimaQurbanList(sasaranQurbanKambing);
   const totalPenerimaKambingKK = penerimaKambingList.length;
   const jatahDagingKambingPerKK = totalPenerimaKambingKK > 0 ? (totalKambingDikurangiTamu / totalPenerimaKambingKK).toFixed(2) : 0;
 
-  // Pekurban disatukan Sapi dan Kambing sama-sama dihitung jiwa-nya
-  const pekurbanJiwaList = Array.isArray(jamaahList) ? jamaahList.filter(j => j.approvedByTakmir && !j.hasUsulanEdit && j.qurban && String(j.qurban).startsWith("Sahibul Qurban")) : [];
-  const totalPekurbanJiwa = pekurbanJiwaList.reduce((sum, j) => sum + (parseInt(j.qurbanJiwa) || 1), 0);
+  const pekurbanJiwaList = Array.isArray(jamaahList) ? jamaahList.filter(j => j.approvedByTakmir && !j.hasUsulanEdit && j.qurban && j.qurban !== "Penerima") : [];
+  const pekurbanSapiJiwa = pekurbanJiwaList.reduce((sum, j) => sum + getJiwaQurban(j).sapi, 0);
+  const pekurbanKambingJiwa = pekurbanJiwaList.reduce((sum, j) => sum + getJiwaQurban(j).kambing, 0);
   
-  const totalAlokasiSahibulSapi = totalPekurbanJiwa * (Number(qurbanSahibul.sapi) || 0);
-  const totalAlokasiSahibulKambing = totalPekurbanJiwa * (Number(qurbanSahibul.kambing) || 0);
+  const totalAlokasiSahibulSapi = pekurbanSapiJiwa * (Number(qurbanSahibul.sapi) || 0);
+  const totalAlokasiSahibulKambing = pekurbanKambingJiwa * (Number(qurbanSahibul.kambing) || 0);
 
   const displayTotalSapi = totalTimbanganQurbanSapiValue + totalAlokasiSahibulSapi;
   const displayTotalKambing = totalTimbanganQurbanKambingValue + totalAlokasiSahibulKambing;
@@ -741,8 +752,13 @@ export default function App() {
           let diffNotes = [];
           if (editingJamaah.fitrah !== finalData.fitrah) diffNotes.push(`Fitrah: ${editingJamaah.fitrah} ➔ ${finalData.fitrah}`);
           if (editingJamaah.zuru !== finalData.zuru) diffNotes.push(`Zuru': ${editingJamaah.zuru} ➔ ${finalData.zuru}`);
+          
           if (editingJamaah.qurban !== finalData.qurban) diffNotes.push(`Qurban: ${editingJamaah.qurban} ➔ ${finalData.qurban}`);
-          if (String(editingJamaah.qurbanJiwa || 1) !== String(finalData.qurbanJiwa)) diffNotes.push(`Jiwa Qurban: ${editingJamaah.qurbanJiwa || 1} ➔ ${finalData.qurbanJiwa}`);
+          const oldJiwa = getJiwaQurban(editingJamaah);
+          const newJiwa = getJiwaQurban(finalData);
+          if (oldJiwa.sapi !== newJiwa.sapi) diffNotes.push(`Jiwa Sapi: ${oldJiwa.sapi} ➔ ${newJiwa.sapi}`);
+          if (oldJiwa.kambing !== newJiwa.kambing) diffNotes.push(`Jiwa Kambing: ${oldJiwa.kambing} ➔ ${newJiwa.kambing}`);
+
           if (editingJamaah.ekonomi !== finalData.ekonomi) diffNotes.push(`Ekonomi: ${editingJamaah.ekonomi} ➔ ${finalData.ekonomi}`);
           if (String(editingJamaah.anggota) !== String(finalData.anggota)) diffNotes.push(`Jiwa KK: ${editingJamaah.anggota} ➔ ${finalData.anggota}`);
           if (editingJamaah.isGuruNgaji !== finalData.isGuruNgaji) diffNotes.push(`Guru Ngaji: ${editingJamaah.isGuruNgaji ? 'Ya' : 'Tidak'} ➔ ${finalData.isGuruNgaji ? 'Ya' : 'Tidak'}`);
@@ -777,7 +793,7 @@ export default function App() {
       addNotification(butuhAcc ? "Usulan warga baru terkirim! Menunggu ACC" : "Warga didaftarkan", "success");
     }
     setShowJamaahModal(false); setEditingJamaah(null);
-    setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", qurbanJiwa: 1, isGuruNgaji: false });
+    setJamaahForm({ nama: "", anggota: 1, rt: "01", rw: "01", alamat: "", ekonomi: "Mampu", fitrah: "Muzakki", zuru: "Bukan Mustahik", qurban: "Penerima", qurbanSapiJiwa: 0, qurbanKambingJiwa: 0, isGuruNgaji: false });
   };
 
   const handleApproveWarga = (wargaId) => { 
@@ -806,7 +822,20 @@ export default function App() {
       } 
   };
 
-  const handleEditJamaah = (jamaah) => { setEditingJamaah(jamaah); setJamaahForm({ ...jamaah, qurban: jamaah.qurban || "Penerima", qurbanJiwa: jamaah.qurbanJiwa || 1 }); setShowJamaahModal(true); };
+  const handleEditJamaah = (jamaah) => {
+    let qType = jamaah.qurban;
+    let sJiwa = jamaah.qurbanSapiJiwa || 0;
+    let kJiwa = jamaah.qurbanKambingJiwa || 0;
+    
+    // Migrasi data lawas jika belum disesuaikan
+    if (jamaah.qurban === "Sahibul Qurban - Sapi") { qType = "Sahibul Qurban"; sJiwa = jamaah.qurbanJiwa || 1; }
+    if (jamaah.qurban === "Sahibul Qurban - Kambing") { qType = "Sahibul Qurban"; kJiwa = jamaah.qurbanJiwa || 1; }
+
+    setEditingJamaah(jamaah); 
+    setJamaahForm({ ...jamaah, qurban: qType || "Penerima", qurbanSapiJiwa: sJiwa, qurbanKambingJiwa: kJiwa }); 
+    setShowJamaahModal(true); 
+  };
+
   const handleDeleteJamaah = (id) => {
     if (window.confirm("Apakah Anda yakin ingin menghapus data warga ini?")) {
       setJamaahList(prev => prev.filter(item => item.id !== id)); addNotification("Data dihapus", "warning");
@@ -872,8 +901,8 @@ export default function App() {
 
     let appliedPrintWilayah = "Semua";
     if (reportType === "qurban" || reportType === "penerimaqurban") {
-      appliedPrintWilayah = selectedPrintWilayahQurban; // Menggunakan dropdown dari menu qurban
-      if(activeTab === "jamaah") appliedPrintWilayah = selectedPrintWilayah; // Menggunakan dropdown dari menu jamaah jika sedang di tab jamaah
+      appliedPrintWilayah = selectedPrintWilayahQurban; 
+      if(activeTab === "jamaah") appliedPrintWilayah = selectedPrintWilayah; 
     }
     else if (reportType === "fitrah") appliedPrintWilayah = selectedPrintWilayahFitrah;
     else if (reportType === "zuru") appliedPrintWilayah = selectedPrintWilayahZuru;
@@ -907,7 +936,7 @@ export default function App() {
       tableRowsHTML = filteredWarga.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)} ${j.isGuruNgaji ? '(Guru Ngaji)' : ''}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center">${String(j.anggota)} Orang</td></tr>`).join('');
     } else if (reportType === "penerimazakat") {
       docTitle = `Daftar Penerima Zakat`;
-      const penerimaZakatList = filteredWarga.filter(j => (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji) && (!j.qurban || !String(j.qurban).startsWith("Sahibul Qurban")));
+      const penerimaZakatList = filteredWarga.filter(j => (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji) && (!j.qurban || j.qurban === "Penerima"));
       summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#e0e7ff;border:1px solid #c7d2fe;text-align:center;"><strong>Total Penerima Zakat (Non-Pekurban):</strong> ${penerimaZakatList.length} KK</div>`;
       tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 35%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 15%;">RT / RW</th><th class="text-center" style="width: 15%;">Fitrah</th><th class="text-center" style="width: 15%;">Zuru'</th><th class="text-center" style="width: 15%;">Paraf</th></tr>`;
       tableRowsHTML = penerimaZakatList.length > 0 ? penerimaZakatList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td class="text-center">${j.fitrah !== "Muzakki" ? String(j.fitrah) : "-"}${j.isGuruNgaji?" <span style='font-size:8px;'>(+Guru)</span>":""}</td><td class="text-center">${j.zuru !== "Bukan Mustahik" ? String(j.zuru) : "-"}${j.isGuruNgaji?" <span style='font-size:8px;'>(+Guru)</span>":""}</td><td style="height:22px;"></td></tr>`).join('') : `<tr><td colspan="6" class="text-center">Kosong</td></tr>`;
@@ -915,24 +944,39 @@ export default function App() {
       docTitle = `Daftar Penerima Qurban`;
       
       const combinedPenerimaList = filteredWarga.filter(j => {
-          if (j.qurban && String(j.qurban).startsWith("Sahibul Qurban")) return false;
+          const isPekurban = j.qurban && j.qurban !== "Penerima";
           const isMustahik = (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
-          const dapatSapi = sasaranQurbanSapi === "Semua" || isMustahik;
-          const dapatKambing = sasaranQurbanKambing === "Semua" || isMustahik;
+          
+          let dapatSapi = true;
+          if(sasaranQurbanSapi === "Mustahik") dapatSapi = isMustahik;
+          if(sasaranQurbanSapi === "SemuaNonPekurban") dapatSapi = !isPekurban;
+
+          let dapatKambing = true;
+          if(sasaranQurbanKambing === "Mustahik") dapatKambing = isMustahik;
+          if(sasaranQurbanKambing === "SemuaNonPekurban") dapatKambing = !isPekurban;
+
           return dapatSapi || dapatKambing;
       });
 
       summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#ffe4e6;border:1px solid #fecdd3;text-align:center;"><strong>Total Penerima Qurban:</strong> ${combinedPenerimaList.length} KK</div>`;
       tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 35%;">Nama Kepala Keluarga</th><th class="text-center" style="width: 15%;">RT / RW</th><th class="text-center" style="width: 10%;">Jiwa</th><th class="text-center" style="width: 15%;">Hak Daging</th><th class="text-center" style="width: 20%;">Paraf</th></tr>`;
       tableRowsHTML = combinedPenerimaList.length > 0 ? combinedPenerimaList.map((j, i) => {
+          const isPekurban = j.qurban && j.qurban !== "Penerima";
           const isMustahik = (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
-          const dapatSapi = sasaranQurbanSapi === "Semua" || isMustahik;
-          const dapatKambing = sasaranQurbanKambing === "Semua" || isMustahik;
+          
+          let dapatSapi = true;
+          if(sasaranQurbanSapi === "Mustahik") dapatSapi = isMustahik;
+          if(sasaranQurbanSapi === "SemuaNonPekurban") dapatSapi = !isPekurban;
+
+          let dapatKambing = true;
+          if(sasaranQurbanKambing === "Mustahik") dapatKambing = isMustahik;
+          if(sasaranQurbanKambing === "SemuaNonPekurban") dapatKambing = !isPekurban;
+          
           let hak = [];
           if(dapatSapi) hak.push("Sapi");
           if(dapatKambing) hak.push("Kmbg");
 
-          return `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td class="text-center">${j.anggota}</td><td class="text-center text-[10px]">${hak.join(" & ")}</td><td style="height:22px;"></td></tr>`;
+          return `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td class="text-center">${j.anggota}</td><td class="text-center text-[10px] font-bold text-slate-500">${hak.join(" & ")}</td><td style="height:22px;"></td></tr>`;
       }).join('') : `<tr><td colspan="6" class="text-center">Kosong</td></tr>`;
     } else if (reportType === "fitrah") {
       docTitle = `Rekapitulasi Penyaluran Zakat Fitrah`;
@@ -986,7 +1030,7 @@ export default function App() {
            <div style="flex:1; padding:8px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center;"><strong>Total Kebutuhan:</strong><br/>${Number(totalButuhFitrahValue).toFixed(1)} Kg</div>
            <div style="flex:1; padding:8px; background:#fff1f2; border:1px solid #fecdd3; text-align:center;"><strong>Status:</strong><br/>${statusFitrahValue >= 0 ? `Surplus ${Number(statusFitrahValue).toFixed(1)} Kg` : `Kurang ${Math.abs(Number(statusFitrahValue)).toFixed(1)} Kg`}</div>
         </div>
-        <h4>1. Ringkasan Penerima Zakat Fitrah (Berdasarkan Kriteria)</h4>
+        <h4>1. Ringkasan Kebutuhan Penerima Zakat Fitrah</h4>
         <table class="data-table" style="margin-bottom:15px;">
            <thead>
              <tr>
@@ -1001,9 +1045,9 @@ export default function App() {
              ${categorySummaryRows}
            </tbody>
         </table>
-        <h4>2. Detail Kebutuhan & Distribusi per Wilayah (RT)</h4>
+        <h4>2. Detail Distribusi per Wilayah RT/RW</h4>
       `;
-      tableHeaderHTML = `<tr><th>Wilayah RT/RW</th><th class="text-center">Penerima (KK)</th><th class="text-center">Mustahik Berat</th><th class="text-center">Mustahik Sedang</th><th class="text-center">Mustahik Ringan</th><th class="text-center">Guru Ngaji</th><th class="text-right">Total Kebutuhan Beras</th></tr>`;
+      tableHeaderHTML = `<tr><th>Wilayah RT/RW</th><th class="text-center">Penerima (KK)</th><th class="text-center">Mustahik Berat</th><th class="text-center">Mustahik Sedang</th><th class="text-center">Mustahik Ringan</th><th class="text-center">Guru Ngaji</th><th class="text-right">Total Beras/RT</th></tr>`;
       tableRowsHTML = rtRows.length > 0 ? rtRows.join('') : `<tr><td colspan="7" class="text-center">Kosong</td></tr>`;
       
     } else if (reportType === "zuru") {
@@ -1059,7 +1103,7 @@ export default function App() {
            <div style="flex:1; padding:8px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center;"><strong>Total Kebutuhan:</strong><br/>${Number(totalButuruValue).toFixed(1)} Kg</div>
            <div style="flex:1; padding:8px; background:#fff1f2; border:1px solid #fecdd3; text-align:center;"><strong>Status:</strong><br/>${statusZuruValue >= 0 ? `Surplus ${Number(statusZuruValue).toFixed(1)} Kg` : `Kurang ${Math.abs(Number(statusZuruValue)).toFixed(1)} Kg`}</div>
         </div>
-        <h4>1. Ringkasan Penerima Zakat Zuru' (Berdasarkan Kriteria)</h4>
+        <h4>1. Ringkasan Kebutuhan Penerima Zakat Zuru'</h4>
         <table class="data-table" style="margin-bottom:15px;">
            <thead>
              <tr>
@@ -1074,9 +1118,9 @@ export default function App() {
              ${categorySummaryRows}
            </tbody>
         </table>
-        <h4>2. Detail Kebutuhan & Distribusi per Wilayah (RT)</h4>
+        <h4>2. Detail Distribusi per Wilayah RT/RW</h4>
       `;
-      tableHeaderHTML = `<tr><th>Wilayah RT/RW</th><th class="text-center">Penerima (KK)</th><th class="text-center">Mustahik Berat</th><th class="text-center">Mustahik Sedang</th><th class="text-center">Mustahik Ringan</th><th class="text-center">Guru Ngaji</th><th class="text-right">Total Kebutuhan Hasil Panen</th></tr>`;
+      tableHeaderHTML = `<tr><th>Wilayah RT/RW</th><th class="text-center">Penerima (KK)</th><th class="text-center">Mustahik Berat</th><th class="text-center">Mustahik Sedang</th><th class="text-center">Mustahik Ringan</th><th class="text-center">Guru Ngaji</th><th class="text-right">Total Hasil Panen/RT</th></tr>`;
       tableRowsHTML = rtRows.length > 0 ? rtRows.join('') : `<tr><td colspan="7" class="text-center">Kosong</td></tr>`;
       
     } else if (reportType === "qurban") {
@@ -1085,19 +1129,28 @@ export default function App() {
       let rtRowsData = [];
       WILAYAH_OPTIONS.forEach(w => {
          const isMustahikOnlySapi = sasaranQurbanSapi === "Mustahik";
+         const isSemuaNonPekurbanSapi = sasaranQurbanSapi === "SemuaNonPekurban";
+         
          const isMustahikOnlyKambing = sasaranQurbanKambing === "Mustahik";
+         const isSemuaNonPekurbanKambing = sasaranQurbanKambing === "SemuaNonPekurban";
 
          let countSapi = filteredWarga.filter(j => {
-             if (j.qurban && String(j.qurban).startsWith("Sahibul Qurban")) return false;
              if (j.rt !== w.rt || j.rw !== w.rw) return false;
-             if (isMustahikOnlySapi) return (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
-             return true;
+             const isPekurban = j.qurban && j.qurban !== "Penerima";
+             const isMustahik = (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
+             
+             if (isMustahikOnlySapi) return isMustahik;
+             if (isSemuaNonPekurbanSapi) return !isPekurban;
+             return true; // "SemuaPlusPekurban"
          }).length;
 
          let countKambing = filteredWarga.filter(j => {
-             if (j.qurban && String(j.qurban).startsWith("Sahibul Qurban")) return false;
              if (j.rt !== w.rt || j.rw !== w.rw) return false;
-             if (isMustahikOnlyKambing) return (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
+             const isPekurban = j.qurban && j.qurban !== "Penerima";
+             const isMustahik = (j.fitrah !== "Muzakki" || j.zuru !== "Bukan Mustahik" || j.isGuruNgaji);
+             
+             if (isMustahikOnlyKambing) return isMustahik;
+             if (isSemuaNonPekurbanKambing) return !isPekurban;
              return true;
          }).length;
          
@@ -1117,7 +1170,8 @@ export default function App() {
         <table class="data-table" style="margin-bottom:10px;">
            <thead><tr><th>Kategori Khusus</th><th class="text-center">Total Hak Sapi (Kg)</th><th class="text-center">Total Hak Kambing (Kg)</th><th class="text-center">Keterangan</th></tr></thead>
            <tbody>
-             <tr><td>Sahibul Qurban (${totalPekurbanJiwa} Jiwa)</td><td class="text-center">${totalAlokasiSahibulSapi.toFixed(1)} Kg</td><td class="text-center">${totalAlokasiSahibulKambing.toFixed(1)} Kg</td><td class="text-center">Hak otomatis dari jiwa</td></tr>
+             <tr><td>Sahibul Qurban Sapi (${pekurbanSapiJiwa} Jiwa)</td><td class="text-center">${totalAlokasiSahibulSapi.toFixed(1)} Kg</td><td class="text-center">-</td><td class="text-center">Hak otomatis dari jiwa</td></tr>
+             <tr><td>Sahibul Qurban Kambing (${pekurbanKambingJiwa} Jiwa)</td><td class="text-center">-</td><td class="text-center">${totalAlokasiSahibulKambing.toFixed(1)} Kg</td><td class="text-center">Hak otomatis dari jiwa</td></tr>
              <tr><td>Tamu (${Number(qurbanTamu.jumlah) || 0} Orang)</td><td class="text-center">${(Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahSapi)).toFixed(1)} Kg</td><td class="text-center">${(Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahKambing)).toFixed(1)} Kg</td><td class="text-center">Memotong Kuota Warga</td></tr>
            </tbody>
         </table>
@@ -1128,10 +1182,13 @@ export default function App() {
       
     } else if (reportType === "pekurban") {
       docTitle = `Daftar Sahibul Qurban (Pekurban)`;
-      const pekurbanList = filteredWarga.filter(j => j.qurban && j.qurban.startsWith("Sahibul Qurban"));
+      const pekurbanList = filteredWarga.filter(j => j.qurban && j.qurban !== "Penerima");
       summaryHTML = `<div style="margin-bottom:15px;padding:8px;background:#fffbeb;border:1px solid #fde68a;text-align:center;"><strong>Total Pekurban:</strong> ${pekurbanList.length} Warga</div>`;
-      tableHeaderHTML = `<tr><th class="text-center" style="width: 8%;">No</th><th style="width: 30%;">Nama Pekurban</th><th class="text-center" style="width: 15%;">RT / RW</th><th style="width: 25%;">Alamat</th><th class="text-center" style="width: 15%;">Jenis Qurban</th><th class="text-center" style="width: 10%;">Jiwa Diqurbankan</th></tr>`;
-      tableRowsHTML = pekurbanList.length > 0 ? pekurbanList.map((j, i) => `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center font-bold text-amber-700">${String(j.qurban).replace("Sahibul Qurban - ", "")}</td><td class="text-center font-black">${j.qurbanJiwa || 1}</td></tr>`).join('') : `<tr><td colspan="6" class="text-center">Belum ada pekurban.</td></tr>`;
+      tableHeaderHTML = `<tr><th class="text-center" style="width: 5%;">No</th><th style="width: 30%;">Nama Pekurban</th><th class="text-center" style="width: 15%;">RT / RW</th><th style="width: 25%;">Alamat</th><th class="text-center" style="width: 10%;">Sapi (Jiwa)</th><th class="text-center" style="width: 10%;">Kmbg (Jiwa)</th></tr>`;
+      tableRowsHTML = pekurbanList.length > 0 ? pekurbanList.map((j, i) => {
+         const jiwa = getJiwaQurban(j);
+         return `<tr><td class="text-center">${i + 1}</td><td class="font-bold">${String(j.nama)}</td><td class="text-center">RT ${String(j.rt)}/${String(j.rw)}</td><td>${String(j.alamat)}</td><td class="text-center font-bold text-rose-700">${jiwa.sapi}</td><td class="text-center font-bold text-amber-700">${jiwa.kambing}</td></tr>`;
+      }).join('') : `<tr><td colspan="6" class="text-center">Belum ada pekurban.</td></tr>`;
     }
 
     const printDate = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
@@ -1145,7 +1202,7 @@ export default function App() {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${docTitle}</title>
       <style>
-        body { font-family: sans-serif; background: #f1f5f9; margin: 0; padding: 0; font-size: 12px; }
+        body { font-family: sans-serif; background: #f1f5f9; margin: 0; padding: 0; font-size: 12pt; }
         .wrapper { width: 100%; box-sizing: border-box; padding: 10px; }
         .control-panel { max-width: 100%; margin: 0 auto 15px; background: white; padding: 12px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-x: auto; gap: 10px; }
         .btn { padding: 8px 12px; border-radius: 6px; cursor: pointer; border: none; text-decoration: none; font-weight: bold; font-size: 12px; white-space: nowrap; }
@@ -1158,11 +1215,11 @@ export default function App() {
         .master-table > thead > tr > td, .master-table > tbody > tr > td { border: none; padding: 0; }
         .kop-masjid { display: flex; align-items: center; justify-content: center; gap: 15px; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 10px; text-align: left; }
         .kop-masjid h1 { margin: 0; font-size: 20px; text-transform: uppercase; font-weight: bold; color: #000; }
-        .kop-masjid p { margin: 2px 0 0; font-size: 12px; color: #000; font-weight: normal; }
-        table.data-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 100%; margin-bottom: 10px; }
-        table.data-table th, table.data-table td { border: 1px solid #000; padding: 2px 2px; word-wrap: break-word; line-height: 1.1; }
+        .kop-masjid p { margin: 2px 0 0; font-size: 12pt; color: #000; font-weight: normal; }
+        table.data-table { width: 100%; border-collapse: collapse; font-size: 12pt; min-width: 100%; margin-bottom: 10px; }
+        table.data-table th, table.data-table td { border: 1px solid #000; padding: 2px 3px; word-wrap: break-word; line-height: 1.1; }
         table.data-table th { background: #f8fafc; font-weight: bold; padding: 3px 2px; }
-        h4 { margin: 0 0 4px 0; font-size: 13px; color: #000; }
+        h4 { margin: 0 0 4px 0; font-size: 14pt; color: #000; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .header-info { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
@@ -1223,7 +1280,7 @@ export default function App() {
                   <div class="header-info">
                     <div>
                       <h2 style="margin:0 0 2px 0; font-size: 15px; text-transform: uppercase; text-decoration: underline;">${docTitle}</h2>
-                      <p style="margin:0; font-size: 12px; font-weight: bold;">Wilayah: ${rtTitle}</p>
+                      <p style="margin:0; font-size: 12pt; font-weight: bold;">Wilayah: ${rtTitle}</p>
                     </div>
                     <div class="print-date">
                       Dicetak pada:<br/><strong>${printDate}</strong>
@@ -1731,7 +1788,11 @@ export default function App() {
                         <td className="p-3 whitespace-nowrap">RT {String(j.rt)}/{String(j.rw)}</td><td className="p-3 max-w-[150px] truncate" title={String(j.alamat)}>{String(j.alamat)}</td><td className="p-3 text-center">{String(j.anggota)}</td>
                         <td className="p-3"><span className={j.fitrah !== "Muzakki" ? "text-emerald-700 font-bold" : "text-slate-400"}>{String(j.fitrah)}</span></td>
                         <td className="p-3"><span className={j.zuru !== "Bukan Mustahik" ? "text-teal-700 font-bold" : "text-slate-400"}>{String(j.zuru)}</span></td>
-                        <td className="p-3">{String(j.qurban) || "Penerima"}</td>
+                        <td className="p-3 text-center">
+                            {j.qurban === "Penerima" || !j.qurban ? "Penerima" : 
+                                <span className="text-amber-700 font-bold leading-tight block">Pekurban<br/><span className="text-[8px]">({getJiwaQurban(j).sapi} Sapi, {getJiwaQurban(j).kambing} Kmbg)</span></span>
+                            }
+                        </td>
                         <td className="p-3">
                             {j.approvedByTakmir && !j.hasUsulanEdit ? <span className="text-emerald-600 font-bold">✔️ ACC</span> : 
                              j.hasUsulanEdit ? <span className="text-amber-600 font-bold">⏳ Cek Edit</span> :
@@ -1785,19 +1846,27 @@ export default function App() {
                     </div>
                     
                     {Array.isArray(currentUserRoles) && !(currentUserRoles.includes("RT") && !currentUserRoles.includes("Admin") && !currentUserRoles.includes("Takmir") && !currentUserRoles.includes("Amil")) && (
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         <div>
                             <label className="text-[10px] font-bold text-rose-600">Status Qurban</label>
-                            <select value={jamaahForm.qurban} onChange={e => setJamaahForm({...jamaahForm, qurban: e.target.value})} className="w-full border p-2 rounded-xl text-xs font-bold outline-none">
-                                <option value="Penerima">Penerima Daging</option>
-                                <option value="Sahibul Qurban - Sapi">Sahibul Qurban Sapi</option>
-                                <option value="Sahibul Qurban - Kambing">Sahibul Qurban Kambing</option>
+                            <select value={jamaahForm.qurban === "Penerima" ? "Penerima" : "Sahibul Qurban"} onChange={e => {
+                                const val = e.target.value;
+                                setJamaahForm({...jamaahForm, qurban: val, qurbanSapiJiwa: val === "Sahibul Qurban" ? 1 : 0, qurbanKambingJiwa: 0});
+                            }} className="w-full border p-2 rounded-xl text-xs font-bold outline-none">
+                                <option value="Penerima">Penerima Daging Biasa</option>
+                                <option value="Sahibul Qurban">Sahibul Qurban (Pekurban)</option>
                             </select>
                         </div>
-                        {jamaahForm.qurban && jamaahForm.qurban.startsWith("Sahibul Qurban") && (
-                          <div>
-                             <label className="text-[10px] font-bold text-rose-600">Jumlah Jiwa Diqurbankan</label>
-                             <input type="number" min="1" value={jamaahForm.qurbanJiwa || 1} onChange={e => setJamaahForm({...jamaahForm, qurbanJiwa: parseInt(e.target.value) || 1})} className="w-full border p-2 rounded-xl text-xs font-bold outline-none" />
+                        {jamaahForm.qurban !== "Penerima" && (
+                          <div className="flex gap-4 p-3 bg-rose-50 border border-rose-200 rounded-xl">
+                             <div className="flex-1">
+                                <label className="text-[10px] font-bold text-rose-700">Sapi (Jumlah Jiwa)</label>
+                                <input type="number" min="0" value={jamaahForm.qurbanSapiJiwa ?? 0} onChange={e => setJamaahForm({...jamaahForm, qurbanSapiJiwa: parseInt(e.target.value) || 0})} className="w-full border p-2 rounded-lg text-xs font-bold outline-none" />
+                             </div>
+                             <div className="flex-1">
+                                <label className="text-[10px] font-bold text-amber-700">Kambing (Jumlah Jiwa)</label>
+                                <input type="number" min="0" value={jamaahForm.qurbanKambingJiwa ?? 0} onChange={e => setJamaahForm({...jamaahForm, qurbanKambingJiwa: parseInt(e.target.value) || 0})} className="w-full border p-2 rounded-lg text-xs font-bold outline-none" />
+                             </div>
                           </div>
                         )}
                       </div>
@@ -1957,7 +2026,7 @@ export default function App() {
                         <div className="flex items-center gap-2"><span className="text-[10px] font-bold">JATAH KMBG/JIWA:</span><input type="number" step="0.1" value={tempQurbanSahibul.kambing} onChange={e => setTempQurbanSahibul({...tempQurbanSahibul, kambing: parseFloat(e.target.value) || 0})} className="w-16 border rounded text-sm text-center outline-none" /> <span className="text-xs">Kg</span></div>
                     </div>
                     <div className="mt-3 bg-indigo-50 border border-indigo-100 p-2 rounded-lg text-xs text-indigo-800">
-                        Total Hak: Sapi <strong>{totalAlokasiSahibulSapi.toFixed(1)} Kg</strong> ({totalPekurbanJiwa} Jiwa), Kambing <strong>{totalAlokasiSahibulKambing.toFixed(1)} Kg</strong> ({totalPekurbanJiwa} Jiwa)
+                        Total Hak: Sapi <strong>{totalAlokasiSahibulSapi.toFixed(1)} Kg</strong> ({pekurbanSapiJiwa} Jiwa), Kambing <strong>{totalAlokasiSahibulKambing.toFixed(1)} Kg</strong> ({pekurbanKambingJiwa} Jiwa)
                     </div>
                 </div>
 
@@ -1980,15 +2049,17 @@ export default function App() {
                    <div className="flex-1">
                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Penerima SAPI</label>
                        <select value={sasaranQurbanSapi} onChange={e => setSasaranQurbanSapi(e.target.value)} disabled={!canEditQurban} className="w-full border p-2 rounded-xl text-xs outline-none bg-slate-50">
-                           <option value="Semua">Seluruh Warga (Semua Kalangan)</option>
-                           <option value="Mustahik">Hanya Mustahik (Fakir, Miskin, Guru Ngaji)</option>
+                           <option value="SemuaNonPekurban">Seluruh Warga (Kecuali Pekurban)</option>
+                           <option value="SemuaPlusPekurban">Seluruh Warga + Pekurban Ikut Dapat</option>
+                           <option value="Mustahik">Hanya Mustahik Saja</option>
                        </select>
                    </div>
                    <div className="flex-1">
                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Penerima KAMBING</label>
                        <select value={sasaranQurbanKambing} onChange={e => setSasaranQurbanKambing(e.target.value)} disabled={!canEditQurban} className="w-full border p-2 rounded-xl text-xs outline-none bg-slate-50">
-                           <option value="Semua">Seluruh Warga (Semua Kalangan)</option>
-                           <option value="Mustahik">Hanya Mustahik (Fakir, Miskin, Guru Ngaji)</option>
+                           <option value="SemuaNonPekurban">Seluruh Warga (Kecuali Pekurban)</option>
+                           <option value="SemuaPlusPekurban">Seluruh Warga + Pekurban Ikut Dapat</option>
+                           <option value="Mustahik">Hanya Mustahik Saja</option>
                        </select>
                    </div>
                </div>
