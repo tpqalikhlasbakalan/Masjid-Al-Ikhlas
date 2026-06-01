@@ -10,6 +10,8 @@ import {
 // ====================================================================
 // CONFIGURATION GOOGLE SHEETS API
 // ====================================================================
+// Catatan: Anda tidak perlu lagi mengisi URL di sini. 
+// Silakan isi langsung melalui menu "Hak Akses & Akun" di dalam Aplikasi!
 const GOOGLE_SHEETS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlT-MtuAXW_wl-KnFnqUkhX4fPf6YIyXNMPTE4Syi66_uDhxGiKVVK9_imo25DpRCm/exec"; 
 
 // === SEED DATA AWAL ===
@@ -30,7 +32,7 @@ const INITIAL_ROLES = {
 };
 
 const INITIAL_USER_DATABASE = {
-  "admin": { password: "admin123", roles: ["Admin"], label: "Super Admin", approved: true },
+  "admin": { password: "admin5758", roles: ["Admin"], label: "Super Admin", approved: true },
   "takmir": { password: "takmir123", roles: ["Takmir"], label: "Takmir Masjid", approved: true },
   "rt01": { password: "rt123", roles: ["RT"], label: "Ketua RT 01", approved: true },
   "amil": { password: "amil123", roles: ["Amil"], label: "Amil Zakat", approved: true },
@@ -332,6 +334,7 @@ export default function App() {
   
   const [sasaranQurbanSapi, setSasaranQurbanSapi] = useState(() => getLocalStorageData("sasaranQurbanSapi", "SemuaNonPekurban"));
   const [sasaranQurbanKambing, setSasaranQurbanKambing] = useState(() => getLocalStorageData("sasaranQurbanKambing", "SemuaNonPekurban"));
+  const [aturanHakSahibul, setAturanHakSahibul] = useState(() => getLocalStorageData("aturanHakSahibul", "SesuaiJenis"));
 
   const [filterWilayahQurban, setFilterWilayahQurban] = useState("Semua");
   const [selectedPrintWilayahQurban, setSelectedPrintWilayahQurban] = useState("Semua");
@@ -349,6 +352,7 @@ export default function App() {
   
   const [syncConflict, setSyncConflict] = useState(null); 
   const [printIframeData, setPrintIframeData] = useState(null);
+  const [rawBackupInput, setRawBackupInput] = useState("");
   
   const [jadwalSholat, setJadwalSholat] = useState(() => {
     const def = { Subuh: "04:15", Terbit: "05:30", Dzuhur: "11:35", Ashar: "14:55", Maghrib: "17:30", Isya: "18:45" };
@@ -399,6 +403,7 @@ export default function App() {
     if (payload.rolesConfig !== undefined) setRolesConfig(payload.rolesConfig);
     if (payload.sasaranQurbanSapi !== undefined) setSasaranQurbanSapi(payload.sasaranQurbanSapi);
     if (payload.sasaranQurbanKambing !== undefined) setSasaranQurbanKambing(payload.sasaranQurbanKambing);
+    if (payload.aturanHakSahibul !== undefined) setAturanHakSahibul(payload.aturanHakSahibul);
   };
 
   const playAlarmSound = () => {
@@ -448,6 +453,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem("qurbanSahibul", JSON.stringify(qurbanSahibul)); }, [qurbanSahibul]);
   useEffect(() => { localStorage.setItem("sasaranQurbanSapi", JSON.stringify(sasaranQurbanSapi)); }, [sasaranQurbanSapi]);
   useEffect(() => { localStorage.setItem("sasaranQurbanKambing", JSON.stringify(sasaranQurbanKambing)); }, [sasaranQurbanKambing]);
+  useEffect(() => { localStorage.setItem("aturanHakSahibul", JSON.stringify(aturanHakSahibul)); }, [aturanHakSahibul]);
 
   useEffect(() => { setTempMasjidName(masjidName); }, [masjidName]);
   useEffect(() => { setTempMasjidLogoUrl(masjidLogoUrl); }, [masjidLogoUrl]);
@@ -534,7 +540,7 @@ export default function App() {
       masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
       timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
       timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig,
-      sasaranQurbanSapi, sasaranQurbanKambing
+      sasaranQurbanSapi, sasaranQurbanKambing, aturanHakSahibul
     };
     const payloadStr = JSON.stringify(payload);
     
@@ -546,7 +552,7 @@ export default function App() {
       } catch (err) { setSyncStatus("Gagal Menyimpan"); }
     }, 3000); 
     return () => clearTimeout(timeoutId);
-  }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig, sasaranQurbanSapi, sasaranQurbanKambing, googleSheetsUrl, isDataFetched, syncConflict]);
+  }, [masjidName, masjidLogoUrl, petugasAbadi, jamaahList, timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru, timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig, sasaranQurbanSapi, sasaranQurbanKambing, aturanHakSahibul, googleSheetsUrl, isDataFetched, syncConflict]);
 
 
   // === 4. DERIVED CALCULATIONS & ACCESS RIGHTS ===
@@ -617,9 +623,27 @@ export default function App() {
   const pekurbanJiwaList = Array.isArray(jamaahList) ? jamaahList.filter(j => j.approvedByTakmir && !j.hasUsulanEdit && j.qurban && j.qurban !== "Penerima") : [];
   const pekurbanSapiJiwa = pekurbanJiwaList.reduce((sum, j) => sum + getJiwaQurban(j).sapi, 0);
   const pekurbanKambingJiwa = pekurbanJiwaList.reduce((sum, j) => sum + getJiwaQurban(j).kambing, 0);
+  const totalPekurbanJiwa = pekurbanSapiJiwa + pekurbanKambingJiwa;
   
-  const totalAlokasiSahibulSapi = pekurbanSapiJiwa * (Number(qurbanSahibul.sapi) || 0);
-  const totalAlokasiSahibulKambing = pekurbanKambingJiwa * (Number(qurbanSahibul.kambing) || 0);
+  let hakSapiJiwa = 0;
+  let hakKambingJiwa = 0;
+
+  if (aturanHakSahibul === "SesuaiJenis") {
+      hakSapiJiwa = pekurbanSapiJiwa;
+      hakKambingJiwa = pekurbanKambingJiwa;
+  } else if (aturanHakSahibul === "HanyaSapi") {
+      hakSapiJiwa = totalPekurbanJiwa;
+      hakKambingJiwa = 0;
+  } else if (aturanHakSahibul === "HanyaKambing") {
+      hakSapiJiwa = 0;
+      hakKambingJiwa = totalPekurbanJiwa;
+  } else if (aturanHakSahibul === "Keduanya") {
+      hakSapiJiwa = totalPekurbanJiwa;
+      hakKambingJiwa = totalPekurbanJiwa;
+  }
+
+  const totalAlokasiSahibulSapi = hakSapiJiwa * (Number(qurbanSahibul.sapi) || 0);
+  const totalAlokasiSahibulKambing = hakKambingJiwa * (Number(qurbanSahibul.kambing) || 0);
 
   const displayTotalSapi = totalTimbanganQurbanSapiValue + totalAlokasiSahibulSapi;
   const displayTotalKambing = totalTimbanganQurbanKambingValue + totalAlokasiSahibulKambing;
@@ -647,7 +671,7 @@ export default function App() {
       masjidName, masjidLogoUrl, petugasAbadi, jamaahList, 
       timbanganFitrah, alokasiFitrah, timbanganZuru, alokasiZuru,
       timbanganQurbanSapi, timbanganQurbanKambing, qurbanTamu, qurbanSahibul, userDatabase, rolesConfig,
-      sasaranQurbanSapi, sasaranQurbanKambing
+      sasaranQurbanSapi, sasaranQurbanKambing, aturanHakSahibul
     };
     const payloadStr = JSON.stringify(payload);
     
@@ -730,7 +754,7 @@ export default function App() {
   const handleRejectAccount = (usernameKey) => {
     if (window.confirm(`Yakin tolak pendaftaran @${usernameKey}?`)) {
       setUserDatabase(prev => { const copy = { ...prev }; delete copy[usernameKey]; return copy; });
-      addNotification("Pendaftaran ditolak.", "warning");
+      addNotification(`Pendaftaran ditolak.`, "warning");
     }
   };
 
@@ -752,8 +776,8 @@ export default function App() {
           let diffNotes = [];
           if (editingJamaah.fitrah !== finalData.fitrah) diffNotes.push(`Fitrah: ${editingJamaah.fitrah} ➔ ${finalData.fitrah}`);
           if (editingJamaah.zuru !== finalData.zuru) diffNotes.push(`Zuru': ${editingJamaah.zuru} ➔ ${finalData.zuru}`);
-          
           if (editingJamaah.qurban !== finalData.qurban) diffNotes.push(`Qurban: ${editingJamaah.qurban} ➔ ${finalData.qurban}`);
+          
           const oldJiwa = getJiwaQurban(editingJamaah);
           const newJiwa = getJiwaQurban(finalData);
           if (oldJiwa.sapi !== newJiwa.sapi) diffNotes.push(`Jiwa Sapi: ${oldJiwa.sapi} ➔ ${newJiwa.sapi}`);
@@ -1161,6 +1185,11 @@ export default function App() {
          }
       });
       
+      let aturanText = "Sesuai Jenis Sapi/Kambing";
+      if(aturanHakSahibul === "HanyaSapi") aturanText = "Semua Dapat Sapi Saja";
+      if(aturanHakSahibul === "HanyaKambing") aturanText = "Semua Dapat Kambing Saja";
+      if(aturanHakSahibul === "Keduanya") aturanText = "Semua Dapat Keduanya";
+
       summaryHTML = `
         <div style="margin-bottom:10px; display:flex; gap:10px;">
            <div style="flex:1; padding:6px; background:#f8fafc; border:1px solid #cbd5e1; text-align:center; font-size: 10px;"><strong>Total Sapi Diterima:</strong><br/>${Number(displayTotalSapi).toFixed(1)} Kg</div>
@@ -1170,8 +1199,7 @@ export default function App() {
         <table class="data-table" style="margin-bottom:10px;">
            <thead><tr><th>Kategori Khusus</th><th class="text-center">Total Hak Sapi (Kg)</th><th class="text-center">Total Hak Kambing (Kg)</th><th class="text-center">Keterangan</th></tr></thead>
            <tbody>
-             <tr><td>Sahibul Qurban Sapi (${pekurbanSapiJiwa} Jiwa)</td><td class="text-center">${totalAlokasiSahibulSapi.toFixed(1)} Kg</td><td class="text-center">-</td><td class="text-center">Hak otomatis dari jiwa</td></tr>
-             <tr><td>Sahibul Qurban Kambing (${pekurbanKambingJiwa} Jiwa)</td><td class="text-center">-</td><td class="text-center">${totalAlokasiSahibulKambing.toFixed(1)} Kg</td><td class="text-center">Hak otomatis dari jiwa</td></tr>
+             <tr><td>Sahibul Qurban (${totalPekurbanJiwa} Jiwa Total)</td><td class="text-center">${totalAlokasiSahibulSapi.toFixed(1)} Kg</td><td class="text-center">${totalAlokasiSahibulKambing.toFixed(1)} Kg</td><td class="text-center">Aturan: ${aturanText}</td></tr>
              <tr><td>Tamu (${Number(qurbanTamu.jumlah) || 0} Orang)</td><td class="text-center">${(Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahSapi)).toFixed(1)} Kg</td><td class="text-center">${(Number(qurbanTamu.jumlah) * Number(qurbanTamu.jatahKambing)).toFixed(1)} Kg</td><td class="text-center">Memotong Kuota Warga</td></tr>
            </tbody>
         </table>
@@ -1759,7 +1787,7 @@ export default function App() {
                 </select>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => handlePrintSelectedReport("jamaah")} className="bg-slate-800 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Jama'ah</button>
-                  <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Shahibul Qurban</button>
+                  <button onClick={() => handlePrintSelectedReport("pekurban")} className="bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Shabhibul Qurban</button>
                   <button onClick={() => handlePrintSelectedReport("penerimazakat")} className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Mustahik Zakat</button>
                   <button onClick={() => handlePrintSelectedReport("penerimaqurban")} className="bg-rose-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex-1">Mustahik Qurban</button>
                 </div>
@@ -2021,20 +2049,29 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white border rounded-2xl p-4 shadow-xs">
                     <h3 className="font-bold text-sm mb-3 text-indigo-600">Alokasi Hak Sahibul Qurban (Pencatatan)</h3>
-                    <div className="flex gap-4">
+                    <div className="grid grid-cols-1 gap-4 mb-3">
+                        <div>
+                          <span className="text-[10px] font-bold block mb-1">ATURAN PEMBAGIAN PEKURBAN:</span>
+                          <select value={aturanHakSahibul} onChange={e => setAturanHakSahibul(e.target.value)} disabled={!canEditQurban} className="w-full border p-1.5 rounded text-xs outline-none bg-slate-50">
+                             <option value="SesuaiJenis">Sesuai Jenis (Sapi dpt Sapi, Kmbg dpt Kmbg)</option>
+                             <option value="HanyaSapi">Semua Pekurban Hanya Dapat Sapi</option>
+                             <option value="HanyaKambing">Semua Pekurban Hanya Dapat Kambing</option>
+                             <option value="Keduanya">Semua Pekurban Dapat Keduanya</option>
+                          </select>
+                        </div>
+                    </div>
+                    <div className="flex gap-4 mb-3">
                         <div className="flex items-center gap-2"><span className="text-[10px] font-bold">JATAH SAPI/JIWA:</span><input type="number" step="0.1" value={tempQurbanSahibul.sapi} onChange={e => setTempQurbanSahibul({...tempQurbanSahibul, sapi: parseFloat(e.target.value) || 0})} className="w-16 border rounded text-sm text-center outline-none" /> <span className="text-xs">Kg</span></div>
                         <div className="flex items-center gap-2"><span className="text-[10px] font-bold">JATAH KMBG/JIWA:</span><input type="number" step="0.1" value={tempQurbanSahibul.kambing} onChange={e => setTempQurbanSahibul({...tempQurbanSahibul, kambing: parseFloat(e.target.value) || 0})} className="w-16 border rounded text-sm text-center outline-none" /> <span className="text-xs">Kg</span></div>
                     </div>
-                    <div className="mt-3 bg-indigo-50 border border-indigo-100 p-2 rounded-lg text-xs text-indigo-800">
-                        Total Hak: Sapi <strong>{totalAlokasiSahibulSapi.toFixed(1)} Kg</strong> ({pekurbanSapiJiwa} Jiwa), Kambing <strong>{totalAlokasiSahibulKambing.toFixed(1)} Kg</strong> ({pekurbanKambingJiwa} Jiwa)
+                    <div className="mt-3 bg-indigo-50 border border-indigo-100 p-2 rounded-lg text-xs text-indigo-800 flex justify-between items-center">
+                        <span>Total Hak: Sapi <strong>{totalAlokasiSahibulSapi.toFixed(1)} Kg</strong>, Kambing <strong>{totalAlokasiSahibulKambing.toFixed(1)} Kg</strong></span>
+                        {canEditQurban && <button onClick={handleSaveQurbanTambahan} className="bg-slate-800 text-white px-3 py-1 rounded text-[10px] font-bold">Simpan</button>}
                     </div>
                 </div>
 
                 <div className="bg-white border rounded-2xl p-4 shadow-xs">
-                    <div className="flex justify-between items-center mb-3">
-                        <h3 className="font-bold text-sm text-orange-600">Alokasi Tamu / Panitia (Memotong Kuota)</h3>
-                        {canEditQurban && <button onClick={handleSaveQurbanTambahan} className="bg-slate-800 text-white px-3 py-1 rounded text-[10px] font-bold">Simpan</button>}
-                    </div>
+                    <h3 className="font-bold text-sm mb-3 text-orange-600">Alokasi Tamu / Panitia (Memotong Kuota)</h3>
                     <div className="grid grid-cols-3 gap-2 text-xs">
                         <div><span className="block text-[10px] text-slate-500 font-bold mb-1">Jumlah Orang</span><input type="number" value={tempQurbanTamu.jumlah} onChange={e => setTempQurbanTamu({...tempQurbanTamu, jumlah: parseInt(e.target.value) || 0})} className="w-full border p-1.5 rounded text-center outline-none" /></div>
                         <div><span className="block text-[10px] text-slate-500 font-bold mb-1">Jatah Sapi/Org (Kg)</span><input type="number" step="0.1" value={tempQurbanTamu.jatahSapi} onChange={e => setTempQurbanTamu({...tempQurbanTamu, jatahSapi: parseFloat(e.target.value) || 0})} className="w-full border p-1.5 rounded text-center outline-none" /></div>
@@ -2049,16 +2086,16 @@ export default function App() {
                    <div className="flex-1">
                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Penerima SAPI</label>
                        <select value={sasaranQurbanSapi} onChange={e => setSasaranQurbanSapi(e.target.value)} disabled={!canEditQurban} className="w-full border p-2 rounded-xl text-xs outline-none bg-slate-50">
-                           <option value="SemuaNonPekurban">Mustahik Qurban</option>
-                           <option value="SemuaPlusPekurban">Mustahik + Shahibul Qurban</option>
+                           <option value="SemuaNonPekurban">Seluruh Warga (Kecuali Pekurban)</option>
+                           <option value="SemuaPlusPekurban">Seluruh Warga + Pekurban Ikut Dapat</option>
                            <option value="Mustahik">Hanya Mustahik Saja</option>
                        </select>
                    </div>
                    <div className="flex-1">
                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Penerima KAMBING</label>
                        <select value={sasaranQurbanKambing} onChange={e => setSasaranQurbanKambing(e.target.value)} disabled={!canEditQurban} className="w-full border p-2 rounded-xl text-xs outline-none bg-slate-50">
-                           <option value="SemuaNonPekurban">Mustahik Qurban</option>
-                           <option value="SemuaPlusPekurban">Mustahik + Shahibul Qurban</option>
+                           <option value="SemuaNonPekurban">Seluruh Warga (Kecuali Pekurban)</option>
+                           <option value="SemuaPlusPekurban">Seluruh Warga + Pekurban Ikut Dapat</option>
                            <option value="Mustahik">Hanya Mustahik Saja</option>
                        </select>
                    </div>
